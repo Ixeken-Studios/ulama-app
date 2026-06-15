@@ -1,3 +1,9 @@
+toolchainManagement {
+    jvm {
+        // Bloque vacío para desactivar el resolvedor automático de Foojay en F-Droid
+    }
+}
+
 pluginManagement {
     repositories {
         google {
