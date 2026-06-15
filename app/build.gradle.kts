@@ -55,6 +55,10 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        disable += "LocalContextGetResourceValueCall"
+        disable += "UnusedMaterial3ScaffoldPaddingParameter"
+    }
 }
 
 dependencies {

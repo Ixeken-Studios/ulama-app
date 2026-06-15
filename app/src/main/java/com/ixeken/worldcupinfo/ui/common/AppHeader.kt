@@ -123,6 +123,7 @@ fun AppHeader(
         ) {
             val isOnline = rememberIsOnline()
             val context = LocalContext.current
+            val offlineToast = stringResource(R.string.toast_no_internet_fallback)
 
             if (!isOnline) {
                 Box(
@@ -133,7 +134,7 @@ fun AppHeader(
                         .clickable {
                             Toast.makeText(
                                 context,
-                                stringResource(R.string.toast_no_internet_fallback),
+                                offlineToast,
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -161,7 +162,7 @@ fun AppHeader(
                             } else {
                                 Toast.makeText(
                                     context,
-                                    context.getString(R.string.toast_no_internet_fallback),
+                                    offlineToast,
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
