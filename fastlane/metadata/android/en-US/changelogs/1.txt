@@ -1,0 +1,1 @@
+Initial release with Match Center, Group Standings, Predictions, Favorites and Settings.

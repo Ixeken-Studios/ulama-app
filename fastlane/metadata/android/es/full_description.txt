@@ -1,0 +1,14 @@
+Ulama es una aplicación nativa de Android para seguir el Mundial del 2026. Consulta el calendario completo del torneo, sigue los marcadores en vivo y revisa la clasificación de los grupos en tiempo real.
+
+Funciones:
+
+- Centro de Partidos: Navega los partidos día a día con un selector horizontal de fechas. Los partidos en vivo muestran indicadores parpadeantes para en juego, medio tiempo y penales. Toca cualquier partido para ver la cronología completa, estadísticas y tu predicción.
+- Tabla de Grupos: Clasificación dinámica calculada automáticamente a partir de los resultados. Alterna entre nombres completos de países y códigos FIFA de tres letras.
+- Quiniela: Guarda tus predicciones de marcador antes del inicio de cada partido. Elige al ganador en penales en las fases eliminatorias. Sigue tu progreso con un contador visual. Visualiza tus predicciones en cuadrícula bento o en lista con bordes verde/rojo de retroalimentación.
+- Favoritos: Marca tus selecciones favoritas y programa automáticamente recordatorios para todos sus partidos futuros.
+- Recordatorios: Alertas previas configurables (5 a 60 minutos) y notificación al inicio del partido mediante alarmas exactas.
+- Ajustes: Panel de permisos, selección de fuente (Sistema o Space Grotesk), cambio de idioma (español e inglés) y control de datos en vivo de ESPN.
+
+La aplicación sincroniza el calendario desde openfootball y los marcadores en vivo desde los endpoints públicos de ESPN. Todos los datos se almacenan localmente con Room para acceso sin conexión. Sin cuenta, sin anuncios, sin rastreo.
+
+Desarrollada con Kotlin, Jetpack Compose y Material Design 3.

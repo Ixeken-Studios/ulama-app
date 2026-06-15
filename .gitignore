@@ -1,0 +1,55 @@
+# Gradle
+.gradle/
+/build/
+/*/build/
+/app/build/
+
+# Android Studio / IntelliJ IDEA / Eclipse
+*.iml
+.idea/
+/local.properties
+/captures/
+.externalNativeBuild/
+.cxx/
+/google-services.json
+
+# Emulator / AVD
+.android/
+
+# Ignore any keystores and secrets
+*.jks
+*.keystore
+secrets.properties
+
+# Ignore debug signing configs or studio-specific files
+*.gradle.kts.lock
+
+# Navigation Editor / Layout Editor
+.navigation/
+
+# Kotlin
+.kotlin/
+
+# VS Code
+.vscode/
+
+# Signing files (Keystores)
+*.jks
+*.keystore
+*.pepk
+*.p12
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Local environment secrets
+keystore.properties
+secrets.properties
+local.properties
+
+# Developing Context
+.context/
+
+# Root Python Utility Scripts
+/*.py

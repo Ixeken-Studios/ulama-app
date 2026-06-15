@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.WorldCupInfo" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">#F2E8CF</item>
+    </style>
+
+    <style name="Theme.WorldCupInfo.Splash" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">#386641</item>
+    </style>
+</resources>
