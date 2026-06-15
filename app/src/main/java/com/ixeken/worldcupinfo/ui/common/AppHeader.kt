@@ -133,7 +133,7 @@ fun AppHeader(
                         .clickable {
                             Toast.makeText(
                                 context,
-                                context.getString(R.string.toast_no_internet_fallback),
+                                stringResource(R.string.toast_no_internet_fallback),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
