@@ -55,7 +55,6 @@ class MatchAlarmReceiver : BroadcastReceiver() {
         val displayNameA = getTeamDisplayName(teamA, context)
         val displayNameB = getTeamDisplayName(teamB, context)
 
-        val warningMinutes = intent.getIntExtra(EXTRA_WARNING_MINUTES, 5)
         val title = if (isStartTime) {
             context.getString(R.string.notification_title_start)
         } else {
@@ -64,7 +63,7 @@ class MatchAlarmReceiver : BroadcastReceiver() {
         val text = if (isStartTime) {
             context.getString(R.string.notification_text_start, displayNameA, displayNameB)
         } else {
-            context.getString(R.string.notification_text_upcoming, displayNameA, displayNameB, warningMinutes)
+            context.getString(R.string.notification_text_upcoming, displayNameA, displayNameB)
         }
 
         val notification = NotificationCompat.Builder(context, channelId)

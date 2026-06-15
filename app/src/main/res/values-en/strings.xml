@@ -181,7 +181,7 @@
     <string name="notification_title_start">Match Started!</string>
     <string name="notification_title_upcoming">Match Starting Soon!</string>
     <string name="notification_text_start">The match between %1$s and %2$s has started.</string>
-    <string name="notification_text_upcoming">The match between %1$s and %2$s starts in %3$d minutes.</string>
+    <string name="notification_text_upcoming">Reminder: %1$s vs %2$s is about to start.</string>
 
     <!-- Team Translations (FIFA Codes) -->
     <string name="team_mex">Mexico</string>

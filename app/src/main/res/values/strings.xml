@@ -181,7 +181,7 @@
     <string name="notification_title_start">¡Inicia el partido!</string>
     <string name="notification_title_upcoming">¡Partido por comenzar!</string>
     <string name="notification_text_start">El encuentro entre %1$s y %2$s ha comenzado.</string>
-    <string name="notification_text_upcoming">El encuentro entre %1$s y %2$s inicia en %3$d minutos.</string>
+    <string name="notification_text_upcoming">Recordatorio: %1$s vs %2$s está por comenzar.</string>
 
     <!-- Traducciones de Equipos (Códigos FIFA) -->
     <string name="team_mex">México</string>
