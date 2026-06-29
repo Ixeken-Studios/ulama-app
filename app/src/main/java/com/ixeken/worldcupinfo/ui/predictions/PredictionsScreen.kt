@@ -150,7 +150,28 @@ fun PredictionsScreen(
                         )
                     }
                     is CalendarState.Success -> {
-                        var selectedStageFilter by remember { mutableIntStateOf(0) }
+                        // Calcular etapa inicial en base a la fecha actual del celular
+                        val initialStageFilter = remember(state.matches) {
+                            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                                timeZone = java.util.TimeZone.getDefault()
+                            }
+                            val today = sdf.format(java.util.Date())
+                            val todayMatch = state.matches.find { sdf.format(java.util.Date(it.dateUnixTimestamp * 1000)) == today }
+                            val targetMatch = todayMatch ?: state.matches.minByOrNull {
+                                Math.abs((it.dateUnixTimestamp * 1000) - System.currentTimeMillis())
+                            }
+                            if (targetMatch != null) {
+                                when (targetMatch.stage) {
+                                    MatchStage.GROUPS -> 0
+                                    MatchStage.ROUND_OF_32, MatchStage.ROUND_OF_16, MatchStage.QUARTERFINALS, MatchStage.SEMIFINAL -> 1
+                                    MatchStage.FINAL, MatchStage.THIRD_PLACE -> 2
+                                }
+                            } else {
+                                0
+                            }
+                        }
+
+                        var selectedStageFilter by remember(initialStageFilter) { mutableIntStateOf(initialStageFilter) }
                         var selectedStatusFilter by remember { mutableIntStateOf(0) }
 
                         val stageFilteredMatches = remember(state.matches, selectedStageFilter) {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,6 +55,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -193,7 +198,11 @@ fun CalendarScreen(
             pendingMatchToToggle?.let { match ->
                 viewModel.onToggleAlarm(match) { success ->
                     val message = if (success) {
-                        context.getString(R.string.toast_alarm_activated, alarmMinutes)
+                        if (alarmMinutes == 0) {
+                            context.getString(R.string.toast_alarm_activated_kickoff_only)
+                        } else {
+                            context.getString(R.string.toast_alarm_activated, alarmMinutes)
+                        }
                     } else {
                         context.getString(R.string.toast_alarm_deactivated)
                     }
@@ -220,7 +229,11 @@ fun CalendarScreen(
             } else {
                 viewModel.onToggleAlarm(match) { success ->
                     val message = if (success) {
-                        context.getString(R.string.toast_alarm_activated, alarmMinutes)
+                        if (alarmMinutes == 0) {
+                            context.getString(R.string.toast_alarm_activated_kickoff_only)
+                        } else {
+                            context.getString(R.string.toast_alarm_activated, alarmMinutes)
+                        }
                     } else {
                         context.getString(R.string.toast_alarm_deactivated)
                     }
@@ -231,8 +244,8 @@ fun CalendarScreen(
     }
 
     val onSavePredictionAction = remember(viewModel) {
-        { matchId: String, goalsA: Int, goalsB: Int ->
-            viewModel.onSavePrediction(matchId, goalsA, goalsB)
+        { matchId: String, goalsA: Int, goalsB: Int, penaltyWinner: String? ->
+            viewModel.onSavePrediction(matchId, goalsA, goalsB, penaltyWinner)
         }
     }
 
@@ -286,6 +299,9 @@ fun CalendarScreen(
                     is CalendarState.Success -> {
                         // Calcular etapa e inicialización de fecha basada en el día actual
                         val initialSetup = remember(state.matches) {
+                            val savedStage = viewModel.getLastSelectedStageFilter()
+                            val savedDate = viewModel.getLastSelectedDate()
+
                             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
                                 timeZone = java.util.TimeZone.getDefault()
                             }
@@ -295,17 +311,21 @@ fun CalendarScreen(
                                 Math.abs((it.dateUnixTimestamp * 1000) - System.currentTimeMillis())
                             }
                             
-                            if (targetMatch != null) {
-                                val stageFilter = when (targetMatch.stage) {
+                            val defaultStage = if (targetMatch != null) {
+                                when (targetMatch.stage) {
                                     MatchStage.GROUPS -> 0
                                     MatchStage.ROUND_OF_32, MatchStage.ROUND_OF_16, MatchStage.QUARTERFINALS, MatchStage.SEMIFINAL -> 1
                                     MatchStage.FINAL, MatchStage.THIRD_PLACE -> 2
                                 }
-                                val matchDateStr = sdf.format(Date(targetMatch.dateUnixTimestamp * 1000))
-                                Pair(stageFilter, matchDateStr)
                             } else {
-                                Pair(0, "")
+                                0
                             }
+                            val defaultDate = if (targetMatch != null) {
+                                sdf.format(Date(targetMatch.dateUnixTimestamp * 1000))
+                            } else {
+                                ""
+                            }
+                            Pair(savedStage ?: defaultStage, savedDate ?: defaultDate)
                         }
 
                         // Filtro superior por etapa (Píldoras)
@@ -430,7 +450,10 @@ fun CalendarScreen(
                                             .height(40.dp)
                                             .clip(RoundedCornerShape(20.dp))
                                             .background(if (isSelected) Color(0xFF386641) else Color(0xFFA7C957))
-                                            .clickable { selectedStageFilter = index }
+                                            .clickable { 
+                                                selectedStageFilter = index
+                                                viewModel.saveLastSelectedStageFilter(index)
+                                            }
                                     ) {
                                         Text(
                                             text = title,
@@ -444,44 +467,64 @@ fun CalendarScreen(
 
                             // Selector de Fecha
                             if (parsedDates.isNotEmpty()) {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                BoxWithConstraints(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(bottom = 8.dp)
                                 ) {
-                                    items(
-                                        items = parsedDates,
-                                        key = { it.first }
-                                    ) { (dateStr, month, day) ->
-                                        val isSelected = dateStr == selectedDate
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .width(51.dp)
-                                                .height(57.dp)
-                                                .clip(RoundedCornerShape(18.dp))
-                                                .background(if (isSelected) Color(0xFF386641) else Color(0xFFA7C957))
-                                                .clickable { selectedDate = dateStr }
-                                        ) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.Center
+                                    val viewportWidthPx = constraints.maxWidth
+                                    val itemWidthPx = with(LocalDensity.current) { 51.dp.toPx() }
+                                    val lazyListState = rememberLazyListState()
+
+                                    LaunchedEffect(selectedDate, parsedDates) {
+                                        val index = parsedDates.indexOfFirst { it.first == selectedDate }
+                                        if (index >= 0) {
+                                            val offset = - (viewportWidthPx / 2 - itemWidthPx / 2)
+                                            lazyListState.animateScrollToItem(index, offset.toInt())
+                                        }
+                                    }
+
+                                    LazyRow(
+                                        state = lazyListState,
+                                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        items(
+                                            items = parsedDates,
+                                            key = { it.first }
+                                        ) { (dateStr, month, day) ->
+                                            val isSelected = dateStr == selectedDate
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier
+                                                    .width(51.dp)
+                                                    .height(57.dp)
+                                                    .clip(RoundedCornerShape(18.dp))
+                                                    .background(if (isSelected) Color(0xFF386641) else Color(0xFFA7C957))
+                                                    .clickable { 
+                                                        selectedDate = dateStr
+                                                        viewModel.saveLastSelectedDate(dateStr)
+                                                    }
                                             ) {
-                                                Text(
-                                                    text = month,
-                                                    fontSize = 8.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isSelected) Color(0xFFF9F2E1) else Color(0xFF386641)
-                                                )
-                                                Spacer(modifier = Modifier.height(1.dp))
-                                                Text(
-                                                    text = day,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Black,
-                                                    color = if (isSelected) Color(0xFFF9F2E1) else Color(0xFF386641)
-                                                )
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    Text(
+                                                        text = month,
+                                                        fontSize = 8.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (isSelected) Color(0xFFF9F2E1) else Color(0xFF386641)
+                                                    )
+                                                    Spacer(modifier = Modifier.height(1.dp))
+                                                    Text(
+                                                        text = day,
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = if (isSelected) Color(0xFFF9F2E1) else Color(0xFF386641)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -534,7 +577,11 @@ fun CalendarScreen(
                                                 } else {
                                                     viewModel.onToggleAlarm(match) { success ->
                                                         val message = if (success) {
-                                                            context.getString(R.string.toast_alarm_activated, alarmMinutes)
+                                                            if (alarmMinutes == 0) {
+                                                                context.getString(R.string.toast_alarm_activated_kickoff_only)
+                                                            } else {
+                                                                context.getString(R.string.toast_alarm_activated, alarmMinutes)
+                                                            }
                                                         } else {
                                                             context.getString(R.string.toast_alarm_deactivated)
                                                         }
@@ -952,7 +999,7 @@ fun MatchDetailBottomSheetContent(
     match: Match,
     allMatches: List<Match>,
     onToggleAlarm: (Match) -> Unit,
-    onSavePrediction: (String, Int, Int) -> Unit,
+    onSavePrediction: (String, Int, Int, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     if (match.status == MatchStatus.SCHEDULED) {
@@ -1467,7 +1514,7 @@ fun UpcomingMatchDetailBottomSheetContent(
     match: Match,
     allMatches: List<Match>,
     onToggleAlarm: (Match) -> Unit,
-    onSavePrediction: (String, Int, Int) -> Unit,
+    onSavePrediction: (String, Int, Int, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1579,6 +1626,8 @@ fun UpcomingMatchDetailBottomSheetContent(
 
     var predA by remember { mutableIntStateOf(match.prediction?.goalsA ?: 0) }
     var predB by remember { mutableIntStateOf(match.prediction?.goalsB ?: 0) }
+    var isPenaltyPredict by remember { mutableStateOf(match.prediction?.penaltyWinner != null) }
+    var penaltyWinner by remember { mutableStateOf(match.prediction?.penaltyWinner) }
 
     Column(
         modifier = Modifier
@@ -1873,6 +1922,48 @@ fun UpcomingMatchDetailBottomSheetContent(
             )
         }
 
+        if (match.stage != MatchStage.GROUPS && !isTbdMatch) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(id = R.string.penalty_toggle_label),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF386641)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Switch(
+                    checked = isPenaltyPredict,
+                    onCheckedChange = { checked ->
+                        isPenaltyPredict = checked
+                        if (checked) {
+                            if (predA != predB) {
+                                predA = 1
+                                predB = 1
+                            }
+                            if (penaltyWinner == null) {
+                                penaltyWinner = match.teamA
+                            }
+                        } else {
+                            penaltyWinner = null
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFFF9F2E1),
+                        checkedTrackColor = Color(0xFF6A994E),
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f)
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1916,196 +2007,269 @@ fun UpcomingMatchDetailBottomSheetContent(
                         .fillMaxWidth()
                         .padding(bottom = 24.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    if (isPenaltyPredict) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp, horizontal = 12.dp)
                         ) {
-                            // Left Side (Team A controls and flag)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.End,
-                                modifier = Modifier.weight(1f)
+                            val isSelectedA = penaltyWinner == match.teamA
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(if (isSelectedA) Color(0xFFA7C957).copy(alpha = 0.35f) else Color.Transparent)
+                                    .clickable(enabled = !hasStarted) { penaltyWinner = match.teamA }
+                                    .padding(16.dp)
                             ) {
-                                // Bandera cuadrada de 32.dp
-                                val flagResA = getTeamFlagDrawable(match.teamA)
-                                if (flagResA != null) {
-                                    androidx.compose.foundation.Image(
-                                        painter = androidx.compose.ui.res.painterResource(id = flagResA),
-                                        contentDescription = match.teamA,
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(RoundedCornerShape(4.dp))
+                                TeamFlagEmojiLarge(teamCode = match.teamA)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = getTeamDisplayName(match.teamA, context),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF1F1F1F)
+                                )
+                                if (isSelectedA) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = stringResource(id = R.string.penalty_winner_team),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF386641)
                                     )
-                                } else {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
-                                    ) {
-                                        Text(text = "⚽", fontSize = 18.sp)
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    IconButton(
-                                        onClick = { if (!hasStarted) predA++ },
-                                        enabled = !hasStarted,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .background(if (hasStarted) Color.LightGray else Color(0xFFA7C957))
-                                    ) {
-                                        Text(
-                                            text = "+",
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (hasStarted) Color.Gray else Color(0xFF386641)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(60.dp)
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .background(Color(0xFFF2E8CF))
-                                    ) {
-                                        Text(
-                                            text = predA.toString(),
-                                            fontSize = 28.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = Color(0xFF386641)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    IconButton(
-                                        onClick = { if (!hasStarted && predA > 0) predA-- },
-                                        enabled = !hasStarted,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (hasStarted) Color.LightGray
-                                                else Color(0xFFFB6B6E)
-                                            )
-                                    ) {
-                                        Text(
-                                            text = "-",
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (hasStarted) Color.Gray else Color(0xFFBC4749)
-                                        )
-                                    }
                                 }
                             }
 
-                            // Center (VS separator)
                             Text(
                                 text = stringResource(id = R.string.label_vs),
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFF386641).copy(alpha = 0.4f),
-                                modifier = Modifier.padding(horizontal = 24.dp)
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1F1F1F).copy(alpha = 0.4f)
                             )
 
-                            // Right Side (Team B controls and flag)
+                            val isSelectedB = penaltyWinner == match.teamB
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(if (isSelectedB) Color(0xFFA7C957).copy(alpha = 0.35f) else Color.Transparent)
+                                    .clickable(enabled = !hasStarted) { penaltyWinner = match.teamB }
+                                    .padding(16.dp)
+                            ) {
+                                TeamFlagEmojiLarge(teamCode = match.teamB)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = getTeamDisplayName(match.teamB, context),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF1F1F1F)
+                                )
+                                if (isSelectedB) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = stringResource(id = R.string.penalty_winner_team),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF386641)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Start,
-                                modifier = Modifier.weight(1f)
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
+                                // Left Side (Team A controls and flag)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    IconButton(
-                                        onClick = { if (!hasStarted) predB++ },
-                                        enabled = !hasStarted,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .background(if (hasStarted) Color.LightGray else Color(0xFFA7C957))
-                                    ) {
-                                        Text(
-                                            text = "+",
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (hasStarted) Color.Gray else Color(0xFF386641)
+                                    // Bandera cuadrada de 32.dp
+                                    val flagResA = getTeamFlagDrawable(match.teamA)
+                                    if (flagResA != null) {
+                                        androidx.compose.foundation.Image(
+                                            painter = androidx.compose.ui.res.painterResource(id = flagResA),
+                                            contentDescription = match.teamA,
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(RoundedCornerShape(4.dp))
                                         )
+                                    } else {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                                        ) {
+                                            Text(text = "⚽", fontSize = 18.sp)
+                                        }
                                     }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(60.dp)
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .background(Color(0xFFF2E8CF))
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Text(
-                                            text = predB.toString(),
-                                            fontSize = 28.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = Color(0xFF386641)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    IconButton(
-                                        onClick = { if (!hasStarted && predB > 0) predB-- },
-                                        enabled = !hasStarted,
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (hasStarted) Color.LightGray
-                                                else Color(0xFFFB6B6E)
+                                        IconButton(
+                                            onClick = { if (!hasStarted) predA++ },
+                                            enabled = !hasStarted,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(CircleShape)
+                                                .background(if (hasStarted) Color.LightGray else Color(0xFFA7C957))
+                                        ) {
+                                            Text(
+                                                text = "+",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (hasStarted) Color.Gray else Color(0xFF386641)
                                             )
-                                    ) {
-                                        Text(
-                                            text = "-",
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (hasStarted) Color.Gray else Color(0xFFBC4749)
-                                        )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(Color(0xFFF2E8CF))
+                                        ) {
+                                            Text(
+                                                text = predA.toString(),
+                                                fontSize = 28.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = Color(0xFF386641)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        IconButton(
+                                            onClick = { if (!hasStarted && predA > 0) predA-- },
+                                            enabled = !hasStarted,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (hasStarted) Color.LightGray
+                                                    else Color(0xFFFB6B6E)
+                                                )
+                                        ) {
+                                            Text(
+                                                text = "-",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (hasStarted) Color.Gray else Color(0xFFBC4749)
+                                            )
+                                        }
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                // Bandera cuadrada de 32.dp
-                                val flagResB = getTeamFlagDrawable(match.teamB)
-                                if (flagResB != null) {
-                                    androidx.compose.foundation.Image(
-                                        painter = androidx.compose.ui.res.painterResource(id = flagResB),
-                                        contentDescription = match.teamB,
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                    )
-                                } else {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+
+                                // Center (VS separator)
+                                Text(
+                                    text = stringResource(id = R.string.label_vs),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF386641).copy(alpha = 0.4f),
+                                    modifier = Modifier.padding(horizontal = 24.dp)
+                                )
+
+                                // Right Side (Team B controls and flag)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Start,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Text(text = "⚽", fontSize = 18.sp)
+                                        IconButton(
+                                            onClick = { if (!hasStarted) predB++ },
+                                            enabled = !hasStarted,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(CircleShape)
+                                                .background(if (hasStarted) Color.LightGray else Color(0xFFA7C957))
+                                        ) {
+                                            Text(
+                                                text = "+",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (hasStarted) Color.Gray else Color(0xFF386641)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(60.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(Color(0xFFF2E8CF))
+                                        ) {
+                                            Text(
+                                                text = predB.toString(),
+                                                fontSize = 28.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = Color(0xFF386641)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        IconButton(
+                                            onClick = { if (!hasStarted && predB > 0) predB-- },
+                                            enabled = !hasStarted,
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (hasStarted) Color.LightGray
+                                                    else Color(0xFFFB6B6E)
+                                                )
+                                        ) {
+                                            Text(
+                                                text = "-",
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (hasStarted) Color.Gray else Color(0xFFBC4749)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    // Bandera cuadrada de 32.dp
+                                    val flagResB = getTeamFlagDrawable(match.teamB)
+                                    if (flagResB != null) {
+                                        androidx.compose.foundation.Image(
+                                            painter = androidx.compose.ui.res.painterResource(id = flagResB),
+                                            contentDescription = match.teamB,
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                        )
+                                    } else {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                                        ) {
+                                            Text(text = "⚽", fontSize = 18.sp)
+                                        }
                                     }
                                 }
                             }
@@ -2123,11 +2287,18 @@ fun UpcomingMatchDetailBottomSheetContent(
                     if (isTbdMatch) {
                         return@IconButton
                     }
-                    if (predA == predB && match.stage != MatchStage.GROUPS) {
-                        Toast.makeText(context, context.getString(R.string.error_draws_groups_only), Toast.LENGTH_LONG).show()
-                        return@IconButton
+                    if (isPenaltyPredict) {
+                        if (penaltyWinner == null) {
+                            Toast.makeText(context, context.getString(R.string.penalty_winner_required), Toast.LENGTH_LONG).show()
+                            return@IconButton
+                        }
+                    } else {
+                        if (predA == predB && match.stage != MatchStage.GROUPS) {
+                            Toast.makeText(context, context.getString(R.string.error_draws_groups_only), Toast.LENGTH_LONG).show()
+                            return@IconButton
+                        }
                     }
-                    onSavePrediction(match.id, predA, predB)
+                    onSavePrediction(match.id, predA, predB, penaltyWinner)
                     Toast.makeText(context, context.getString(R.string.prediction_saved_success), Toast.LENGTH_LONG).show()
                 },
                 enabled = !hasStarted && !isTbdMatch,

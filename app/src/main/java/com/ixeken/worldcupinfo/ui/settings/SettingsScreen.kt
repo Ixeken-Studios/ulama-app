@@ -168,7 +168,7 @@ fun SettingsScreen(
     val fontStyle by viewModel.fontStyle.collectAsStateWithLifecycle()
     val alarmMinutes by viewModel.alarmMinutes.collectAsStateWithLifecycle()
 
-    val minuteOptions = listOf(5, 10, 15, 30, 45, 60)
+    val minuteOptions = listOf(0, 5, 10, 15, 30, 45, 60)
 
     Scaffold(
         containerColor = Color(0xFF386641), // Verde Oscuro de fondo para la cabecera superior
@@ -215,6 +215,7 @@ fun SettingsScreen(
                     description = stringResource(id = R.string.settings_warning_desc),
                     selectedValue = stringResource(
                         id = when (alarmMinutes) {
+                            0 -> R.string.minutes_0
                             5 -> R.string.minutes_5
                             10 -> R.string.minutes_10
                             15 -> R.string.minutes_15
@@ -227,6 +228,7 @@ fun SettingsScreen(
                     options = minuteOptions.map { minutes ->
                         stringResource(
                             id = when (minutes) {
+                                0 -> R.string.minutes_0
                                 5 -> R.string.minutes_5
                                 10 -> R.string.minutes_10
                                 15 -> R.string.minutes_15

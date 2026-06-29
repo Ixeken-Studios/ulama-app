@@ -123,6 +123,18 @@ fun GroupsScreen(
                         val sortedGroupNames = remember(standingsMap) {
                             standingsMap.keys.sorted()
                         }
+                        val bestThirdTeams = remember(standingsMap) {
+                            standingsMap.values
+                                .mapNotNull { list -> list.getOrNull(2) }
+                                .sortedWith(
+                                    compareByDescending<TeamStanding> { it.points }
+                                        .thenByDescending { it.goalDifference }
+                                        .thenByDescending { it.goalsFor }
+                                )
+                                .take(8)
+                                .map { it.teamCode }
+                                .toSet()
+                        }
 
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -168,7 +180,8 @@ fun GroupsScreen(
                                     GroupStandingCard(
                                         groupName = groupName,
                                         standings = groupStandings,
-                                        showFifaCodes = showFifaCodes
+                                        showFifaCodes = showFifaCodes,
+                                        bestThirdTeams = bestThirdTeams
                                     )
                                 }
                             }
@@ -188,7 +201,8 @@ fun GroupStandingCard(
     groupName: String,
     standings: List<TeamStanding>,
     showFifaCodes: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bestThirdTeams: Set<String> = emptySet()
 ) {
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -259,6 +273,7 @@ fun GroupStandingCard(
             // Standings Rows
             val context = LocalContext.current
             standings.forEachIndexed { index, standing ->
+                val isQualified = index < 2 || (index == 2 && bestThirdTeams.contains(standing.teamCode))
                 Row(
                      modifier = Modifier
                         .fillMaxWidth()
@@ -271,13 +286,26 @@ fun GroupStandingCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Rank Number
-                        Text(
-                            text = (index + 1).toString(),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color(0xFF6A994E),
-                            modifier = Modifier.width(18.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.width(22.dp)
+                        ) {
+                            if (isQualified) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF386641))
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                            }
+                            Text(
+                                text = (index + 1).toString(),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isQualified) Color(0xFF386641) else Color(0xFF6A994E)
+                            )
+                        }
 
                         // Flag
                         TeamFlagEmoji(teamCode = standing.teamCode)

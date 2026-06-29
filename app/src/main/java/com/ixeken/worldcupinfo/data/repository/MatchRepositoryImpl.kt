@@ -10,6 +10,7 @@ import com.ixeken.worldcupinfo.data.remote.api.MatchApiService
 import com.ixeken.worldcupinfo.domain.model.Match
 import com.ixeken.worldcupinfo.domain.model.Prediction
 import com.ixeken.worldcupinfo.domain.model.MatchStatus
+import com.ixeken.worldcupinfo.domain.model.MatchStage
 import com.ixeken.worldcupinfo.data.database.entities.MatchEntity
 import com.ixeken.worldcupinfo.domain.repository.MatchRepository
 import com.google.gson.Gson
@@ -63,9 +64,6 @@ class MatchRepositoryImpl @Inject constructor(
                     }
 
                     if (local != null) {
-                        val hasLocalEspnData = !local.stats.isNullOrEmpty() ||
-                                               !local.teamAColor.isNullOrEmpty() ||
-                                               local.attendance != null
 
                         val finalStatus = when {
                             remoteEntity.status == "FINISHED" -> "FINISHED"
@@ -74,37 +72,10 @@ class MatchRepositoryImpl @Inject constructor(
                             else -> remoteEntity.status
                         }
 
-                        val finalGoalsA = if (hasLocalEspnData) {
-                            local.goalsA ?: remoteEntity.goalsA
-                        } else if (remoteEntity.status == "FINISHED") {
-                            remoteEntity.goalsA ?: local.goalsA
-                        } else {
-                            local.goalsA ?: remoteEntity.goalsA
-                        }
-
-                        val finalGoalsB = if (hasLocalEspnData) {
-                            local.goalsB ?: remoteEntity.goalsB
-                        } else if (remoteEntity.status == "FINISHED") {
-                            remoteEntity.goalsB ?: local.goalsB
-                        } else {
-                            local.goalsB ?: remoteEntity.goalsB
-                        }
-
-                        val finalEventsDetailsA = if (hasLocalEspnData) {
-                            local.eventsDetailsA ?: remoteEntity.eventsDetailsA
-                        } else if (remoteEntity.status == "FINISHED") {
-                            remoteEntity.eventsDetailsA ?: local.eventsDetailsA
-                        } else {
-                            local.eventsDetailsA ?: remoteEntity.eventsDetailsA
-                        }
-
-                        val finalEventsDetailsB = if (hasLocalEspnData) {
-                            local.eventsDetailsB ?: remoteEntity.eventsDetailsB
-                        } else if (remoteEntity.status == "FINISHED") {
-                            remoteEntity.eventsDetailsB ?: local.eventsDetailsB
-                        } else {
-                            local.eventsDetailsB ?: remoteEntity.eventsDetailsB
-                        }
+                        val finalGoalsA = if (remoteEntity.status == "FINISHED") (remoteEntity.goalsA ?: local.goalsA) else (local.goalsA ?: remoteEntity.goalsA)
+                        val finalGoalsB = if (remoteEntity.status == "FINISHED") (remoteEntity.goalsB ?: local.goalsB) else (local.goalsB ?: remoteEntity.goalsB)
+                        val finalEventsDetailsA = if (remoteEntity.status == "FINISHED") (remoteEntity.eventsDetailsA ?: local.eventsDetailsA) else (local.eventsDetailsA ?: remoteEntity.eventsDetailsA)
+                        val finalEventsDetailsB = if (remoteEntity.status == "FINISHED") (remoteEntity.eventsDetailsB ?: local.eventsDetailsB) else (local.eventsDetailsB ?: remoteEntity.eventsDetailsB)
 
                         finalEntity = finalEntity.copy(
                             status = finalStatus,
@@ -141,7 +112,7 @@ class MatchRepositoryImpl @Inject constructor(
             try {
                 val response = apiService.fetchEspnScoreboard(dateString)
                 val events = response.events ?: return@withContext
-                val localMatches = matchDao.getMatches()
+                val localMatches = matchDao.getMatches().toMutableList()
                 val updatedEntities = mutableListOf<MatchEntity>()
                 val gson = Gson()
 
@@ -315,6 +286,67 @@ class MatchRepositoryImpl @Inject constructor(
                                 stats = matchStats?.let { gson.toJson(it) }
                             )
                             updatedEntities.add(updatedMatch)
+
+                            // Resolver de forma dinámica los placeholders de la siguiente ronda si el partido finalizó
+                            if (updatedStatus == MatchStatus.FINISHED.name && localMatch.stage != MatchStage.GROUPS.name) {
+                                val isHomeWinner = competitorHome.winner == true
+                                val isAwayWinner = competitorAway.winner == true
+                                var winner: String? = null
+                                var loser: String? = null
+
+                                if (isHomeWinner) {
+                                    winner = if (isSwapped) localMatch.teamB else localMatch.teamA
+                                    loser = if (isSwapped) localMatch.teamA else localMatch.teamB
+                                } else if (isAwayWinner) {
+                                    winner = if (isSwapped) localMatch.teamA else localMatch.teamB
+                                    loser = if (isSwapped) localMatch.teamB else localMatch.teamA
+                                } else {
+                                    if (goalsAInt > goalsBInt) {
+                                        winner = localMatch.teamA
+                                        loser = localMatch.teamB
+                                    } else if (goalsBInt > goalsAInt) {
+                                        winner = localMatch.teamB
+                                        loser = localMatch.teamA
+                                    }
+                                }
+
+                                if (winner != null && loser != null) {
+                                    val matchNum = localMatch.id.replace("match_", "")
+                                    val winnerPlaceholder = "W$matchNum"
+                                    val loserPlaceholder = "L$matchNum"
+                                    val runnerUpPlaceholder = "RU$matchNum"
+
+                                    for (i in localMatches.indices) {
+                                        val m = localMatches[i]
+                                        var updatedM = m
+                                        var changed = false
+                                        if (m.teamA == winnerPlaceholder) {
+                                            updatedM = updatedM.copy(teamA = winner)
+                                            changed = true
+                                        } else if (m.teamA == loserPlaceholder || m.teamA == runnerUpPlaceholder) {
+                                            updatedM = updatedM.copy(teamA = loser)
+                                            changed = true
+                                        }
+                                        if (m.teamB == winnerPlaceholder) {
+                                            updatedM = updatedM.copy(teamB = winner)
+                                            changed = true
+                                        } else if (m.teamB == loserPlaceholder || m.teamB == runnerUpPlaceholder) {
+                                            updatedM = updatedM.copy(teamB = loser)
+                                            changed = true
+                                        }
+
+                                        if (changed) {
+                                            localMatches[i] = updatedM
+                                            val existingIndex = updatedEntities.indexOfFirst { it.id == updatedM.id }
+                                            if (existingIndex != -1) {
+                                                updatedEntities[existingIndex] = updatedM
+                                            } else {
+                                                updatedEntities.add(updatedM)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

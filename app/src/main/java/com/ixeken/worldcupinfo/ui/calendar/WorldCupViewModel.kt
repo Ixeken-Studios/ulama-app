@@ -82,6 +82,23 @@ class WorldCupViewModel @Inject constructor(
         }
     }
 
+    fun getLastSelectedStageFilter(): Int? {
+        val v = sharedPrefs.getInt("last_selected_stage_filter", -1)
+        return if (v == -1) null else v
+    }
+
+    fun saveLastSelectedStageFilter(filter: Int) {
+        sharedPrefs.edit().putInt("last_selected_stage_filter", filter).apply()
+    }
+
+    fun getLastSelectedDate(): String? {
+        return sharedPrefs.getString("last_selected_date", null)
+    }
+
+    fun saveLastSelectedDate(date: String) {
+        sharedPrefs.edit().putString("last_selected_date", date).apply()
+    }
+
     private fun loadAlarmMinutes(): Int {
         return sharedPrefs.getInt("alarm_minutes", 5)
     }

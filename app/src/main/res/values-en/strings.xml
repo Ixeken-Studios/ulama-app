@@ -41,11 +41,13 @@
     <string name="stage_dieciseisavos">Round of 32</string>
     <string name="stage_octavos">Round of 16</string>
     <string name="stage_cuartos">Quarterfinals</string>
-    <string name="stage_semis">Semifinal</string>
+    <string name="stage_semis">Semifinals</string>
     <string name="stage_final">Final</string>
     <string name="stage_third_place">Third Place</string>
     <string name="label_predict_inline_title">Predict result</string>
     <string name="toast_alarm_activated">You will receive a notification %1$d minutes before and at the start of the match.</string>
+    <string name="toast_alarm_activated_kickoff_only">You will receive a notification at the start of the match.</string>
+    <string name="minutes_0">Disabled</string>
     <string name="toast_alarm_deactivated">Notification deactivated.</string>
     <string name="nav_settings">Settings</string>
     <string name="settings_title">Settings</string>
@@ -133,7 +135,7 @@
     <string name="settings_syncing">Syncing…</string>
     <string name="toast_sync_success">Updated successfully</string>
     <string name="toast_sync_failed">Sync failed</string>
-    <string name="changelog_text">v1.0 — Ulama release</string>
+    <string name="changelog_text">v1.1 — Bug fixes and small improvements\n\nv1.0 — Ulama release</string>
     <string name="action_ok">OK</string>
 
     <!-- Localized City Names -->

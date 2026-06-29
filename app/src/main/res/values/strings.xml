@@ -38,14 +38,16 @@
 
     <!-- Fases de Torneo -->
     <string name="stage_groups">Fase de Grupos</string>
-    <string name="stage_dieciseisavos">Dieciseisavos</string>
-    <string name="stage_octavos">Octavos</string>
-    <string name="stage_cuartos">Cuartos</string>
-    <string name="stage_semis">Semifinal</string>
+    <string name="stage_dieciseisavos">16vos</string>
+    <string name="stage_octavos">8vos</string>
+    <string name="stage_cuartos">4tos</string>
+    <string name="stage_semis">Semifinales</string>
     <string name="stage_final">Final</string>
     <string name="stage_third_place">Tercer Puesto</string>
     <string name="label_predict_inline_title">Predecir resultado</string>
     <string name="toast_alarm_activated">Recibirás una notificación %1$d minutos antes y al inicio del partido.</string>
+    <string name="toast_alarm_activated_kickoff_only">Recibirás una notificación al inicio del partido.</string>
+    <string name="minutes_0">Desactivado</string>
     <string name="toast_alarm_deactivated">Notificación desactivada.</string>
     <string name="nav_settings">Ajustes</string>
     <string name="settings_title">Ajustes</string>
@@ -133,7 +135,7 @@
     <string name="settings_syncing">Sincronizando…</string>
     <string name="toast_sync_success">Actualizado correctamente</string>
     <string name="toast_sync_failed">Error al sincronizar</string>
-    <string name="changelog_text">v1.0 — Lanzamiento de Ulama</string>
+    <string name="changelog_text">v1.1 — Correcciones de errores y pequeñas mejoras\n\nv1.0 — Lanzamiento de Ulama</string>
     <string name="action_ok">Aceptar</string>
 
     <!-- Nombres de Ciudades Localizados -->

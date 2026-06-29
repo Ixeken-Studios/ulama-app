@@ -70,7 +70,7 @@ interface MatchDao {
     /**
      * Elimina todos los partidos de eliminatorias (cuyo stage no sea GROUPS) de la base de datos.
      */
-    @Query("DELETE FROM matches WHERE stage != 'GROUPS'")
+    @Query("DELETE FROM matches WHERE stage != 'GROUPS' AND isAlarmActive = 0 AND id NOT IN (SELECT matchId FROM predictions)")
     suspend fun deleteKnockoutMatches()
 
     /**

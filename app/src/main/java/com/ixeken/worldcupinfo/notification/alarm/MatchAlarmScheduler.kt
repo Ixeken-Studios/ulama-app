@@ -39,7 +39,7 @@ class MatchAlarmScheduler @Inject constructor(
         var scheduledAny = false
 
         // 1. Alarma de aviso previo
-        if (triggerTimeMsWarning > currentTimeMs) {
+        if (warningMinutes > 0 && triggerTimeMsWarning > currentTimeMs) {
             val intent = Intent(context, MatchAlarmReceiver::class.java).apply {
                 putExtra(MatchAlarmReceiver.EXTRA_MATCH_ID, match.id)
                 putExtra(MatchAlarmReceiver.EXTRA_TEAM_A, match.teamA)
@@ -118,6 +118,7 @@ class MatchAlarmScheduler @Inject constructor(
         val intent5Min = Intent(context, MatchAlarmReceiver::class.java)
         // Intent extras unknown here; try cancelling any common warning variants
         val possibleRequestCodes = listOf(
+            (matchId + "_warning_0").hashCode(),
             (matchId + "_warning_5").hashCode(),
             (matchId + "_warning_10").hashCode(),
             (matchId + "_warning_15").hashCode(),

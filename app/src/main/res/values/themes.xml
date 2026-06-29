@@ -6,6 +6,6 @@
     </style>
 
     <style name="Theme.WorldCupInfo.Splash" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowBackground">#386641</item>
+        <item name="android:windowBackground">#F2E8CF</item>
     </style>
 </resources>

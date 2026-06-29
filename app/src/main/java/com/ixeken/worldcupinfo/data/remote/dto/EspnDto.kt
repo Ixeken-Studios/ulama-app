@@ -37,6 +37,7 @@ data class EspnCompetitor(
     @SerializedName("homeAway") val homeAway: String,
     @SerializedName("score") val score: String?,
     @SerializedName("team") val team: EspnTeam?,
+    @SerializedName("winner") val winner: Boolean? = null,
     @SerializedName("statistics") val statistics: List<EspnStatistic>? = null
 )
 
