@@ -105,13 +105,44 @@ fun isPlaceholderTeam(teamCode: String): Boolean {
 /**
  * Formatea códigos de equipo no definidos (placeholders) para una mejor visualización en la interfaz.
  */
-fun formatTeamCodeForDisplay(teamCode: String, stage: MatchStage, matchId: String, tbdString: String, context: android.content.Context): String {
+fun formatTeamCodeForDisplay(
+    teamCode: String,
+    stage: MatchStage,
+    matchId: String,
+    tbdString: String,
+    context: android.content.Context,
+    allMatches: List<com.ixeken.worldcupinfo.domain.model.Match> = emptyList(),
+    showFifaCodes: Boolean = true
+): String {
     val trimmed = teamCode.trim()
     val c = trimmed.uppercase()
     val isPlaceholder = isPlaceholderTeam(trimmed)
     
     if (!isPlaceholder) {
         return trimmed
+    }
+    
+    // Resolve knockout placeholders like W49, RU49, L49, etc.
+    if ((c.startsWith("W") || c.startsWith("L") || c.startsWith("RU")) && stage != MatchStage.GROUPS) {
+        val numStr = if (c.startsWith("RU")) c.substring(2) else c.substring(1)
+        val sourceMatchId = "match_$numStr"
+        val sourceMatch = allMatches.find { it.id == sourceMatchId }
+        if (sourceMatch != null) {
+            // Check if source match is finished; if not finished, return "TeamA/TeamB"
+            val isFinished = sourceMatch.status == com.ixeken.worldcupinfo.domain.model.MatchStatus.FINISHED
+            if (!isFinished) {
+                val teamAName = formatTeamCodeForDisplay(sourceMatch.teamA, sourceMatch.stage, sourceMatch.id, tbdString, context, allMatches, showFifaCodes)
+                val teamBName = formatTeamCodeForDisplay(sourceMatch.teamB, sourceMatch.stage, sourceMatch.id, tbdString, context, allMatches, showFifaCodes)
+                
+                val dispA = if (isPlaceholderTeam(teamAName)) teamAName else {
+                    if (showFifaCodes) teamAName.uppercase() else getTeamDisplayName(teamAName, context)
+                }
+                val dispB = if (isPlaceholderTeam(teamBName)) teamBName else {
+                    if (showFifaCodes) teamBName.uppercase() else getTeamDisplayName(teamBName, context)
+                }
+                return "$dispA/$dispB"
+            }
+        }
     }
     
     if (stage == MatchStage.ROUND_OF_32) {

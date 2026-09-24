@@ -23,6 +23,8 @@ data class Match(
     val isAlarmActive: Boolean = false,
     val goalsA: Int? = null,
     val goalsB: Int? = null,
+    val penaltyGoalsA: Int? = null,
+    val penaltyGoalsB: Int? = null,
     val group: String? = null,
     val eventsDetailsA: List<MatchEvent> = emptyList(),
     val eventsDetailsB: List<MatchEvent> = emptyList(),

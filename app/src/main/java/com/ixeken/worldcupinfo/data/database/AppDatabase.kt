@@ -10,7 +10,7 @@ import com.ixeken.worldcupinfo.data.database.entities.PredictionEntity
  */
 @Database(
     entities = [MatchEntity::class, PredictionEntity::class],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

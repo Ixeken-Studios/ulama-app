@@ -103,9 +103,35 @@ class WorldCupViewModel @Inject constructor(
         return sharedPrefs.getInt("alarm_minutes", 5)
     }
 
+    /**
+     * Actualiza los minutos de aviso previo y reprograma todas las alarmas activas
+     * para que el cambio surta efecto de inmediato en AlarmManager.
+     */
     fun onChangeAlarmMinutes(minutes: Int) {
         _alarmMinutes.value = minutes
         sharedPrefs.edit().putInt("alarm_minutes", minutes).apply()
+        rescheduleAllActiveAlarms()
+    }
+
+    /**
+     * Cancela y reprograma todas las alarmas activas de partidos futuros.
+     * Necesario tras cambiar los minutos de aviso previo para que AlarmManager
+     * refleje el nuevo valor (o elimine la alarma previa si se seleccionó 0).
+     */
+    private fun rescheduleAllActiveAlarms() {
+        viewModelScope.launch {
+            val currentTime = System.currentTimeMillis() / 1000
+            val allMatches = matchRepository.getMatchesFlow().first()
+            val activeAlarms = allMatches.filter { match ->
+                match.isAlarmActive
+                    && match.status == MatchStatus.SCHEDULED
+                    && match.dateUnixTimestamp > currentTime
+            }
+            for (match in activeAlarms) {
+                alarmScheduler.cancelMatchAlarm(match.id)
+                alarmScheduler.scheduleMatchAlarm(match)
+            }
+        }
     }
 
     private fun loadLiveScoresEnabled(): Boolean {

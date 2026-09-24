@@ -589,7 +589,8 @@ fun CalendarScreen(
                                                     }
                                                 }
                                             },
-                                            onClick = { selectedMatchDetail = match }
+                                            onClick = { selectedMatchDetail = match },
+                                            allMatches = currentMatches
                                         )
                                     }
                                 }
@@ -611,7 +612,8 @@ fun CalendarScreen(
                     allMatches = currentMatches,
                     onToggleAlarm = onToggleAlarmAction,
                     onSavePrediction = onSavePredictionAction,
-                    onDismiss = { selectedMatchDetail = null }
+                    onDismiss = { selectedMatchDetail = null },
+                    showFifaCodes = showFifaCodes
                 )
             }
         }
@@ -631,7 +633,8 @@ fun MatchItem(
     showFifaCodes: Boolean,
     onToggleAlarm: () -> Unit,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    allMatches: List<Match> = emptyList()
 ) {
     val timeText = remember(match.dateUnixTimestamp) {
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
@@ -727,8 +730,8 @@ fun MatchItem(
 
     val context = LocalContext.current
 
-    val teamADisplay = remember(match.teamA, match.stage, match.id, showFifaCodes, context) {
-        val formatted = formatTeamCodeForDisplay(match.teamA, match.stage, match.id, context.getString(R.string.label_tbd), context)
+    val teamADisplay = remember(match.teamA, match.stage, match.id, showFifaCodes, context, allMatches) {
+        val formatted = formatTeamCodeForDisplay(match.teamA, match.stage, match.id, context.getString(R.string.label_tbd), context, allMatches, showFifaCodes)
         if (formatted.equals(match.teamA.trim(), ignoreCase = true)) {
             if (showFifaCodes) match.teamA.trim().uppercase() else getTeamDisplayName(match.teamA, context)
         } else {
@@ -736,8 +739,8 @@ fun MatchItem(
         }
     }
 
-    val teamBDisplay = remember(match.teamB, match.stage, match.id, showFifaCodes, context) {
-        val formatted = formatTeamCodeForDisplay(match.teamB, match.stage, match.id, context.getString(R.string.label_tbd), context)
+    val teamBDisplay = remember(match.teamB, match.stage, match.id, showFifaCodes, context, allMatches) {
+        val formatted = formatTeamCodeForDisplay(match.teamB, match.stage, match.id, context.getString(R.string.label_tbd), context, allMatches, showFifaCodes)
         if (formatted.equals(match.teamB.trim(), ignoreCase = true)) {
             if (showFifaCodes) match.teamB.trim().uppercase() else getTeamDisplayName(match.teamB, context)
         } else {
@@ -853,6 +856,17 @@ fun MatchItem(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1F1F1F).copy(alpha = 0.75f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            if (showScoreboard && match.penaltyGoalsA != null && match.penaltyGoalsB != null) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "(${match.penaltyGoalsA} - ${match.penaltyGoalsB} Pen)",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFBC4749),
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -1000,7 +1014,8 @@ fun MatchDetailBottomSheetContent(
     allMatches: List<Match>,
     onToggleAlarm: (Match) -> Unit,
     onSavePrediction: (String, Int, Int, String?) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    showFifaCodes: Boolean = true
 ) {
     if (match.status == MatchStatus.SCHEDULED) {
         UpcomingMatchDetailBottomSheetContent(
@@ -1013,7 +1028,9 @@ fun MatchDetailBottomSheetContent(
     } else {
         LiveOrFinishedMatchDetailBottomSheetContent(
             match = match,
-            onDismiss = onDismiss
+            allMatches = allMatches,
+            onDismiss = onDismiss,
+            showFifaCodes = showFifaCodes
         )
     }
 }
@@ -1021,7 +1038,9 @@ fun MatchDetailBottomSheetContent(
 @Composable
 fun LiveOrFinishedMatchDetailBottomSheetContent(
     match: Match,
-    onDismiss: () -> Unit
+    allMatches: List<Match> = emptyList(),
+    onDismiss: () -> Unit,
+    showFifaCodes: Boolean = true
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -1181,6 +1200,17 @@ fun LiveOrFinishedMatchDetailBottomSheetContent(
                                 textAlign = TextAlign.Center
                             )
                         }
+
+                        if (match.penaltyGoalsA != null && match.penaltyGoalsB != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "(${match.penaltyGoalsA} - ${match.penaltyGoalsB} Pen)",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFFBC4749),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
 
                     // Team B Flag Box
@@ -1195,6 +1225,23 @@ fun LiveOrFinishedMatchDetailBottomSheetContent(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Names Row (aligned under flags)
+                val teamAName = remember(match.teamA, match.stage, match.id, showFifaCodes, context, allMatches) {
+                    val formatted = formatTeamCodeForDisplay(match.teamA, match.stage, match.id, context.getString(R.string.label_tbd), context, allMatches, showFifaCodes)
+                    if (formatted.equals(match.teamA.trim(), ignoreCase = true)) {
+                        if (showFifaCodes) match.teamA.trim().uppercase() else getTeamDisplayName(match.teamA, context)
+                    } else {
+                        formatted
+                    }
+                }
+                val teamBName = remember(match.teamB, match.stage, match.id, showFifaCodes, context, allMatches) {
+                    val formatted = formatTeamCodeForDisplay(match.teamB, match.stage, match.id, context.getString(R.string.label_tbd), context, allMatches, showFifaCodes)
+                    if (formatted.equals(match.teamB.trim(), ignoreCase = true)) {
+                        if (showFifaCodes) match.teamB.trim().uppercase() else getTeamDisplayName(match.teamB, context)
+                    } else {
+                        formatted
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1203,7 +1250,7 @@ fun LiveOrFinishedMatchDetailBottomSheetContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = getTeamDisplayName(match.teamA, context),
+                            text = teamAName,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
                             color = Color(0xFF1F1F1F),
@@ -1218,7 +1265,7 @@ fun LiveOrFinishedMatchDetailBottomSheetContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = getTeamDisplayName(match.teamB, context),
+                            text = teamBName,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
                             color = Color(0xFF1F1F1F),

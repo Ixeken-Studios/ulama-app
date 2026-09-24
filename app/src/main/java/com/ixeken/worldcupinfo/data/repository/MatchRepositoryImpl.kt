@@ -81,6 +81,8 @@ class MatchRepositoryImpl @Inject constructor(
                             status = finalStatus,
                             goalsA = finalGoalsA,
                             goalsB = finalGoalsB,
+                            penaltyGoalsA = local.penaltyGoalsA ?: remoteEntity.penaltyGoalsA,
+                            penaltyGoalsB = local.penaltyGoalsB ?: remoteEntity.penaltyGoalsB,
                             eventsDetailsA = finalEventsDetailsA,
                             eventsDetailsB = finalEventsDetailsB,
                             liveMinute = if (finalStatus == "FINISHED") null else (local.liveMinute ?: finalEntity.liveMinute),
@@ -273,9 +275,26 @@ class MatchRepositoryImpl @Inject constructor(
 
                             val displayClock = comp.status?.displayClock
 
+                            // Extract penalty shootout scores if in shootout or finished with SO/PEN detail
+                            var penaltyGoalsA: Int? = null
+                            var penaltyGoalsB: Int? = null
+                            if (updatedStatus == MatchStatus.PENALTIES.name || espnStatusName == "STATUS_SHOOTOUT" || espnStatusDetail.contains("PEN") || espnStatusDetail.contains("SO")) {
+                                val matchResult = Regex("""\(?(\d+)\s*-\s*(\d+)\)?""").find(espnStatusDetail)
+                                if (matchResult != null) {
+                                    val val1 = matchResult.groupValues[1].toIntOrNull()
+                                    val val2 = matchResult.groupValues[2].toIntOrNull()
+                                    if (val1 != null && val2 != null) {
+                                        penaltyGoalsA = if (isSwapped) val2 else val1
+                                        penaltyGoalsB = if (isSwapped) val1 else val2
+                                    }
+                                }
+                            }
+
                             val updatedMatch = localMatch.copy(
                                 goalsA = goalsAInt,
                                 goalsB = goalsBInt,
+                                penaltyGoalsA = penaltyGoalsA,
+                                penaltyGoalsB = penaltyGoalsB,
                                 status = updatedStatus,
                                 eventsDetailsA = gson.toJson(teamAEventsList),
                                 eventsDetailsB = gson.toJson(teamBEventsList),

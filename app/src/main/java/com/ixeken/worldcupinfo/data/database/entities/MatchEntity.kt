@@ -25,6 +25,8 @@ data class MatchEntity(
     val isAlarmActive: Boolean = false,
     val goalsA: Int? = null,
     val goalsB: Int? = null,
+    val penaltyGoalsA: Int? = null,
+    val penaltyGoalsB: Int? = null,
     val group: String? = null,
     val eventsDetailsA: String? = null,
     val eventsDetailsB: String? = null,

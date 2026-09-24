@@ -80,6 +80,8 @@ object MatchDtoMapper {
             isAlarmActive = false,
             goalsA = goalsA,
             goalsB = goalsB,
+            penaltyGoalsA = null,
+            penaltyGoalsB = null,
             group = dto.group,
             eventsDetailsA = eventsDetailsA,
             eventsDetailsB = eventsDetailsB
