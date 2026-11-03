@@ -7,4 +7,10 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="ulama_brand_primary">#FF6A994E</color>
+    <color name="ulama_notif_card_bg">#FF1C221E</color>
+    <color name="ulama_notif_text_primary">#FFF9F2E1</color>
+    <color name="ulama_notif_text_muted">#FFB8C2B9</color>
+    <color name="ulama_notif_accent">#FFA7C957</color>
+    <color name="ulama_notif_border">#FF2D3830</color>
 </resources>

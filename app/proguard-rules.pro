@@ -1,19 +1,63 @@
-# Reglas de ProGuard para Ulama App
+# ==============================================================================
+# Reglas de Optimizacion R8 y ProGuard para Ulama
+# ==============================================================================
 
-# Conservar intactas las clases de transferencia de datos (DTOs) que se serializan desde la API de ESPN/openfootball
--keep class com.ixeken.worldcupinfo.data.remote.dto.** { *; }
+# Atributos esenciales para reflexion, anotaciones y tipos genericos
+-keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, SourceFile, LineNumberTable
 
-# Conservar intactas las entidades de Room para asegurar mapeo correcto de base de datos
--keep class com.ixeken.worldcupinfo.data.database.entities.** { *; }
+# ------------------------------------------------------------------------------
+# 1. Kotlinx Serialization y DTOs de ESPN
+# ------------------------------------------------------------------------------
+# Conservar serializadores generados y miembros companeros
+-keepclassmembers class * {
+    *** Companion;
+}
+-keepclasseswithmembers class * {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keepclassmembers class **$$serializer {
+    *;
+}
+-keepclassmembers class * {
+    @kotlinx.serialization.SerialName <fields>;
+}
 
-# Conservar intactas las clases del modelo de dominio
--keep class com.ixeken.worldcupinfo.domain.model.** { *; }
+# Conservar nombres de campos en clases serializables sin necesidad de @SerialName
+-keepclassmembers @kotlinx.serialization.Serializable class * {
+    <fields>;
+}
 
-# Preservar firmas genéricas para evitar crashes de TypeToken con Gson
--keepattributes Signature, InnerClasses, EnclosingMethod
+# Conservar explicitamente las clases de transferencia de datos (DTOs) y modelos persistidos
+-keep class com.ixeken.ulama.data.espn.model.** { *; }
+-keep class com.ixeken.ulama.data.update.** { *; }
 
-# Prevenir advertencias y conservar clases de Gson
--dontwarn com.google.gson.**
--keep class com.google.gson.** { *; }
--keep class com.google.gson.reflect.TypeToken { *; }
--keep class * extends com.google.gson.reflect.TypeToken
+# ------------------------------------------------------------------------------
+# 2. Retrofit 2 & OkHttp
+# ------------------------------------------------------------------------------
+-dontwarn retrofit2.**
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# Conservar metodos anotados en la interfaz del servicio HTTP
+-keepclassmembers,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+-keep class com.ixeken.ulama.data.espn.EspnApiService { *; }
+
+# Base de datos de sufijos publicos de OkHttp
+-keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+
+# ------------------------------------------------------------------------------
+# 3. Coil 3 Image Loader
+# ------------------------------------------------------------------------------
+-dontwarn coil3.**
+
+# ------------------------------------------------------------------------------
+# 4. Eliminacion de Logs en Produccion (Optimizacion de Bytecode)
+# ------------------------------------------------------------------------------
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

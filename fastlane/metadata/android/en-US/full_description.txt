@@ -1,14 +1,15 @@
-Ulama is a native Android companion app for the World Cup 2026. Browse the full tournament schedule, follow live scores and track group standings in real time.
+Ulama is a modern, privacy-focused football companion for Android. Follow international leagues, domestic championships, live scores, standings and tournament brackets in real time.
 
-Features:
+What's New in Version 2.0:
+- Beyond the World Cup: Full support for top international leagues, club competitions, standings tables, and fixtures.
+- Aesthetic Reimagination: Redesigned with Material 3 Expressive, connected lists, dynamic color schemes, and fluid motion.
+- Live Notifications & Now Bar: On-device real-time match tracking and lock screen/Now Bar updates without external servers.
 
-- Match Center: Browse fixtures day by day with a horizontal date selector. Live matches show pulsating status indicators for in-play, halftime and penalties. Tap any match to see the full timeline, statistics and your prediction.
-- Group Standings: Dynamic tables calculated automatically from match results. Toggle between full country names and FIFA three-letter codes.
-- Predictions: Save your score predictions before kickoff. Choose a penalty winner in knockout rounds. Track your progress with a visual counter. View predictions in a bento grid or list layout with green/red feedback borders.
-- Favorites: Mark your favorite teams and automatically schedule reminders for all their upcoming matches.
-- Match Reminders: Configurable pre-match alerts (5 to 60 minutes) and kickoff notifications powered by exact alarms.
-- Settings: Permissions dashboard, font style selection (System or Space Grotesk), language toggle (English and Spanish), and ESPN live data control.
+Key Features:
+- Match Center: Live scoreboard with real-time indicators, head-to-head records, match statistics, tactical formations, and timeline.
+- Comprehensive Competitions: Browse matches and tables from premier club leagues and global tournaments with radial knockout brackets.
+- Favorite Teams & My Leagues: Pin your favorite clubs and national teams to prioritize them across fixtures and receive pre-match alerts.
+- Match Reminders: Configurable pre-match notifications (5 to 60 minutes) and exact kickoff alarms.
+- Privacy First: 100% ad-free, zero tracking, no user account required, and all preferences stored locally on your device.
 
-The app syncs fixture data from openfootball and live scores from ESPN public endpoints. All data is cached locally with Room for offline access. No account required, no ads, no tracking.
-
-Built with Kotlin, Jetpack Compose and Material Design 3.
+Built with Kotlin, Jetpack Compose, Material 3 Expressive, and Retrofit.

@@ -1,0 +1,4 @@
+Version 2.0 - A new era for Ulama:
+- Full support for international leagues, club tournaments, standings, and schedules.
+- Refreshed design with Material 3 Expressive, connected lists, dynamic themes, and organic motion.
+- Real-time on-device tracking and Now Bar to follow matches instantly without external servers.

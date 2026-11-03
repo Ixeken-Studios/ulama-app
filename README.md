@@ -1,112 +1,124 @@
-# Ulama - World Cup 2026 Companion
+# Ulama - Live Football Tracker & Competitions
 
-
-
-
-## A Android app for the **World Cup 2026** built with Kotlin and Jetpack Compose. Track fixtures, live scores, group standings and save your own match predictions.
+**Ulama** is a modern, clean, and privacy-focused football companion app for Android, built with Kotlin and Jetpack Compose. Designed around Material Design 3 Expressive, it delivers real-time match tracking, club and international league standings, tactical match details, and on-device live score notifications—all with zero ads, zero trackers, and complete privacy.
 
 [<img src="https://img.shields.io/badge/Download-Latest_Release-6A994E?style=for-the-badge&logo=android&logoColor=white" height="45">](https://github.com/Ixeken-Studios/ulama-app/releases/latest)
-## Screenshots
-![Screenshots](/fastlane/metadata/android/en-US/images/featureGraphic.png)
-![Screenshots](/fastlane/metadata/android/en-US/images/featureGraphic_2.png)
+
+![Ulama Feature Graphic](fastlane/metadata/android/en-US/images/featureGraphic.png)
+
+---
+
+## What's New in Version 2.0
+
+> **A new era for Ulama** — The application has been redesigned from the ground up:
+
+- **Beyond the World Cup:** Full support for major international leagues, domestic championships, club tournaments, dynamic standings tables, and tournament brackets.
+- **Aesthetic Reimagination:** Refreshed visual design crafted with Material 3 Expressive, connected list groups, dynamic themes, and fluid organic motion.
+- **Live Notifications & Now Bar:** Real-time on-device match tracking directly on your lock screen, notification shade, and Samsung One UI Now Bar without reliance on external servers.
+
+---
+
 ## Key Features
 
-### Match Center
-- Date selector to browse the full tournament schedule.
-- Live score.
-- Match detail with timeline, statistics and your prediction.
-- Activate notifications for future matches.
+### Match Center & Live Scores
+- **Day-by-Day Calendar:** Fluid horizontal date picker to browse previous, ongoing, and upcoming fixtures across all supported competitions.
+- **Real-Time Match Pulse:** Live score updates with animated pulsating indicators for in-play matches, halftime, and penalty shootouts.
+- **Detailed Match Summary:** Tap any match to explore the timeline, live stats (possession, shots, fouls, corners), head-to-head records, venue information, and tactical pitch formations.
 
-### Standings
-- Group tables calculated from match results.
+### Competitions & Radial Brackets
+- **Comprehensive League Coverage:** Browse standings, fixtures, and club statistics for top domestic leagues (LaLiga, Premier League, Serie A, Bundesliga, Ligue 1, Liga MX, MLS, and more) and continental club tournaments.
+- **Radial Knockout Brackets:** Interactive circular bracket visualization for tournament knockout stages, providing a quick, holistic view of progression from round of 16 to the final.
 
-### Predictions
-- Save score predictions for every match before kickoff.
-- Penalty-winner prediction toggle for knockout rounds.
-- Bento grid or list view with green/red border correction feedback.
-- Progress dialog showing how many matches you have predicted.
+### On-Device Live Tracking & Now Bar
+- **Lock Screen & Now Bar:** Follow match progress in real time directly from your status bar, notification center, and Samsung One UI Now Bar.
+- **Autonomous Sync:** Powered by a foreground data synchronization service executing entirely on your device with no intermediary servers.
+- **Pre-Match Reminders:** Configurable alarms (5 to 60 minutes before kickoff) scheduled via Android `AlarmManager` exact alarms.
 
-### Favorites
-- Mark your favorite teams and auto-schedule alarms for their upcoming matches.
+### Personalization & Expressive Design
+- **Material 3 Expressive:** Connected card groups, smooth spring animations, and tactile bounce feedback.
+- **Color Themes & Contrast:** Select between dynamic palette styles and customize dark mode, light mode, or system default.
+- **Favorite Teams & My Leagues:** Pin your favorite clubs and customize active tournaments to prioritize relevant matches at a glance.
 
-### Settings
-- Configurable pre-match alert (5 to 60 minutes).
-- Kickoff notification toggle.
-- ESPN live data toggle.
-- Permissions dashboard (notifications, exact alarms, battery optimization).
+### 100% Privacy & Offline Friendly
+- **No Account Required:** Enjoy all features immediately with zero registration.
+- **Zero Ads & Trackers:** No telemetry libraries, analytics, or third-party advertising SDKs.
+- **Local Persistence:** All preferences and pinned selections are saved locally within your device sandbox using private preferences.
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.jpg" width="220" alt="Match Center" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.jpg" width="220" alt="Standings" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.jpg" width="220" alt="Match Details" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.jpg" width="220" alt="Settings & Theming" />
+</p>
+
+---
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Language | Kotlin 2.2 |
-| UI | Jetpack Compose, Material 3 |
-| Architecture | Clean Architecture, MVVM, Unidirectional Data Flow |
-| DI | Hilt 2.59 |
-| Database | Room 2.8 |
-| Network | Retrofit (openfootball fixture + ESPN live scores) |
-| Background | WorkManager (periodic sync), AlarmManager (match reminders) |
-| Build | AGP 9.2, KSP, Gradle with Configuration Cache |
+| **Language** | Kotlin 2.2 |
+| **UI & Design** | Jetpack Compose, Material Design 3 Expressive (`1.5.0-alpha06`), Coil 3 |
+| **Architecture** | Clean Architecture, MVVM, Unidirectional Data Flow, StateFlow |
+| **Networking & API** | Retrofit 2.11, OkHttp 4.12, ESPN Public Endpoints |
+| **Serialization** | Kotlinx Serialization JSON 1.7.3 |
+| **Background Services** | Android Foreground Service (`dataSync`), Exact Alarms (`AlarmManager`) |
+| **Tooling & Build** | AGP 9.4.1, Gradle Configuration Cache, R8 Full Mode Optimizations |
 
 <p align="center">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Android/android2.svg">&nbsp;&nbsp;
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/Kotlin/kotlin2.svg">&nbsp;&nbsp;
   <img src="https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">&nbsp;&nbsp;
-  <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/SQLite/sqlite2.svg">&nbsp;&nbsp;
-
+  <img src="https://img.shields.io/badge/Material%20Design%203-7C4DFF?style=for-the-badge&logo=materialdesign&logoColor=white">
 </p>
+
+---
 
 ## Requirements
 
-- Android Studio Meerkat (2025.2) or later
-- JDK 17+ (Android Studio bundled JBR recommended)
-- Android SDK with platform API 35 installed
-- A device or emulator running **Android 14 (API 34)** or higher
+To build and run Ulama locally, ensure you have:
+- **Android Studio Meerkat** (2025.2) or newer.
+- **JDK 17** or newer (bundled Android Studio JBR recommended).
+- **Android SDK Platform 37** (Minimum SDK 35) installed via SDK Manager.
 
-## Quick Start
+---
 
-1. Clone the repository
+## Getting Started
 
+### 1. Clone the repository
 ```bash
 git clone https://github.com/Ixeken-Studios/ulama-app.git
 cd ulama-app
 ```
 
-2. Create or verify `local.properties` with your SDK path (this file is git-ignored).
-
-3. Build the project
-
-```bash
-./gradlew assembleDebug
+### 2. Configure local environment
+Create or verify your `local.properties` file with your Android SDK path (this file is excluded from Git):
+```properties
+sdk.dir=PATH_TO_YOUR_ANDROID_SDK
 ```
 
-4. Run on a connected device or emulator from Android Studio.
+### 3. Build the application
 
-## Project Structure
+- **Debug Build:**
+  - *Linux/macOS:* `./gradlew assembleDebug`
+  - *Windows:* `.\gradlew.bat assembleDebug`
 
-```
-com.ixeken.worldcupinfo/
-├── data/          # Room database, DAOs, entities, mappers, Retrofit services
-├── di/            # Hilt modules (Database, Network)
-├── domain/        # Pure models (Match, Prediction), repository interfaces, use cases
-├── notification/  # AlarmManager scheduler and BroadcastReceiver
-├── ui/            # Compose screens (Calendar, Groups, Favorites, Predictions, Settings)
-├── worker/        # WorkManager sync worker
-├── MainActivity.kt
-└── WorldCupApplication.kt
-```
+- **Release Build (Requires local signing in `keystore.properties`):**
+  - *Linux/macOS:* `./gradlew assembleRelease`
+  - *Windows:* `.\gradlew.bat assembleRelease`
 
-## Notes
+The compiled APKs will be located in: `app/build/outputs/apk/release/`
 
-- All user-facing strings are localized in English and Spanish via XML string resources.
-- Notification preferences are stored in `SharedPreferences` under the key `alarm_minutes`.
-- Do not commit `local.properties`, `*.jks` keystores or `secrets.properties`.
-
-## Contributing
-
-Open issues or pull requests. All UI text must use Android string resources with both `en` and `es` translations.
+---
 
 ## License
+
+<p align="center">
   <img src="https://ziadoua.github.io/m3-Markdown-Badges/badges/LicenceMIT/licencemit2.svg">
+</p>
 
-
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

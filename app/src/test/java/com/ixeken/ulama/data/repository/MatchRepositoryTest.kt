@@ -1,0 +1,1658 @@
+package com.ixeken.ulama.data.repository
+
+import com.ixeken.ulama.core.model.League
+import com.ixeken.ulama.core.model.MatchState
+import com.ixeken.ulama.data.espn.EspnApiService
+import com.ixeken.ulama.data.espn.model.EspnCompetitionDto
+import com.ixeken.ulama.data.espn.model.EspnCompetitorDto
+import com.ixeken.ulama.data.espn.model.EspnEventDto
+import com.ixeken.ulama.data.espn.model.EspnLeagueCalendarDto
+import com.ixeken.ulama.data.espn.model.EspnLeagueSeasonDto
+import com.ixeken.ulama.data.espn.model.EspnSeasonDto
+import com.ixeken.ulama.data.espn.model.EspnScoreboardResponse
+import com.ixeken.ulama.data.espn.model.EspnStandingsChildDto
+import com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto
+import com.ixeken.ulama.data.espn.model.EspnStandingsEntryDto
+import com.ixeken.ulama.data.espn.model.EspnStandingsResponse
+import com.ixeken.ulama.data.espn.model.EspnStandingsTeamDto
+import com.ixeken.ulama.data.espn.model.EspnStatDto
+import com.ixeken.ulama.data.espn.model.EspnStatusDto
+import com.ixeken.ulama.data.espn.model.EspnStatusTypeDto
+import com.ixeken.ulama.data.espn.model.EspnTeamDto
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Prueba unitaria para validar la transformacion y robustez de MatchRepositoryImpl.
+ */
+class MatchRepositoryTest {
+
+    private val fakeApiService = object : EspnApiService {
+        override suspend fun getScoreboard(
+            league: String,
+            dates: String?,
+            limit: Int?,
+            cacheControl: String?
+        ): EspnScoreboardResponse {
+            return EspnScoreboardResponse(
+                events = listOf(
+                    EspnEventDto(
+                        id = "101",
+                        date = "2026-10-10T01:00Z",
+                        name = "Puebla vs Leon",
+                        competitions = listOf(
+                            EspnCompetitionDto(
+                                id = "101",
+                                date = "2026-10-10T01:00Z",
+                                competitors = listOf(
+                                    EspnCompetitorDto(
+                                        id = "231",
+                                        homeAway = "home",
+                                        score = "2",
+                                        winner = true,
+                                        team = EspnTeamDto(
+                                            id = "231",
+                                            name = "Puebla",
+                                            displayName = "Puebla",
+                                            abbreviation = "PUE"
+                                        )
+                                    ),
+                                    EspnCompetitorDto(
+                                        id = "228",
+                                        homeAway = "away",
+                                        score = "1",
+                                        winner = false,
+                                        team = EspnTeamDto(
+                                            id = "228",
+                                            name = "Leon",
+                                            displayName = "Leon",
+                                            abbreviation = "LEO"
+                                        )
+                                    )
+                                ),
+                                status = EspnStatusDto(
+                                    displayClock = "90'",
+                                    type = EspnStatusTypeDto(
+                                        state = "post",
+                                        completed = true,
+                                        detail = "Final"
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override suspend fun getStandings(league: String): EspnStandingsResponse {
+            if (league == League.WORLD_CUP.code) {
+                return EspnStandingsResponse(
+                    children = listOf(
+                        EspnStandingsChildDto(
+                            name = "Group A",
+                            standings = EspnStandingsEntriesDto(
+                                entries = listOf(
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "1", name = "Czechia", displayName = "Czechia"),
+                                        stats = listOf(
+                                            EspnStatDto(name = "rank", value = 4.0),
+                                            EspnStatDto(name = "points", value = 1.0)
+                                        )
+                                    ),
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "2", name = "Mexico", displayName = "Mexico"),
+                                        stats = listOf(
+                                            EspnStatDto(name = "rank", value = 1.0),
+                                            EspnStatDto(name = "points", value = 9.0)
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        EspnStandingsChildDto(
+                            name = "Group B",
+                            standings = EspnStandingsEntriesDto(
+                                entries = listOf(
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "3", name = "Canada", displayName = "Canada"),
+                                        stats = listOf(
+                                            EspnStatDto(name = "rank", value = 2.0),
+                                            EspnStatDto(name = "points", value = 4.0)
+                                        )
+                                    ),
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "4", name = "Switzerland", displayName = "Switzerland"),
+                                        stats = listOf(
+                                            EspnStatDto(name = "rank", value = 1.0),
+                                            EspnStatDto(name = "points", value = 7.0)
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            return EspnStandingsResponse(
+                children = listOf(
+                    EspnStandingsChildDto(
+                        standings = EspnStandingsEntriesDto(
+                            entries = listOf(
+                                EspnStandingsEntryDto(
+                                    team = EspnStandingsTeamDto(
+                                        id = "223",
+                                        name = "Toluca",
+                                        displayName = "Toluca",
+                                        abbreviation = "TOL"
+                                    ),
+                                    stats = listOf(
+                                        EspnStatDto(name = "rank", value = 1.0),
+                                        EspnStatDto(name = "points", value = 25.0),
+                                        EspnStatDto(name = "gamesPlayed", value = 10.0),
+                                        EspnStatDto(name = "wins", value = 8.0),
+                                        EspnStatDto(name = "ties", value = 1.0),
+                                        EspnStatDto(name = "losses", value = 1.0),
+                                        EspnStatDto(name = "pointsFor", value = 20.0),
+                                        EspnStatDto(name = "pointsAgainst", value = 8.0),
+                                        EspnStatDto(name = "pointDifferential", value = 12.0)
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override suspend fun getMatchSummary(league: String, eventId: String): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse {
+            return com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                boxscore = com.ixeken.ulama.data.espn.model.EspnBoxscoreDto(
+                    teams = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(
+                            team = EspnTeamDto(id = "231", name = "Puebla", displayName = "Puebla"),
+                            statistics = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "possessionPct", displayValue = "48.0"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "totalShots", displayValue = "12")
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(
+                            team = EspnTeamDto(id = "228", name = "Leon", displayName = "Leon"),
+                            statistics = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "possessionPct", displayValue = "52.0"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "totalShots", displayValue = "14")
+                            )
+                        )
+                    )
+                ),
+                rosters = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnRosterTeamDto(
+                        team = EspnTeamDto(id = "231", name = "Puebla", displayName = "Puebla"),
+                        formation = "4-4-2",
+                        roster = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                starter = true,
+                                jersey = "1",
+                                formationPlace = 1,
+                                position = com.ixeken.ulama.data.espn.model.EspnPlayerPositionDto(name = "Goalkeeper"),
+                                athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(displayName = "J. Rodríguez", shortName = "J. Rodríguez")
+                            ),
+                            com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                starter = false,
+                                jersey = "12",
+                                subbedIn = true,
+                                subbedInFor = com.ixeken.ulama.data.espn.model.EspnSubbedInForDto(
+                                    jersey = "1",
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(displayName = "J. Rodríguez", shortName = "J. Rodríguez")
+                                ),
+                                plays = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(
+                                        substitution = true,
+                                        clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "65'")
+                                    )
+                                ),
+                                athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(displayName = "M. Fraga")
+                            )
+                        )
+                    )
+                ),
+                header = com.ixeken.ulama.data.espn.model.EspnSummaryHeaderDto(
+                    competitions = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnSummaryCompetitionDto(
+                            details = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                                    scoringPlay = true,
+                                    clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "34'"),
+                                    team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "231"),
+                                    participants = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                            athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(displayName = "L. Cavallini")
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+    }
+
+    private val repository = MatchRepositoryImpl(
+        apiService = fakeApiService,
+        ioDispatcher = Dispatchers.Unconfined
+    )
+
+    @Test
+    fun getMatches_mapsEspnEventToImmutableMatch() = runBlocking {
+        val result = repository.getMatches(League.LIGA_MX)
+        assertTrue(result.isSuccess)
+        val matches = result.getOrThrow()
+        assertEquals(1, matches.size)
+
+        val match = matches.first()
+        assertEquals("101", match.id)
+        assertEquals("Puebla", match.homeTeam.name)
+        assertEquals(2, match.homeTeam.score)
+        assertTrue(match.homeTeam.isWinner)
+        assertEquals("Leon", match.awayTeam.name)
+        assertEquals(1, match.awayTeam.score)
+        assertEquals(MatchState.FINISHED, match.status.state)
+        assertTrue(match.status.isCompleted)
+    }
+
+    @Test
+    fun getStandings_mapsEspnStandingsToImmutableStandingEntry() = runBlocking {
+        val result = repository.getStandings(League.LIGA_MX)
+        assertTrue(result.isSuccess)
+        val standings = result.getOrThrow()
+        assertEquals(1, standings.size)
+
+        val entry = standings.first()
+        assertEquals(1, entry.rank)
+        assertEquals("Toluca", entry.teamName)
+        assertEquals("223", entry.teamId)
+        assertEquals(25, entry.points)
+        assertEquals(10, entry.gamesPlayed)
+        assertEquals(8, entry.wins)
+        assertEquals(1, entry.draws)
+        assertEquals(1, entry.losses)
+        assertEquals(12, entry.goalDifference)
+    }
+
+    @Test
+    fun getGroups_parsesAllGroupsAndOrdersByPointsAndRank() = runBlocking {
+        val result = repository.getGroups(League.WORLD_CUP)
+        assertTrue(result.isSuccess)
+        val groups = result.getOrThrow()
+        assertEquals(2, groups.size)
+
+        // Grupo A
+        val groupA = groups[0]
+        assertEquals("A", groupA.name)
+        assertEquals(2, groupA.standings.size)
+        // Verificacion de ordenamiento: Mexico (9 pts, rank 1) debe quedar antes que Czechia (1 pt, rank 4)
+        assertEquals("Mexico", groupA.standings[0].teamName)
+        assertEquals(1, groupA.standings[0].rank)
+        assertEquals(9, groupA.standings[0].points)
+        assertEquals("Czechia", groupA.standings[1].teamName)
+        assertEquals(4, groupA.standings[1].rank)
+        assertEquals(1, groupA.standings[1].points)
+        assertEquals(1, groupA.cutoffs.size)
+        assertEquals(2, groupA.cutoffs[0].rankAfter)
+
+        // Grupo B
+        val groupB = groups[1]
+        assertEquals("B", groupB.name)
+        assertEquals(2, groupB.standings.size)
+        // Verificacion de ordenamiento: Switzerland (7 pts, rank 1) antes que Canada (4 pts, rank 2)
+        assertEquals("Switzerland", groupB.standings[0].teamName)
+        assertEquals(1, groupB.standings[0].rank)
+        assertEquals(7, groupB.standings[0].points)
+        assertEquals("Canada", groupB.standings[1].teamName)
+        assertEquals(2, groupB.standings[1].rank)
+        assertEquals(4, groupB.standings[1].points)
+    }
+
+    @Test
+    fun getStandings_forMultiGroupTournament_returnsAllTeamsFlattened() = runBlocking {
+        val result = repository.getStandings(League.WORLD_CUP)
+        assertTrue(result.isSuccess)
+        val standings = result.getOrThrow()
+        assertEquals(4, standings.size)
+        assertTrue(standings.any { it.teamName == "Mexico" })
+        assertTrue(standings.any { it.teamName == "Switzerland" })
+    }
+
+    @Test
+    fun resolveMatchdayDates_groupsWeekendMatchdayProperly() {
+        val calendar = listOf(
+            "2026-10-09T07:00Z",
+            "2026-10-10T07:00Z",
+            "2026-10-11T07:00Z",
+            "2026-10-16T07:00Z"
+        )
+        val today = java.time.LocalDate.of(2026, 10, 6)
+        val dates = MatchRepositoryImpl.resolveMatchdayDates(calendar, today)
+
+        assertEquals(listOf("20261009", "20261010", "20261011"), dates)
+    }
+
+    @Test
+    fun resolveMatchdayDates_groupsMidweekDoubleMatchdayProperly() {
+        val calendar = listOf(
+            "2026-10-16T07:00Z",
+            "2026-10-17T07:00Z",
+            "2026-10-18T07:00Z",
+            "2026-10-20T07:00Z",
+            "2026-10-21T07:00Z",
+            "2026-10-23T07:00Z"
+        )
+        val today = java.time.LocalDate.of(2026, 10, 19)
+        val dates = MatchRepositoryImpl.resolveMatchdayDates(calendar, today)
+
+        assertTrue(dates.contains("20261020"))
+        assertTrue(dates.contains("20261021"))
+        // No debe mezclar con la siguiente jornada del fin de semana (23 de octubre)
+        assertTrue(!dates.contains("20261023"))
+    }
+
+    @Test
+    fun resolveMatchdayDates_emptyCalendar_returnsFallbackClusterAroundToday() {
+        val calendar = emptyList<String>()
+        val today = java.time.LocalDate.of(2026, 10, 13)
+        val dates = MatchRepositoryImpl.resolveMatchdayDates(calendar, today)
+
+        assertEquals(7, dates.size)
+        assertTrue(dates.contains("20261013"))
+        assertTrue(dates.contains("20261014"))
+        assertTrue(dates.contains("20261010"))
+        assertTrue(dates.contains("20261016"))
+    }
+
+    @Test
+    fun matchModel_correctlyIdentifiesWinnerAndLoserWithOpacityStates() {
+        val homeWinnerMatch = com.ixeken.ulama.core.model.Match(
+            id = "1",
+            dateUtc = "2026-10-06T00:00:00Z",
+            homeTeam = com.ixeken.ulama.core.model.Team("1", "Necaxa", "Necaxa", "NEC", null, true, 2, false),
+            awayTeam = com.ixeken.ulama.core.model.Team("2", "América", "América", "AME", null, false, 4, true),
+            status = com.ixeken.ulama.core.model.MatchStatus(MatchState.FINISHED, "FT", "Final", true),
+            venueName = "Estadio Victoria"
+        )
+
+        assertTrue(homeWinnerMatch.isFinished)
+        assertTrue(homeWinnerMatch.isAwayWinner)
+        assertTrue(homeWinnerMatch.isHomeLoser)
+        org.junit.Assert.assertFalse(homeWinnerMatch.isAwayLoser)
+        org.junit.Assert.assertFalse(homeWinnerMatch.isDraw)
+
+        val drawMatch = homeWinnerMatch.copy(
+            homeTeam = homeWinnerMatch.homeTeam.copy(score = 2, isWinner = false),
+            awayTeam = homeWinnerMatch.awayTeam.copy(score = 2, isWinner = false)
+        )
+        assertTrue(drawMatch.isDraw)
+        org.junit.Assert.assertFalse(drawMatch.isHomeLoser)
+        org.junit.Assert.assertFalse(drawMatch.isAwayLoser)
+
+        val liveMatch = homeWinnerMatch.copy(
+            status = com.ixeken.ulama.core.model.MatchStatus(MatchState.LIVE, "45'", "1T", false)
+        )
+        org.junit.Assert.assertFalse(liveMatch.isFinished)
+        org.junit.Assert.assertFalse(liveMatch.isHomeLoser)
+        org.junit.Assert.assertFalse(liveMatch.isAwayLoser)
+    }
+
+    @Test
+    fun getMatchDetail_mapsSummaryCorrectly() = runBlocking {
+        val result = repository.getMatchDetail(League.LIGA_MX, "101")
+        assertTrue(result.isSuccess)
+        val detail = result.getOrThrow()
+
+        assertEquals("101", detail.matchId)
+        assertEquals(1, detail.homeScorers.size)
+        assertEquals("L. Cavallini", detail.homeScorers.first().playerName)
+        assertEquals("34'", detail.homeScorers.first().minutesDisplay)
+        assertTrue(detail.awayScorers.isEmpty())
+
+        assertEquals(2, detail.stats.size)
+        assertEquals("48%", detail.stats.first().homeDisplayValue)
+        assertEquals("52%", detail.stats.first().awayDisplayValue)
+
+        val homeLineup = detail.homeLineup
+        org.junit.Assert.assertNotNull(homeLineup)
+        assertEquals("4-4-2", homeLineup?.formation)
+        assertEquals(1, homeLineup?.starters?.size)
+        assertEquals(1, homeLineup?.bench?.size)
+        assertEquals(com.ixeken.ulama.core.model.TacticalLine.GOALKEEPER, homeLineup?.starters?.first()?.line)
+
+        val benchPlayer = homeLineup?.bench?.first()
+        org.junit.Assert.assertNotNull(benchPlayer)
+        assertEquals("M. Fraga", benchPlayer?.name)
+        assertTrue(benchPlayer?.subbedIn == true)
+        assertEquals("65'", benchPlayer?.subInMinute)
+        assertEquals("J. Rodríguez", benchPlayer?.subbedInForName)
+        assertEquals("1", benchPlayer?.subbedInForJersey)
+    }
+
+    @Test
+    fun scoreboardResponse_deserializesCalendarWithObjectsGracefully() {
+        val json = kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+        val rawJson = """
+            {
+                "leagues": [
+                    {
+                        "calendar": [
+                            {
+                                "label": "UEFA Champions League",
+                                "startDate": "2026-07-01T04:00Z",
+                                "endDate": "2027-07-01T03:59Z"
+                            }
+                        ]
+                    }
+                ],
+                "events": []
+            }
+        """.trimIndent()
+
+        val parsed = json.decodeFromString<EspnScoreboardResponse>(rawJson)
+        assertEquals(1, parsed.leagues.size)
+        assertTrue(parsed.leagues.first().extractDateStrings().isEmpty())
+    }
+
+    @Test
+    fun getMatches_distinguishesHalftimeFromSecondHalfAndFullTime() = runBlocking {
+        val liveSecondHalfApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse {
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        EspnEventDto(
+                            id = "201",
+                            date = "2026-10-12T20:00Z",
+                            name = "Levante vs Sevilla",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "201",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "3", team = EspnTeamDto(id = "1", name = "Levante")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "3", team = EspnTeamDto(id = "2", name = "Sevilla"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        displayClock = "90'+10'",
+                                        type = EspnStatusTypeDto(
+                                            state = "in",
+                                            name = "STATUS_SECOND_HALF",
+                                            description = "Second Half",
+                                            detail = "2nd Half",
+                                            completed = false
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        EspnEventDto(
+                            id = "202",
+                            date = "2026-10-12T20:00Z",
+                            name = "Betis vs Celta",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "202",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "3", homeAway = "home", score = "1", team = EspnTeamDto(id = "3", name = "Betis")),
+                                        EspnCompetitorDto(id = "4", homeAway = "away", score = "0", team = EspnTeamDto(id = "4", name = "Celta"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        displayClock = "HT",
+                                        type = EspnStatusTypeDto(
+                                            state = "in",
+                                            name = "STATUS_HALFTIME",
+                                            description = "Halftime",
+                                            detail = "HT",
+                                            completed = false
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        EspnEventDto(
+                            id = "203",
+                            date = "2026-10-12T20:00Z",
+                            name = "Valencia vs Villarreal",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "203",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "5", homeAway = "home", score = "2", team = EspnTeamDto(id = "5", name = "Valencia")),
+                                        EspnCompetitorDto(id = "6", homeAway = "away", score = "1", team = EspnTeamDto(id = "6", name = "Villarreal"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        displayClock = "90'",
+                                        type = EspnStatusTypeDto(
+                                            state = "in",
+                                            name = "STATUS_FULL_TIME",
+                                            description = "Full Time",
+                                            detail = "FT",
+                                            completed = true
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val testRepo = MatchRepositoryImpl(liveSecondHalfApi, Dispatchers.Unconfined)
+        val matches = testRepo.getMatches(League.LA_LIGA, forceRefresh = true).getOrThrow()
+
+        val secondHalfMatch = matches.first { it.id == "201" }
+        assertEquals(MatchState.LIVE, secondHalfMatch.status.state)
+        org.junit.Assert.assertFalse(secondHalfMatch.isHalftime)
+        assertEquals("90'+10'", secondHalfMatch.status.displayClock)
+
+        val halftimeMatch = matches.first { it.id == "202" }
+        assertEquals(MatchState.LIVE, halftimeMatch.status.state)
+        assertTrue(halftimeMatch.isHalftime)
+
+        val fullTimeMatch = matches.first { it.id == "203" }
+        assertEquals(MatchState.FINISHED, fullTimeMatch.status.state)
+        org.junit.Assert.assertFalse(fullTimeMatch.isHalftime)
+    }
+
+    @Test
+    fun getMatches_resolvesExtraTimeAndPenaltyShootoutsCorrectly() = runBlocking {
+        val etAndPenaltiesApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        // 1. Tiempos extras en vivo
+                        EspnEventDto(
+                            id = "301",
+                            date = "2026-10-12T20:00Z",
+                            name = "Arsenal vs Chelsea",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "301",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "2", team = EspnTeamDto(id = "1", name = "Arsenal")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "2", team = EspnTeamDto(id = "2", name = "Chelsea"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        clock = 114.0,
+                                        displayClock = "114'",
+                                        period = 4,
+                                        type = EspnStatusTypeDto(
+                                            state = "in",
+                                            name = "STATUS_SECOND_HALF_EXTRA_TIME",
+                                            description = "Second Half Extra Time",
+                                            detail = "2ET 114'",
+                                            completed = false
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        // 2. Finalizado tras tiempos extras
+                        EspnEventDto(
+                            id = "302",
+                            date = "2026-10-12T20:00Z",
+                            name = "Real Madrid vs Atletico",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "302",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "3", homeAway = "home", score = "2", winner = true, team = EspnTeamDto(id = "3", name = "Real Madrid")),
+                                        EspnCompetitorDto(id = "4", homeAway = "away", score = "1", winner = false, team = EspnTeamDto(id = "4", name = "Atletico"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        clock = 120.0,
+                                        displayClock = "120'",
+                                        period = 4,
+                                        type = EspnStatusTypeDto(
+                                            state = "post",
+                                            name = "STATUS_FINAL_AET",
+                                            description = "Full Time (AET)",
+                                            detail = "AET",
+                                            completed = true
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        // 3. Finalizado en penales con shootoutScore en competidores
+                        EspnEventDto(
+                            id = "303",
+                            date = "2026-10-12T20:00Z",
+                            name = "Levante vs Sevilla",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "303",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "5", homeAway = "home", score = "3", shootoutScore = 4, winner = true, team = EspnTeamDto(id = "5", name = "Levante")),
+                                        EspnCompetitorDto(id = "6", homeAway = "away", score = "3", shootoutScore = 2, winner = false, team = EspnTeamDto(id = "6", name = "Sevilla"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        clock = 120.0,
+                                        displayClock = "",
+                                        period = 5,
+                                        type = EspnStatusTypeDto(
+                                            state = "post",
+                                            name = "STATUS_FINAL_PEN",
+                                            description = "Shootout",
+                                            detail = "FT-Pens",
+                                            completed = true
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        // 4. Finalizado en penales con fallback de shootout en detail
+                        EspnEventDto(
+                            id = "304",
+                            date = "2026-10-12T20:00Z",
+                            name = "Liverpool vs Man City",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "304",
+                                    date = "2026-10-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "7", homeAway = "home", score = "1", winner = false, team = EspnTeamDto(id = "7", name = "Liverpool")),
+                                        EspnCompetitorDto(id = "8", homeAway = "away", score = "1", winner = true, team = EspnTeamDto(id = "8", name = "Man City"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        clock = 120.0,
+                                        displayClock = "",
+                                        period = 5,
+                                        type = EspnStatusTypeDto(
+                                            state = "post",
+                                            name = "STATUS_FINAL_PEN",
+                                            description = "Shootout",
+                                            detail = "FT-Pens (3-5)",
+                                            completed = true
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(etAndPenaltiesApi, Dispatchers.Unconfined)
+        val matches = repo.getMatches(League.PREMIER_LEAGUE, forceRefresh = true).getOrThrow()
+
+        // 1. Validar tiempos extras en vivo
+        val liveEtMatch = matches.first { it.id == "301" }
+        assertEquals(MatchState.LIVE, liveEtMatch.status.state)
+        assertTrue(liveEtMatch.status.isExtraTime)
+        org.junit.Assert.assertFalse(liveEtMatch.status.isShootout)
+        org.junit.Assert.assertFalse(liveEtMatch.status.isFinishedAet)
+
+        // 2. Validar finalizado tras tiempos extras
+        val finishedAetMatch = matches.first { it.id == "302" }
+        assertEquals(MatchState.FINISHED, finishedAetMatch.status.state)
+        assertTrue(finishedAetMatch.status.isFinishedAet)
+        org.junit.Assert.assertFalse(finishedAetMatch.status.isFinishedPenalties)
+        assertTrue(finishedAetMatch.isHomeWinner)
+
+        // 3. Validar penales con shootoutScore explicito
+        val shootoutMatch = matches.first { it.id == "303" }
+        assertEquals(MatchState.FINISHED, shootoutMatch.status.state)
+        assertTrue(shootoutMatch.status.isFinishedPenalties)
+        org.junit.Assert.assertFalse(shootoutMatch.status.isFinishedAet)
+        assertEquals(4, shootoutMatch.homeTeam.shootoutScore)
+        assertEquals(2, shootoutMatch.awayTeam.shootoutScore)
+        assertTrue(shootoutMatch.isHomeWinner)
+        org.junit.Assert.assertFalse(shootoutMatch.isDraw)
+
+        // 4. Validar penales con fallback desde detail "FT-Pens (3-5)"
+        val fallbackShootoutMatch = matches.first { it.id == "304" }
+        assertEquals(MatchState.FINISHED, fallbackShootoutMatch.status.state)
+        assertTrue(fallbackShootoutMatch.status.isFinishedPenalties)
+        assertEquals(3, fallbackShootoutMatch.homeTeam.shootoutScore)
+        assertEquals(5, fallbackShootoutMatch.awayTeam.shootoutScore)
+        assertTrue(fallbackShootoutMatch.isAwayWinner)
+        org.junit.Assert.assertFalse(fallbackShootoutMatch.isDraw)
+    }
+
+    @Test
+    fun espnScoreboardDto_deserializesKnockoutSeriesAndLegDetails() {
+        val jsonParser = kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
+        val jsonString = """
+            {
+              "events": [
+                {
+                  "id": "701985",
+                  "date": "2024-05-07T19:00Z",
+                  "name": "Borussia Dortmund at Paris Saint-Germain",
+                  "competitions": [
+                    {
+                      "id": "701985",
+                      "date": "2024-05-07T19:00Z",
+                      "leg": {
+                        "value": 2,
+                        "displayValue": "2nd Leg"
+                      },
+                      "series": {
+                        "title": "Semifinals",
+                        "completed": true,
+                        "totalCompetitions": 2,
+                        "competitors": [
+                          {
+                            "id": "160",
+                            "winner": false,
+                            "aggregateScore": 0.0
+                          },
+                          {
+                            "id": "124",
+                            "winner": true,
+                            "aggregateScore": 2.0
+                          }
+                        ]
+                      },
+                      "notes": [
+                        {
+                          "text": "2nd Leg - Borussia Dortmund advance 2-0 on aggregate"
+                        }
+                      ],
+                      "competitors": [
+                        {
+                          "id": "160",
+                          "homeAway": "home",
+                          "winner": false,
+                          "score": "0",
+                          "team": {
+                            "id": "160",
+                            "name": "Paris Saint-Germain",
+                            "displayName": "Paris Saint-Germain"
+                          }
+                        },
+                        {
+                          "id": "124",
+                          "homeAway": "away",
+                          "winner": true,
+                          "score": "1",
+                          "team": {
+                            "id": "124",
+                            "name": "Borussia Dortmund",
+                            "displayName": "Borussia Dortmund"
+                          }
+                        }
+                      ],
+                      "status": {
+                        "type": {
+                          "state": "post",
+                          "completed": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val parsed = jsonParser.decodeFromString<EspnScoreboardResponse>(jsonString)
+        val competition = parsed.events.first().competitions.first()
+
+        assertEquals(2, competition.leg?.value)
+        assertEquals("2nd Leg", competition.leg?.displayValue)
+        assertEquals("Semifinals", competition.series?.title)
+        assertTrue(competition.series?.completed == true)
+        assertEquals(2, competition.series?.totalCompetitions)
+
+        val dortmundSeries = competition.series?.competitors?.find { it.id == "124" }
+        val psgSeries = competition.series?.competitors?.find { it.id == "160" }
+
+        assertEquals(2.0, dortmundSeries?.aggregateScore)
+        assertTrue(dortmundSeries?.winner == true)
+        assertEquals(0.0, psgSeries?.aggregateScore)
+        org.junit.Assert.assertFalse(psgSeries?.winner == true)
+
+        assertEquals("2nd Leg - Borussia Dortmund advance 2-0 on aggregate", competition.notes.firstOrNull()?.text)
+    }
+
+    @Test
+    fun getMatches_knockoutEvent_correctlyMapsSeriesLegAndAggregateScores() = runBlocking {
+        val knockoutJson = """
+            {
+              "events": [
+                {
+                  "id": "701985",
+                  "date": "2024-05-07T19:00Z",
+                  "name": "Borussia Dortmund at Paris Saint-Germain",
+                  "competitions": [
+                    {
+                      "id": "701985",
+                      "date": "2024-05-07T19:00Z",
+                      "leg": {
+                        "value": 2,
+                        "displayValue": "2nd Leg"
+                      },
+                      "series": {
+                        "title": "Semifinals",
+                        "completed": true,
+                        "totalCompetitions": 2,
+                        "competitors": [
+                          {
+                            "id": "160",
+                            "winner": false,
+                            "aggregateScore": 0.0
+                          },
+                          {
+                            "id": "124",
+                            "winner": true,
+                            "aggregateScore": 2.0
+                          }
+                        ]
+                      },
+                      "notes": [
+                        {
+                          "text": "2nd Leg - Borussia Dortmund advance 2-0 on aggregate"
+                        }
+                      ],
+                      "competitors": [
+                        {
+                          "id": "160",
+                          "homeAway": "home",
+                          "winner": false,
+                          "score": "0",
+                          "team": {
+                            "id": "160",
+                            "name": "Paris Saint-Germain",
+                            "displayName": "Paris Saint-Germain"
+                          }
+                        },
+                        {
+                          "id": "124",
+                          "homeAway": "away",
+                          "winner": true,
+                          "score": "1",
+                          "team": {
+                            "id": "124",
+                            "name": "Borussia Dortmund",
+                            "displayName": "Borussia Dortmund"
+                          }
+                        }
+                      ],
+                      "status": {
+                        "type": {
+                          "state": "post",
+                          "completed": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val jsonParser = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val fakeScoreboard = jsonParser.decodeFromString<EspnScoreboardResponse>(knockoutJson)
+
+        val api = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = fakeScoreboard
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repository = MatchRepositoryImpl(api, Dispatchers.Unconfined)
+        val matches = repository.getMatches(League.CHAMPIONS_LEAGUE, dates = "20240507", forceRefresh = true).getOrThrow()
+
+        assertEquals(1, matches.size)
+        val match = matches.first()
+
+        assertTrue(match.isKnockout)
+        assertTrue(match.isAggregateActive)
+        assertEquals("Semifinals", match.seriesTitle)
+        assertEquals(2, match.legNumber)
+        assertEquals("2nd Leg", match.legText)
+        assertEquals(0, match.aggregateHomeScore)
+        assertEquals(2, match.aggregateAwayScore)
+        assertEquals("2nd Leg - Borussia Dortmund advance 2-0 on aggregate", match.seriesSummary)
+        assertTrue(match.isFinished)
+        assertTrue(match.isAwayWinner)
+        org.junit.Assert.assertFalse(match.isHomeWinner)
+    }
+
+    @Test
+    fun getMatches_cleansPre2027MatchesForGoldCupAndAfcon() = runBlocking {
+        val staleApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        EspnEventDto(
+                            id = "gc_2025",
+                            date = "2025-07-06T23:00Z",
+                            name = "Mexico vs United States",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "gc_2025",
+                                    date = "2025-07-06T23:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "2", winner = true, team = EspnTeamDto(id = "1", name = "Mexico")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "1", winner = false, team = EspnTeamDto(id = "2", name = "United States"))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repository = MatchRepositoryImpl(staleApi, Dispatchers.Unconfined)
+        val goldCupMatches = repository.getMatches(League.GOLD_CUP, forceRefresh = true).getOrThrow()
+        assertTrue(goldCupMatches.isEmpty())
+
+        val afconMatches = repository.getMatches(League.AFCON, forceRefresh = true).getOrThrow()
+        assertTrue(afconMatches.isEmpty())
+
+        val goldCupGroups = repository.getGroups(League.GOLD_CUP, forceRefresh = true).getOrThrow()
+        assertTrue(goldCupGroups.isEmpty())
+    }
+
+    @Test
+    fun getMatches_tournamentLeaguesQueryFullSeasonAndIncludeUpcomingMatches() = runBlocking {
+        var capturedDates: String? = null
+        var capturedLimit: Int? = null
+
+        val tournamentApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                capturedDates = dates
+                capturedLimit = limit
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        EspnEventDto(
+                            id = "ucl_past",
+                            date = "2026-10-14T19:00Z",
+                            name = "Real Madrid at AS Roma",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "ucl_past",
+                                    date = "2026-10-14T19:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "1", team = EspnTeamDto(id = "1", name = "AS Roma")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "2", team = EspnTeamDto(id = "2", name = "Real Madrid"))
+                                    )
+                                )
+                            )
+                        ),
+                        EspnEventDto(
+                            id = "ucl_upcoming",
+                            date = "2026-10-20T19:00Z",
+                            name = "Barcelona at Paris Saint-Germain",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "ucl_upcoming",
+                                    date = "2026-10-20T19:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "3", homeAway = "home", team = EspnTeamDto(id = "3", name = "Paris Saint-Germain")),
+                                        EspnCompetitorDto(id = "4", homeAway = "away", team = EspnTeamDto(id = "4", name = "Barcelona"))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repository = MatchRepositoryImpl(tournamentApi, Dispatchers.Unconfined)
+        val matches = repository.getMatches(League.CHAMPIONS_LEAGUE, forceRefresh = true).getOrThrow()
+
+        assertEquals(2, matches.size)
+        assertEquals(java.time.LocalDate.now().year.toString(), capturedDates)
+        assertEquals(200, capturedLimit)
+        assertTrue(matches.any { it.id == "ucl_upcoming" && it.dateUtc.contains("2026-10-20") })
+    }
+
+    @Test
+    fun getMatches_tournamentLeaguesSanitizeHistoricalEventsFromPriorSeason() = runBlocking {
+        val mixedApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                return EspnScoreboardResponse(
+                    leagues = listOf(
+                        EspnLeagueCalendarDto(
+                            season = EspnLeagueSeasonDto(
+                                year = 2026,
+                                startDate = "2026-07-01T04:00Z",
+                                endDate = "2027-07-01T03:59Z",
+                                displayName = "2026-27 UEFA Champions League"
+                            )
+                        )
+                    ),
+                    events = listOf(
+                        // Partido de eliminatoria de la edicion anterior concluida en mayo
+                        EspnEventDto(
+                            id = "ucl_old_final",
+                            date = "2026-05-30T19:00Z",
+                            name = "PSG vs Arsenal",
+                            season = EspnSeasonDto(year = 2025, slug = "final"),
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "ucl_old_final",
+                                    date = "2026-05-30T19:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "2", winner = true, team = EspnTeamDto(id = "1", name = "PSG")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "1", winner = false, team = EspnTeamDto(id = "2", name = "Arsenal"))
+                                    )
+                                )
+                            )
+                        ),
+                        // Partido de fase de liga de la nueva edicion en octubre
+                        EspnEventDto(
+                            id = "ucl_new_league_phase",
+                            date = "2026-10-21T19:00Z",
+                            name = "Bayern vs Arsenal",
+                            season = EspnSeasonDto(year = 2026, slug = "league-phase"),
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "ucl_new_league_phase",
+                                    date = "2026-10-21T19:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "3", homeAway = "home", score = "1", team = EspnTeamDto(id = "3", name = "Bayern")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "0", team = EspnTeamDto(id = "2", name = "Arsenal"))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repository = MatchRepositoryImpl(mixedApi, Dispatchers.Unconfined)
+        val matches = repository.getMatches(League.CHAMPIONS_LEAGUE, forceRefresh = true).getOrThrow()
+
+        // El partido de mayo de la temporada 2025 debe ser descartado, conservando solo el de octubre de 2026
+        assertEquals(1, matches.size)
+        assertEquals("ucl_new_league_phase", matches.first().id)
+    }
+
+    @Test
+    fun getMatches_friendlies_usesRollingCalendarClustersWithoutQueryDatesYear() = runBlocking {
+        var initialQueryDates: String? = "NOT_CALLED"
+        var initialQueryLimit: Int? = -1
+        val queriedDates = mutableListOf<String?>()
+
+        val friendliesApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                queriedDates.add(dates)
+                if (dates == null) {
+                    initialQueryDates = dates
+                    initialQueryLimit = limit
+                    return EspnScoreboardResponse(
+                        leagues = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnLeagueCalendarDto(
+                                calendar = listOf(
+                                    kotlinx.serialization.json.JsonPrimitive("2026-10-06T00:00Z"),
+                                    kotlinx.serialization.json.JsonPrimitive("2026-11-12T00:00Z")
+                                )
+                            )
+                        ),
+                        events = emptyList()
+                    )
+                }
+
+                val matchId = "friendly_$dates"
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        EspnEventDto(
+                            id = matchId,
+                            date = if (dates.startsWith("202610")) "2026-10-06T20:00Z" else "2026-11-12T20:00Z",
+                            name = if (dates.startsWith("202610")) "Mexico vs USA" else "Brazil vs Argentina",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = matchId,
+                                    date = if (dates.startsWith("202610")) "2026-10-06T20:00Z" else "2026-11-12T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "2", team = EspnTeamDto(id = "1", name = "Team A")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "1", team = EspnTeamDto(id = "2", name = "Team B"))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repository = MatchRepositoryImpl(friendliesApi, Dispatchers.Unconfined)
+        val matches = repository.getMatches(League.FRIENDLIES, forceRefresh = true).getOrThrow()
+
+        // Verifica que la consulta inicial a FRIENDLIES no use ano fijo ni limite de torneo
+        assertEquals(null, initialQueryDates)
+        assertEquals(null, initialQueryLimit)
+
+        // Verifica que se capturen partidos pasados y futuros a traves del calendario
+        assertEquals(2, matches.size)
+        assertTrue(matches.any { it.id == "friendly_20261006" && it.dateUtc.contains("2026-10-06") })
+        assertTrue(matches.any { it.id == "friendly_20261112" && it.dateUtc.contains("2026-11-12") })
+    }
+
+    @Test
+    fun getMatchDetail_mapsDefensiveStatsAndMetadataCorrectly() = runBlocking {
+        val summaryApi = object : com.ixeken.ulama.data.espn.EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                boxscore = com.ixeken.ulama.data.espn.model.EspnBoxscoreDto(
+                    teams = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(
+                            team = EspnTeamDto(id = "1", name = "Team A"),
+                            statistics = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "effectiveTackles", displayValue = "15"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "interceptions", displayValue = "8"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "totalClearance", displayValue = "22"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "blockedShots", displayValue = "4"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "saves", displayValue = "3")
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(
+                            team = EspnTeamDto(id = "2", name = "Team B"),
+                            statistics = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "effectiveTackles", displayValue = "10"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "interceptions", displayValue = "12"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "totalClearance", displayValue = "18"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "blockedShots", displayValue = "6"),
+                                com.ixeken.ulama.data.espn.model.EspnStatisticItemDto(name = "saves", displayValue = "5")
+                            )
+                        )
+                    )
+                ),
+                broadcasts = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnBroadcastDto(
+                        media = com.ixeken.ulama.data.espn.model.EspnBroadcastMediaDto(shortName = "ViX", name = "ViX Premium")
+                    ),
+                    com.ixeken.ulama.data.espn.model.EspnBroadcastDto(
+                        media = com.ixeken.ulama.data.espn.model.EspnBroadcastMediaDto(shortName = "TUDN", name = "TUDN")
+                    )
+                ),
+                gameInfo = com.ixeken.ulama.data.espn.model.EspnGameInfoDto(
+                    attendance = 45200,
+                    officials = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnOfficialDto(displayName = "Cesar Ramos")
+                    ),
+                    weather = com.ixeken.ulama.data.espn.model.EspnWeatherDto(displayValue = "Despejado", temperature = 24)
+                )
+            )
+        }
+
+        val repository = MatchRepositoryImpl(summaryApi, Dispatchers.Unconfined)
+        val detail = repository.getMatchDetail(League.LIGA_MX, "test_match", forceRefresh = true).getOrThrow()
+
+        assertEquals(listOf("ViX", "TUDN"), detail.broadcasts)
+        assertEquals(45200, detail.attendance)
+        assertEquals("Cesar Ramos", detail.referee)
+        assertEquals("Despejado \u00B7 24\u00B0", detail.weather)
+
+        assertEquals(5, detail.stats.size)
+        assertEquals("15", detail.stats[0].homeDisplayValue)
+        assertEquals("10", detail.stats[0].awayDisplayValue)
+        assertEquals(com.ixeken.ulama.R.string.stat_effective_tackles, detail.stats[0].labelRes)
+
+        assertEquals("8", detail.stats[1].homeDisplayValue)
+        assertEquals("12", detail.stats[1].awayDisplayValue)
+        assertEquals(com.ixeken.ulama.R.string.stat_interceptions, detail.stats[1].labelRes)
+
+        assertEquals("22", detail.stats[2].homeDisplayValue)
+        assertEquals("18", detail.stats[2].awayDisplayValue)
+        assertEquals(com.ixeken.ulama.R.string.stat_clearances, detail.stats[2].labelRes)
+
+        assertEquals("4", detail.stats[3].homeDisplayValue)
+        assertEquals("6", detail.stats[3].awayDisplayValue)
+        assertEquals(com.ixeken.ulama.R.string.stat_blocked_shots, detail.stats[3].labelRes)
+
+        assertEquals("3", detail.stats[4].homeDisplayValue)
+        assertEquals("5", detail.stats[4].awayDisplayValue)
+        assertEquals(com.ixeken.ulama.R.string.stat_saves, detail.stats[4].labelRes)
+    }
+
+    @Test
+    fun getMatchDetail_mapsRecentFormAndHeadToHeadCorrectly() = runBlocking {
+        val summaryApi = object : com.ixeken.ulama.data.espn.EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                boxscore = com.ixeken.ulama.data.espn.model.EspnBoxscoreDto(
+                    teams = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(
+                            team = EspnTeamDto(id = "10", name = "Club America")
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(
+                            team = EspnTeamDto(id = "20", name = "Chivas")
+                        )
+                    )
+                ),
+                lastFiveGames = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnLastFiveGamesDto(
+                        team = EspnTeamDto(id = "10", name = "Club America"),
+                        events = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnFormEventDto(gameResult = "W", score = "2-1"),
+                            com.ixeken.ulama.data.espn.model.EspnFormEventDto(gameResult = "D", score = "1-1"),
+                            com.ixeken.ulama.data.espn.model.EspnFormEventDto(gameResult = "L", score = "0-1")
+                        )
+                    ),
+                    com.ixeken.ulama.data.espn.model.EspnLastFiveGamesDto(
+                        team = EspnTeamDto(id = "20", name = "Chivas"),
+                        events = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnFormEventDto(gameResult = "L", score = "0-2"),
+                            com.ixeken.ulama.data.espn.model.EspnFormEventDto(gameResult = "W", score = "3-0")
+                        )
+                    )
+                ),
+                seasonseries = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnSeasonSeriesDto(
+                        summary = "America leads series 2-1-0",
+                        events = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnSeasonSeriesEventDto(
+                                id = "ev1",
+                                date = "2026-03-01T20:00:00Z",
+                                competitors = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnSeasonSeriesCompetitorDto(
+                                        score = "2",
+                                        winner = true,
+                                        team = EspnTeamDto(id = "10", name = "Club America")
+                                    ),
+                                    com.ixeken.ulama.data.espn.model.EspnSeasonSeriesCompetitorDto(
+                                        score = "1",
+                                        winner = false,
+                                        team = EspnTeamDto(id = "20", name = "Chivas")
+                                    )
+                                )
+                            ),
+                            com.ixeken.ulama.data.espn.model.EspnSeasonSeriesEventDto(
+                                id = "ev2",
+                                date = "2025-10-15T20:00:00Z",
+                                competitors = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnSeasonSeriesCompetitorDto(
+                                        score = "0",
+                                        winner = false,
+                                        team = EspnTeamDto(id = "10", name = "Club America")
+                                    ),
+                                    com.ixeken.ulama.data.espn.model.EspnSeasonSeriesCompetitorDto(
+                                        score = "0",
+                                        winner = false,
+                                        team = EspnTeamDto(id = "20", name = "Chivas")
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        val repository = MatchRepositoryImpl(summaryApi, Dispatchers.Unconfined)
+        val detail = repository.getMatchDetail(League.LIGA_MX, "test_fase2", forceRefresh = true).getOrThrow()
+
+        // Verifica racha reciente
+        assertEquals(3, detail.homeRecentForm.size)
+        assertEquals(com.ixeken.ulama.core.model.FormResult.WIN, detail.homeRecentForm[0].result)
+        assertEquals(com.ixeken.ulama.core.model.FormResult.DRAW, detail.homeRecentForm[1].result)
+        assertEquals(com.ixeken.ulama.core.model.FormResult.LOSS, detail.homeRecentForm[2].result)
+
+        assertEquals(2, detail.awayRecentForm.size)
+        assertEquals(com.ixeken.ulama.core.model.FormResult.LOSS, detail.awayRecentForm[0].result)
+        assertEquals(com.ixeken.ulama.core.model.FormResult.WIN, detail.awayRecentForm[1].result)
+
+        // Verifica historial cara a cara (H2H)
+        val h2h = detail.headToHead
+        org.junit.Assert.assertNotNull(h2h)
+        assertEquals(1, h2h?.homeWins)
+        assertEquals(1, h2h?.draws)
+        assertEquals(0, h2h?.awayWins)
+        assertEquals(2, h2h?.matches?.size)
+        assertEquals("2", h2h?.matches?.first()?.homeScore)
+        assertEquals("1", h2h?.matches?.first()?.awayScore)
+    }
+
+    @Test
+    fun espnMatchSummaryResponse_deserializesSeasonseriesArrayCorrectly() {
+        val json = kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            coerceInputValues = true
+        }
+        val rawJson = """
+            {
+                "seasonseries": [
+                    {
+                        "type": "head-to-head",
+                        "title": "Club America vs. Chivas",
+                        "summary": "America leads series 2-1-0",
+                        "completed": false,
+                        "events": [
+                            {
+                                "id": "123",
+                                "date": "2026-03-01T20:00:00Z",
+                                "competitors": [
+                                    { "homeAway": "home", "winner": true, "score": "2", "team": { "id": "10", "displayName": "America" } },
+                                    { "homeAway": "away", "winner": false, "score": "1", "team": { "id": "20", "displayName": "Chivas" } }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val parsed = json.decodeFromString<com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse>(rawJson)
+        assertEquals(1, parsed.seasonseries.size)
+        assertEquals("America leads series 2-1-0", parsed.seasonseries[0].summary)
+        assertEquals(1, parsed.seasonseries[0].events.size)
+    }
+
+    @Test
+    fun getMatchDetail_mapsLeadersCorrectly() = runBlocking {
+        val summaryApi = object : com.ixeken.ulama.data.espn.EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                boxscore = com.ixeken.ulama.data.espn.model.EspnBoxscoreDto(
+                    teams = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(team = EspnTeamDto(id = "10", displayName = "Arsenal")),
+                        com.ixeken.ulama.data.espn.model.EspnBoxscoreTeamDto(team = EspnTeamDto(id = "20", displayName = "Chelsea"))
+                    )
+                ),
+                leaders = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnTeamLeadersDto(
+                        team = EspnTeamDto(id = "10", displayName = "Arsenal"),
+                        leaders = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnLeaderCategoryDto(
+                                name = "totalShots",
+                                displayName = "Total Shots",
+                                leaders = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnLeaderEntryDto(
+                                        displayValue = "4",
+                                        athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(
+                                            id = "1",
+                                            displayName = "Bukayo Saka",
+                                            shortName = "B. Saka",
+                                            jersey = "7"
+                                        ),
+                                        summary = "1 SOG, 1 G"
+                                    )
+                                )
+                            ),
+                            com.ixeken.ulama.data.espn.model.EspnLeaderCategoryDto(
+                                name = "saves",
+                                displayName = "Saves",
+                                leaders = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnLeaderEntryDto(
+                                        displayValue = "3",
+                                        athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(
+                                            id = "2",
+                                            displayName = "David Raya",
+                                            shortName = "D. Raya",
+                                            jersey = "22"
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    com.ixeken.ulama.data.espn.model.EspnTeamLeadersDto(
+                        team = EspnTeamDto(id = "20", displayName = "Chelsea"),
+                        leaders = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnLeaderCategoryDto(
+                                name = "totalShots",
+                                displayName = "Total Shots",
+                                leaders = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnLeaderEntryDto(
+                                        displayValue = "5",
+                                        athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(
+                                            id = "3",
+                                            displayName = "Cole Palmer",
+                                            shortName = "C. Palmer",
+                                            jersey = "20"
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        val repository = MatchRepositoryImpl(summaryApi, Dispatchers.Unconfined)
+        val detail = repository.getMatchDetail(League.PREMIER_LEAGUE, "test_leaders", forceRefresh = true).getOrThrow()
+
+        assertEquals(2, detail.leaders.size)
+
+        // totalShots
+        val shotsCategory = detail.leaders.first { it.categoryKey == "totalShots" }
+        assertEquals("B. Saka", shotsCategory.homeLeader?.athleteName)
+        assertEquals("7", shotsCategory.homeLeader?.jersey)
+        assertEquals("4", shotsCategory.homeLeader?.valueDisplay)
+        assertEquals("C. Palmer", shotsCategory.awayLeader?.athleteName)
+        assertEquals("20", shotsCategory.awayLeader?.jersey)
+        assertEquals("5", shotsCategory.awayLeader?.valueDisplay)
+
+        // saves
+        val savesCategory = detail.leaders.first { it.categoryKey == "saves" }
+        assertEquals("D. Raya", savesCategory.homeLeader?.athleteName)
+        assertEquals("3", savesCategory.homeLeader?.valueDisplay)
+        org.junit.Assert.assertNull(savesCategory.awayLeader)
+    }
+
+    @Test
+    fun getMatchDetail_mapsIsCompletedCorrectly() = runBlocking {
+        val summaryApi = object : com.ixeken.ulama.data.espn.EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                header = com.ixeken.ulama.data.espn.model.EspnSummaryHeaderDto(
+                    competitions = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnSummaryCompetitionDto(
+                            status = EspnStatusDto(
+                                type = com.ixeken.ulama.data.espn.model.EspnStatusTypeDto(
+                                    state = "post",
+                                    completed = true
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        val repo = MatchRepositoryImpl(summaryApi, Dispatchers.Unconfined)
+        val detail = repo.getMatchDetail(League.LIGA_MX, "test_completed", forceRefresh = true).getOrThrow()
+
+        assertTrue(detail.isCompleted)
+    }
+
+    @Test
+    fun getCachedMatchDetail_returnsStoredDetailWithinTTL() = runBlocking {
+        var networkCalls = 0
+        val summaryApi = object : com.ixeken.ulama.data.espn.EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse {
+                networkCalls++
+                return com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                    header = com.ixeken.ulama.data.espn.model.EspnSummaryHeaderDto(
+                        competitions = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnSummaryCompetitionDto(
+                                status = EspnStatusDto(
+                                    type = com.ixeken.ulama.data.espn.model.EspnStatusTypeDto(
+                                        state = "post",
+                                        completed = true
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+        }
+
+        val repo = MatchRepositoryImpl(summaryApi, Dispatchers.Unconfined)
+
+        // Antes de consultar, la cache en memoria esta vacia
+        org.junit.Assert.assertNull(repo.getCachedMatchDetail("match_cached_test"))
+
+        // Primera consulta: va a red
+        val detail = repo.getMatchDetail(League.LIGA_MX, "match_cached_test", forceRefresh = false).getOrThrow()
+        assertEquals(1, networkCalls)
+        assertTrue(detail.isCompleted)
+
+        // getCachedMatchDetail retorna inmediatamente el objeto en memoria
+        val cached = repo.getCachedMatchDetail("match_cached_test")
+        org.junit.Assert.assertNotNull(cached)
+        assertEquals(detail.matchId, cached?.matchId)
+        assertTrue(cached?.isCompleted == true)
+
+        // Segunda consulta getMatchDetail sin forceRefresh: no incrementa llamadas de red
+        val secondCallResult = repo.getMatchDetail(League.LIGA_MX, "match_cached_test", forceRefresh = false).getOrThrow()
+        assertEquals(1, networkCalls)
+        assertEquals(detail.matchId, secondCallResult.matchId)
+    }
+
+    @Test
+    fun getStandings_and_getGroups_concurrentForceRefresh_deduplicatesNetworkCall() = runBlocking {
+        var standingsCalls = 0
+        val api = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String): EspnStandingsResponse {
+                standingsCalls++
+                return fakeApiService.getStandings(league)
+            }
+            override suspend fun getMatchSummary(league: String, eventId: String) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(api, Dispatchers.Unconfined)
+        val standings = repo.getStandings(League.WORLD_CUP, forceRefresh = true).getOrThrow()
+        val groups = repo.getGroups(League.WORLD_CUP, forceRefresh = true).getOrThrow()
+
+        assertEquals(1, standingsCalls)
+        assertEquals(4, standings.size)
+        assertEquals(2, groups.size)
+    }
+
+    @Test
+    fun getMatches_cachesConcludedPastDatesAcrossForceRefresh() = runBlocking {
+        val queriedDates = mutableListOf<String?>()
+        val pastCalendarApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                queriedDates.add(dates)
+                if (dates == null) {
+                    return EspnScoreboardResponse(
+                        leagues = listOf(
+                            EspnLeagueCalendarDto(
+                                calendar = listOf(
+                                    kotlinx.serialization.json.JsonPrimitive("2026-01-10T00:00Z")
+                                )
+                            )
+                        )
+                    )
+                }
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        EspnEventDto(
+                            id = "past_finished_1",
+                            date = "2026-01-10T20:00Z",
+                            name = "Team A vs Team B",
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "past_finished_1",
+                                    date = "2026-01-10T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "1", homeAway = "home", score = "1", winner = true, team = EspnTeamDto(id = "1", name = "Team A")),
+                                        EspnCompetitorDto(id = "2", homeAway = "away", score = "0", winner = false, team = EspnTeamDto(id = "2", name = "Team B"))
+                                    ),
+                                    status = EspnStatusDto(
+                                        type = EspnStatusTypeDto(state = "post", completed = true, detail = "FT")
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(pastCalendarApi, Dispatchers.Unconfined)
+        val firstLoad = repo.getMatches(League.LIGA_MX, forceRefresh = true).getOrThrow()
+        assertEquals(1, firstLoad.size)
+        assertEquals(1, queriedDates.count { it == "20260110" })
+
+        // Segunda llamada con forceRefresh = true no vuelve a pedir la fecha pasada ya concluida
+        val secondLoad = repo.getMatches(League.LIGA_MX, forceRefresh = true).getOrThrow()
+        assertEquals(1, secondLoad.size)
+        assertEquals(1, queriedDates.count { it == "20260110" })
+    }
+}
+
+
