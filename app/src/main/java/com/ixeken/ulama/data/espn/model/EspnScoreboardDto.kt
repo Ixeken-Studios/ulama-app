@@ -1,7 +1,9 @@
 package com.ixeken.ulama.data.espn.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -28,13 +30,40 @@ data class EspnLeagueCalendarDto(
     val season: EspnLeagueSeasonDto? = null
 ) {
     /**
-     * Extrae de forma segura las cadenas de fechas ISO del calendario, ignorando
-     * estructuras anidadas u objetos que devuelven torneos como la Champions League.
+     * Extrae de forma recursiva las cadenas de fechas ISO del calendario, soportando tanto
+     * arreglos planos de cadenas como estructuras jerarquicas de objetos con entries.
      */
     fun extractDateStrings(): List<String> {
-        return calendar.mapNotNull { element ->
-            (element as? JsonPrimitive)?.content
+        val result = mutableListOf<String>()
+        fun extractFrom(element: JsonElement) {
+            when (element) {
+                is JsonPrimitive -> if (element.isString && element.content.isNotBlank()) {
+                    result.add(element.content)
+                }
+                is JsonArray -> element.forEach { extractFrom(it) }
+                is JsonObject -> {
+                    val entries = element["entries"]
+                    if (entries != null) {
+                        extractFrom(entries)
+                    } else {
+                        val startVal = (element["startDate"] as? JsonPrimitive)?.content
+                        val endVal = (element["endDate"] as? JsonPrimitive)?.content
+                        val valueVal = (element["value"] as? JsonPrimitive)?.content
+                        val isSingleDay = endVal == null || (startVal != null && startVal.take(10) == endVal.take(10))
+                        val resolved = when {
+                            !valueVal.isNullOrBlank() && valueVal.length >= 10 && valueVal[0].isDigit() -> valueVal
+                            isSingleDay && !startVal.isNullOrBlank() && startVal.length >= 10 && startVal[0].isDigit() -> startVal
+                            else -> null
+                        }
+                        if (resolved != null) {
+                            result.add(resolved)
+                        }
+                    }
+                }
+            }
         }
+        calendar.forEach { extractFrom(it) }
+        return result
     }
 }
 
@@ -53,9 +82,9 @@ data class EspnSeasonDto(
 
 @Serializable
 data class EspnEventDto(
-    val id: String,
-    val date: String,
-    val name: String,
+    val id: String = "",
+    val date: String = "",
+    val name: String = "",
     val season: EspnSeasonDto? = null,
     val competitions: List<EspnCompetitionDto> = emptyList(),
     val status: EspnStatusDto? = null
@@ -63,9 +92,10 @@ data class EspnEventDto(
 
 @Serializable
 data class EspnCompetitionDto(
-    val id: String,
-    val date: String,
+    val id: String = "",
+    val date: String = "",
     val competitors: List<EspnCompetitorDto> = emptyList(),
+    val details: List<EspnSummaryScoringPlayDto> = emptyList(),
     val status: EspnStatusDto? = null,
     val venue: EspnVenueDto? = null,
     val leg: EspnLegDto? = null,
@@ -100,7 +130,7 @@ data class EspnSeriesDto(
  */
 @Serializable
 data class EspnSeriesCompetitorDto(
-    val id: String,
+    val id: String = "",
     val aggregateScore: Double? = null,
     val winner: Boolean = false
 )
@@ -123,13 +153,13 @@ data class EspnLinescoreDto(
 
 @Serializable
 data class EspnCompetitorDto(
-    val id: String,
+    val id: String = "",
     val homeAway: String = "home",
     val winner: Boolean = false,
     val score: String? = null,
     val shootoutScore: Int? = null,
     val linescores: List<EspnLinescoreDto> = emptyList(),
-    val team: EspnTeamDto,
+    val team: EspnTeamDto = EspnTeamDto(),
     val records: List<EspnRecordDto> = emptyList()
 )
 
@@ -142,7 +172,7 @@ data class EspnRecordDto(
 
 @Serializable
 data class EspnTeamDto(
-    val id: String,
+    val id: String = "",
     val name: String = "",
     val displayName: String = "",
     val shortDisplayName: String? = null,
@@ -157,7 +187,7 @@ data class EspnStatusDto(
     val clock: Double? = 0.0,
     val displayClock: String? = "",
     val period: Int? = 1,
-    val type: EspnStatusTypeDto
+    val type: EspnStatusTypeDto? = null
 )
 
 @Serializable

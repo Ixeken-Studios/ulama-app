@@ -28,10 +28,13 @@ import com.ixeken.ulama.core.model.TeamLineup
 import com.ixeken.ulama.data.espn.EspnApiService
 import com.ixeken.ulama.data.espn.model.EspnCompetitorDto
 import com.ixeken.ulama.data.espn.model.EspnEventDto
+import com.ixeken.ulama.data.espn.model.EspnLeaderEntryDto
 import com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse
 import com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto
 import com.ixeken.ulama.data.espn.model.EspnRosterTeamDto
+import com.ixeken.ulama.data.espn.model.EspnStandingsChildDto
 import com.ixeken.ulama.data.espn.model.EspnStandingsEntryDto
+import com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -80,7 +83,7 @@ class MatchRepositoryImpl(
             }
         }
 
-        runCatching {
+        val result = runCatching {
             val cacheControlHeader = if (forceRefresh) "no-cache" else null
             if (dates != null) {
                 val dateKey = "${league.code}_$dates"
@@ -110,9 +113,12 @@ class MatchRepositoryImpl(
             )
             val initialMatches = initialResponse.events.mapNotNull { it.toMatch(league) }
             val calendar = initialResponse.leagues.firstOrNull()?.extractDateStrings().orEmpty()
-            val targetDates = if (league.isTournament) emptyList() else resolveMatchdayDates(calendar)
+            // Si un torneo anual alcanza el tope de 200 eventos, complementamos con las fechas activas del calendario
+            // para evitar que las jornadas actuales o proximas queden truncadas al final del ano.
+            val shouldResolveCalendar = !league.isTournament || (calendar.isNotEmpty() && initialMatches.size >= 180)
+            val targetDates = if (shouldResolveCalendar) resolveMatchdayDates(calendar) else emptyList()
 
-            val matchesList = if (targetDates.isEmpty() || league.isTournament) {
+            val matchesList = if (targetDates.isEmpty()) {
                 initialMatches
             } else {
                 val todayBasicIso = LocalDate.now(ZoneId.systemDefault()).format(DateTimeFormatter.BASIC_ISO_DATE)
@@ -139,11 +145,11 @@ class MatchRepositoryImpl(
                                     dates = dateStr,
                                     cacheControl = dateCacheControl
                                 ).events.mapNotNull { it.toMatch(league) }
-                                if (isPastDate && dayMatches.isNotEmpty() && dayMatches.all { it.isFinished }) {
+                                if (dayMatches.isNotEmpty()) {
                                     dateMatchesCache[dateKey] = Pair(dayMatches, System.currentTimeMillis())
                                 }
                                 dayMatches
-                            }.getOrDefault(emptyList())
+                            }.getOrElse { cachedDateEntry?.first.orEmpty() }
                         }
                     }.awaitAll()
                 }.flatten()
@@ -178,6 +184,14 @@ class MatchRepositoryImpl(
             }
             sanitizedList
         }
+
+        if (result.isFailure && dates == null) {
+            val fallbackCached = matchesCache[league]?.first
+            if (!fallbackCached.isNullOrEmpty()) {
+                return@withContext Result.success(fallbackCached)
+            }
+        }
+        result
     }
 
     override suspend fun getStandings(league: League, forceRefresh: Boolean): Result<List<StandingEntry>> = withContext(ioDispatcher) {
@@ -225,11 +239,12 @@ class MatchRepositoryImpl(
                 return@withLock Result.success(Pair(emptyList(), emptyList()))
             }
 
-            runCatching {
-                val response = apiService.getStandings(league = league.code)
-                val children = response.children
+            val cacheControlHeader = if (forceRefresh) "no-cache" else null
+            val result = runCatching {
+                val response = apiService.getStandings(league = league.code, cacheControl = cacheControlHeader)
+                val flattenedChildren = flattenStandingsChildren(response.children)
 
-                if (children.size > 1) {
+                if (flattenedChildren.size > 1) {
                     val groupCutoffs = listOf(
                         TableCutoff(
                             rankAfter = 2,
@@ -238,30 +253,12 @@ class MatchRepositoryImpl(
                         )
                     )
 
-                    val groupsList = children.mapNotNull { child ->
-                        val entries = child.standings?.entries.orEmpty().mapNotNull { it.toStandingEntry() }
+                    val groupsList = flattenedChildren.mapNotNull { (rawName, rawEntries) ->
+                        val entries = rawEntries.mapNotNull { it.toStandingEntry() }
                         if (entries.isEmpty()) return@mapNotNull null
 
-                        val sortedEntries = entries.sortedWith(
-                            compareBy<StandingEntry> { if (it.rank > 0) it.rank else Int.MAX_VALUE }
-                                .thenByDescending { it.points }
-                                .thenByDescending { it.goalDifference }
-                                .thenByDescending { it.goalsFor }
-                                .thenBy { it.teamName }
-                        ).mapIndexed { index, entry ->
-                            entry.copy(rank = if (entry.rank > 0) entry.rank else index + 1)
-                        }
-
-                        val rawName = child.name.ifBlank { child.abbreviation.orEmpty() }
-                        val groupName = when {
-                            rawName.startsWith("Group ", ignoreCase = true) -> rawName.substring(6).trim()
-                            rawName.startsWith("Grupo ", ignoreCase = true) -> rawName.substring(6).trim()
-                            rawName.startsWith("League ", ignoreCase = true) ->
-                                rawName.replace("League ", "Liga ", ignoreCase = true)
-                                    .replace(", Group ", " - Grupo ", ignoreCase = true)
-                                    .replace("Group ", "Grupo ", ignoreCase = true)
-                            else -> rawName
-                        }
+                        val sortedEntries = sortStandingEntries(entries)
+                        val groupName = normalizeGroupName(rawName)
 
                         GroupStandings(
                             name = groupName,
@@ -277,17 +274,10 @@ class MatchRepositoryImpl(
                     standingsTimestampCache[league] = System.currentTimeMillis()
                     Pair(flattenedStandings, groupsList)
                 } else {
-                    val entries = children.firstOrNull()?.standings?.entries.orEmpty()
+                    val entries = flattenedChildren.firstOrNull()?.second
+                        ?: response.standings?.entries.orEmpty()
                     val mapped = entries.mapNotNull { it.toStandingEntry() }
-                    val sortedEntries = mapped.sortedWith(
-                        compareBy<StandingEntry> { if (it.rank > 0) it.rank else Int.MAX_VALUE }
-                            .thenByDescending { it.points }
-                            .thenByDescending { it.goalDifference }
-                            .thenByDescending { it.goalsFor }
-                            .thenBy { it.teamName }
-                    ).mapIndexed { index, entry ->
-                        entry.copy(rank = if (entry.rank > 0) entry.rank else index + 1)
-                    }
+                    val sortedEntries = sortStandingEntries(mapped)
 
                     groupsCache[league] = emptyList()
                     standingsCache[league] = sortedEntries
@@ -295,6 +285,67 @@ class MatchRepositoryImpl(
                     Pair(sortedEntries, emptyList())
                 }
             }
+
+            if (result.isFailure) {
+                val cachedStandings = standingsCache[league]
+                val cachedGroups = groupsCache[league]
+                if (cachedStandings != null && cachedGroups != null) {
+                    return@withLock Result.success(Pair(cachedStandings, cachedGroups))
+                }
+            }
+            result
+        }
+    }
+
+    /**
+     * Aplana recursivamente la jerarquia de nodos de clasificacion para soportar torneos
+     * con niveles anidados como Liga A -> Grupo 1 sin requerir logica especifica por liga.
+     */
+    private fun flattenStandingsChildren(
+        children: List<EspnStandingsChildDto>,
+        parentPrefix: String = ""
+    ): List<Pair<String, List<EspnStandingsEntryDto>>> {
+        val result = mutableListOf<Pair<String, List<EspnStandingsEntryDto>>>()
+        for (child in children) {
+            val childName = child.name.ifBlank { child.abbreviation.orEmpty() }
+            val combinedName = when {
+                parentPrefix.isBlank() -> childName
+                childName.isBlank() -> parentPrefix
+                childName.startsWith(parentPrefix, ignoreCase = true) -> childName
+                else -> "$parentPrefix, $childName"
+            }
+            val directEntries = child.standings?.entries.orEmpty()
+            if (directEntries.isNotEmpty()) {
+                result.add(Pair(combinedName, directEntries))
+            }
+            if (child.children.isNotEmpty()) {
+                result.addAll(flattenStandingsChildren(child.children, combinedName))
+            }
+        }
+        return result
+    }
+
+    private fun sortStandingEntries(entries: List<StandingEntry>): List<StandingEntry> {
+        return entries.sortedWith(
+            compareBy<StandingEntry> { if (it.rank > 0) it.rank else Int.MAX_VALUE }
+                .thenByDescending { it.points }
+                .thenByDescending { it.goalDifference }
+                .thenByDescending { it.goalsFor }
+                .thenBy { it.teamName }
+        ).mapIndexed { index, entry ->
+            entry.copy(rank = if (entry.rank > 0) entry.rank else index + 1)
+        }
+    }
+
+    private fun normalizeGroupName(rawName: String): String {
+        return when {
+            rawName.startsWith("Group ", ignoreCase = true) -> rawName.substring(6).trim()
+            rawName.startsWith("Grupo ", ignoreCase = true) -> rawName.substring(6).trim()
+            rawName.startsWith("League ", ignoreCase = true) ->
+                rawName.replace("League ", "Liga ", ignoreCase = true)
+                    .replace(", Group ", " - Grupo ", ignoreCase = true)
+                    .replace("Group ", "Grupo ", ignoreCase = true)
+            else -> rawName
         }
     }
 
@@ -302,10 +353,10 @@ class MatchRepositoryImpl(
         val cached = matchDetailCache[matchId] ?: return null
         val (detail, timestamp) = cached
         val age = System.currentTimeMillis() - timestamp
-        val ttl = when {
-            detail.isCompleted -> 24 * 3600 * 1000L // 24 horas para partidos concluidos
-            detail.stats.isEmpty() -> 15 * 60 * 1000L // 15 minutos para partidos programados
-            else -> 20_000L // 20 segundos para partidos en vivo
+        val ttl = if (detail.isCompleted) {
+            24 * 3600 * 1000L // 24 horas para partidos concluidos
+        } else {
+            20_000L // 20 segundos para partidos en vivo o previos al inicio
         }
         return if (age < ttl) detail else null
     }
@@ -321,52 +372,71 @@ class MatchRepositoryImpl(
                 return@withContext Result.success(cached)
             }
         }
-        runCatching {
-            val response = apiService.getMatchSummary(league = league.code, eventId = matchId)
+        val cacheControlHeader = if (forceRefresh) "no-cache" else null
+        val result = runCatching {
+            val response = apiService.getMatchSummary(
+                league = league.code,
+                eventId = matchId,
+                cacheControl = cacheControlHeader
+            )
             val detail = response.toMatchDetail(matchId)
             matchDetailCache[matchId] = Pair(detail, System.currentTimeMillis())
             detail
         }
+        if (result.isFailure) {
+            val fallback = matchDetailCache[matchId]?.first
+            if (fallback != null) {
+                return@withContext Result.success(fallback)
+            }
+        }
+        result
     }
 
     private fun EspnMatchSummaryResponse.toMatchDetail(matchId: String): MatchDetail {
         val competition = header?.competitions?.firstOrNull()
         val isCompleted = competition?.status?.type?.completed == true ||
             competition?.status?.type?.state?.equals("post", ignoreCase = true) == true
-        val scoringDetails = competition?.details.orEmpty().filter { it.scoringPlay }
 
-        val homeTeamDto = boxscore?.teams?.getOrNull(0)?.team ?: rosters.getOrNull(0)?.team
-        val awayTeamDto = boxscore?.teams?.getOrNull(1)?.team ?: rosters.getOrNull(1)?.team
-        val homeTeamId = homeTeamDto?.id.orEmpty()
-        val awayTeamId = awayTeamDto?.id.orEmpty()
+        val homeCompetitor = competition?.competitors?.firstOrNull { it.homeAway.equals("home", ignoreCase = true) }
+        val awayCompetitor = competition?.competitors?.firstOrNull { it.homeAway.equals("away", ignoreCase = true) }
 
-        val homeScorers = scoringDetails
-            .filter { it.team?.id == homeTeamId }
-            .groupBy { it.participants.firstOrNull()?.athlete?.displayName.orEmpty() }
-            .filterKeys { it.isNotBlank() }
-            .map { (name, plays) ->
-                val minutes = plays.mapNotNull { it.clock?.displayValue?.takeIf { c -> c.isNotBlank() } }
-                    .joinToString(", ")
-                GoalScorer(playerName = name, minutesDisplay = minutes)
-            }
+        val homeTeamDto = homeCompetitor?.team
+            ?: boxscore?.teams?.firstOrNull { it.homeAway.equals("home", ignoreCase = true) }?.team
+            ?: rosters.firstOrNull { it.homeAway.equals("home", ignoreCase = true) }?.team
+            ?: boxscore?.teams?.getOrNull(0)?.team
+            ?: rosters.getOrNull(0)?.team
 
-        val awayScorers = scoringDetails
-            .filter { it.team?.id == awayTeamId }
-            .groupBy { it.participants.firstOrNull()?.athlete?.displayName.orEmpty() }
-            .filterKeys { it.isNotBlank() }
-            .map { (name, plays) ->
-                val minutes = plays.mapNotNull { it.clock?.displayValue?.takeIf { c -> c.isNotBlank() } }
-                    .joinToString(", ")
-                GoalScorer(playerName = name, minutesDisplay = minutes)
-            }
+        val awayTeamDto = awayCompetitor?.team
+            ?: boxscore?.teams?.firstOrNull { it.homeAway.equals("away", ignoreCase = true) }?.team
+            ?: rosters.firstOrNull { it.homeAway.equals("away", ignoreCase = true) }?.team
+            ?: boxscore?.teams?.getOrNull(1)?.team
+            ?: rosters.getOrNull(1)?.team
 
-        val homeStatsMap = boxscore?.teams?.getOrNull(0)?.statistics.orEmpty().associateBy { it.name }
-        val awayStatsMap = boxscore?.teams?.getOrNull(1)?.statistics.orEmpty().associateBy { it.name }
+        val homeTeamId = homeCompetitor?.id?.takeIf { it.isNotBlank() } ?: homeTeamDto?.id.orEmpty()
+        val awayTeamId = awayCompetitor?.id?.takeIf { it.isNotBlank() } ?: awayTeamDto?.id.orEmpty()
+
+        val rawScoringPlays = competition?.details.orEmpty().ifEmpty { keyEvents }
+        val homeScorers = extractGoalScorers(rawScoringPlays, homeTeamId)
+        val awayScorers = extractGoalScorers(rawScoringPlays, awayTeamId)
+
+        val homeBoxscore = boxscore?.teams?.firstOrNull { it.team.id == homeTeamId && homeTeamId.isNotBlank() }
+            ?: boxscore?.teams?.firstOrNull { it.homeAway.equals("home", ignoreCase = true) }
+            ?: boxscore?.teams?.getOrNull(0)
+        val awayBoxscore = boxscore?.teams?.firstOrNull { it.team.id == awayTeamId && awayTeamId.isNotBlank() }
+            ?: boxscore?.teams?.firstOrNull { it.homeAway.equals("away", ignoreCase = true) }
+            ?: boxscore?.teams?.getOrNull(1)
+
+        val homeStatsMap = homeBoxscore?.statistics.orEmpty().associateBy { it.name }
+        val awayStatsMap = awayBoxscore?.statistics.orEmpty().associateBy { it.name }
 
         val statsList = buildStatsList(homeStatsMap, awayStatsMap)
 
-        val homeRoster = rosters.firstOrNull { it.team.id == homeTeamId } ?: rosters.getOrNull(0)
-        val awayRoster = rosters.firstOrNull { it.team.id == awayTeamId } ?: rosters.getOrNull(1)
+        val homeRoster = rosters.firstOrNull { it.team.id == homeTeamId && homeTeamId.isNotBlank() }
+            ?: rosters.firstOrNull { it.homeAway.equals("home", ignoreCase = true) }
+            ?: rosters.getOrNull(0)
+        val awayRoster = rosters.firstOrNull { it.team.id == awayTeamId && awayTeamId.isNotBlank() }
+            ?: rosters.firstOrNull { it.homeAway.equals("away", ignoreCase = true) }
+            ?: rosters.getOrNull(1)
 
         val broadcastsList = broadcasts.mapNotNull { b ->
             b.media?.shortName?.takeIf { it.isNotBlank() }
@@ -387,9 +457,9 @@ class MatchRepositoryImpl(
         }
 
         // Mapeo de Racha Reciente (lastFiveGames)
-        val homeLastFive = lastFiveGames.firstOrNull { it.team?.id == homeTeamId }
+        val homeLastFive = lastFiveGames.firstOrNull { it.team?.id == homeTeamId && homeTeamId.isNotBlank() }
             ?: lastFiveGames.getOrNull(0)
-        val awayLastFive = lastFiveGames.firstOrNull { it.team?.id == awayTeamId }
+        val awayLastFive = lastFiveGames.firstOrNull { it.team?.id == awayTeamId && awayTeamId.isNotBlank() }
             ?: lastFiveGames.getOrNull(1)
 
         val homeRecentForm = homeLastFive?.events.orEmpty().mapNotNull { ev ->
@@ -469,52 +539,58 @@ class MatchRepositoryImpl(
             } else null
         }
 
-        // Mapeo de Líderes Individuales del Partido (summary.leaders)
-        val homeLeadersDto = leaders.firstOrNull { it.team?.id == homeTeamId } ?: leaders.getOrNull(0)
-        val awayLeadersDto = leaders.firstOrNull { it.team?.id == awayTeamId } ?: leaders.getOrNull(1)
+        // Mapeo de Lideres Individuales exclusivos del partido concluido (summary.leaders).
+        // Se descartan estadisticas acumuladas de ultimos partidos o temporada ("Matches: 5", etc.)
+        // y se restringe estrictamente a partidos finalizados y a las categorias de juego unico.
+        val matchLeaders = if (!isCompleted) {
+            emptyList()
+        } else {
+            val homeLeadersDto = leaders.firstOrNull { it.team?.id == homeTeamId && homeTeamId.isNotBlank() }
+                ?: leaders.getOrNull(0)
+            val awayLeadersDto = leaders.firstOrNull { it.team?.id == awayTeamId && awayTeamId.isNotBlank() }
+                ?: leaders.getOrNull(1)
 
-        val homeCatMap = homeLeadersDto?.leaders.orEmpty().associateBy { it.name }
-        val awayCatMap = awayLeadersDto?.leaders.orEmpty().associateBy { it.name }
+            val homeCatMap = homeLeadersDto?.leaders.orEmpty().associateBy { it.name }
+            val awayCatMap = awayLeadersDto?.leaders.orEmpty().associateBy { it.name }
 
-        val orderedCategories = listOf("totalShots", "accuratePasses", "defensiveInterventions", "saves")
-        val allCategoryKeys = (homeCatMap.keys + awayCatMap.keys).distinct()
-        val availableKeys = orderedCategories.filter { it in allCategoryKeys } + (allCategoryKeys - orderedCategories.toSet())
+            val orderedCategories = listOf("totalShots", "accuratePasses", "defensiveInterventions", "saves")
 
-        val matchLeaders = availableKeys.mapNotNull { catKey ->
-            val homeCat = homeCatMap[catKey]
-            val awayCat = awayCatMap[catKey]
-            val homeEntry = homeCat?.leaders?.firstOrNull()
-            val awayEntry = awayCat?.leaders?.firstOrNull()
+            orderedCategories.mapNotNull { catKey ->
+                val homeCat = homeCatMap[catKey]
+                val awayCat = awayCatMap[catKey]
+                val homeEntry = homeCat?.leaders?.firstOrNull { isSingleMatchLeaderEntry(it) }
+                val awayEntry = awayCat?.leaders?.firstOrNull { isSingleMatchLeaderEntry(it) }
 
-            if (homeEntry == null && awayEntry == null) return@mapNotNull null
+                if (homeEntry == null && awayEntry == null) return@mapNotNull null
 
-            val homeLeader = homeEntry?.let { entry ->
-                MatchPlayerLeader(
-                    athleteName = entry.athlete?.shortName?.takeIf { it.isNotBlank() }
-                        ?: entry.athlete?.displayName.orEmpty(),
-                    jersey = entry.athlete?.jersey,
-                    valueDisplay = entry.displayValue,
-                    statSummary = entry.summary
+                val homeLeader = homeEntry?.let { entry ->
+                    MatchPlayerLeader(
+                        athleteName = entry.athlete?.shortName?.takeIf { it.isNotBlank() }
+                            ?: entry.athlete?.displayName.orEmpty(),
+                        jersey = entry.athlete?.jersey,
+                        valueDisplay = entry.displayValue,
+                        statSummary = entry.summary
+                    )
+                }
+
+                val awayLeader = awayEntry?.let { entry ->
+                    MatchPlayerLeader(
+                        athleteName = entry.athlete?.shortName?.takeIf { it.isNotBlank() }
+                            ?: entry.athlete?.displayName.orEmpty(),
+                        jersey = entry.athlete?.jersey,
+                        valueDisplay = entry.displayValue,
+                        statSummary = entry.summary
+                    )
+                }
+
+                MatchLeaderCategory(
+                    categoryKey = catKey,
+                    displayNameFallback = homeCat?.displayName?.takeIf { it.isNotBlank() }
+                        ?: awayCat?.displayName.orEmpty(),
+                    homeLeader = homeLeader,
+                    awayLeader = awayLeader
                 )
             }
-
-            val awayLeader = awayEntry?.let { entry ->
-                MatchPlayerLeader(
-                    athleteName = entry.athlete?.shortName?.takeIf { it.isNotBlank() }
-                        ?: entry.athlete?.displayName.orEmpty(),
-                    jersey = entry.athlete?.jersey,
-                    valueDisplay = entry.displayValue,
-                    statSummary = entry.summary
-                )
-            }
-
-            MatchLeaderCategory(
-                categoryKey = catKey,
-                displayNameFallback = homeCat?.displayName?.takeIf { it.isNotBlank() }
-                    ?: awayCat?.displayName.orEmpty(),
-                homeLeader = homeLeader,
-                awayLeader = awayLeader
-            )
         }
 
         return MatchDetail(
@@ -538,6 +614,87 @@ class MatchRepositoryImpl(
             leaders = matchLeaders,
             isCompleted = isCompleted
         )
+    }
+
+    /**
+     * Verifica que una entrada de lider corresponda exclusivamente al partido actual,
+     * descartando cadenas acumuladas de racha o temporada que incluyan conteo de partidos.
+     */
+    private fun isSingleMatchLeaderEntry(entry: EspnLeaderEntryDto): Boolean {
+        val combined = "${entry.displayValue} ${entry.summary.orEmpty()}"
+        if (combined.isBlank()) return false
+        val multiMatchTokens = listOf("matches", "partidos", "games", "appearances", "apariciones", "pj:")
+        return multiMatchTokens.none { token -> combined.contains(token, ignoreCase = true) }
+    }
+
+    /**
+     * Extrae la lista de goleadores de un equipo unificando todas las variantes de jugadas de ESPN
+     * (participants, athletesInvolved y texto corto/largo en details o keyEvents).
+     */
+    private fun extractGoalScorers(
+        plays: List<EspnSummaryScoringPlayDto>,
+        teamId: String
+    ): List<GoalScorer> {
+        if (teamId.isBlank() || plays.isEmpty()) return emptyList()
+        val goalPlays = plays.filter { play ->
+            play.team?.id == teamId && isGoalPlay(play)
+        }
+        if (goalPlays.isEmpty()) return emptyList()
+
+        return goalPlays
+            .groupBy { resolveScorerName(it) }
+            .filterKeys { it.isNotBlank() }
+            .map { (name, playerPlays) ->
+                val minutes = playerPlays.mapNotNull { play ->
+                    val baseClock = play.clock?.displayValue?.takeIf { c -> c.isNotBlank() } ?: return@mapNotNull null
+                    val typeText = play.type?.text.orEmpty()
+                    val isOg = play.ownGoal ||
+                        typeText.contains("Own Goal", ignoreCase = true) ||
+                        typeText.contains("Autogol", ignoreCase = true)
+                    val isPen = !isOg && (play.penaltyKick ||
+                        typeText.contains("Penalty", ignoreCase = true) ||
+                        typeText.contains("Penal", ignoreCase = true))
+                    when {
+                        isOg && !baseClock.contains("EC") && !baseClock.contains("OG") -> "$baseClock (EC)"
+                        isPen && !baseClock.contains("(P)") -> "$baseClock (P)"
+                        else -> baseClock
+                    }
+                }.joinToString(", ")
+                GoalScorer(playerName = name, minutesDisplay = minutes)
+            }
+    }
+
+    private fun isGoalPlay(play: EspnSummaryScoringPlayDto): Boolean {
+        if (play.scoringPlay) return true
+        val typeText = play.type?.text?.takeIf { it.isNotBlank() } ?: return false
+        val hasGoalKeyword = typeText.contains("Goal", ignoreCase = true) ||
+            typeText.contains("Gol", ignoreCase = true) ||
+            typeText.contains("Penalty - Scored", ignoreCase = true)
+        val isExcluded = typeText.contains("Kick", ignoreCase = true) && !typeText.contains("Penalty", ignoreCase = true) ||
+            typeText.contains("Miss", ignoreCase = true) ||
+            typeText.contains("Saved", ignoreCase = true) ||
+            typeText.contains("No Goal", ignoreCase = true)
+        return hasGoalKeyword && !isExcluded
+    }
+
+    private fun resolveScorerName(play: EspnSummaryScoringPlayDto): String {
+        val fromParticipant = play.participants.firstOrNull()?.athlete?.let {
+            it.displayName.ifBlank { it.shortName.orEmpty() }
+        }?.takeIf { it.isNotBlank() }
+        if (fromParticipant != null) return fromParticipant
+
+        val fromInvolved = play.athletesInvolved.firstOrNull()?.let {
+            it.displayName.ifBlank { it.shortName.orEmpty() }
+        }?.takeIf { it.isNotBlank() }
+        if (fromInvolved != null) return fromInvolved
+
+        val rawText = play.shortText?.takeIf { it.isNotBlank() } ?: play.text?.takeIf { it.isNotBlank() } ?: return ""
+        return rawText
+            .replace(Regex("""^(?:Goal!?\s*[-:]?\s*|Gol!?\s*[-:]?\s*|Own Goal by\s*)""", RegexOption.IGNORE_CASE), "")
+            .substringBefore(" (")
+            .substringBefore(" - ")
+            .replace(Regex("""\s+\d+(?:\+\d+)?'.*$"""), "")
+            .trim()
     }
 
     private fun buildStatsList(
@@ -596,8 +753,14 @@ class MatchRepositoryImpl(
     }
 
     private fun EspnRosterTeamDto.toTeamLineup(): TeamLineup {
-        val startersList = roster.filter { it.starter }.mapIndexed { index, p -> p.toLineupPlayer(index) }
-        val benchList = roster.filter { !it.starter }.mapIndexed { index, p -> p.toLineupPlayer(index) }
+        val (rawStarters, rawBench) = when {
+            roster.any { it.starter } -> roster.partition { it.starter }
+            roster.any { (it.formationPlace ?: 0) in 1..11 } -> roster.partition { (it.formationPlace ?: 0) in 1..11 }
+            roster.size >= 11 -> Pair(roster.take(11), roster.drop(11))
+            else -> Pair(roster, emptyList())
+        }
+        val startersList = rawStarters.mapIndexed { index, p -> p.toLineupPlayer(index) }
+        val benchList = rawBench.mapIndexed { index, p -> p.toLineupPlayer(index) }
         val resolvedShortName = team.shortDisplayName?.takeIf { it.isNotBlank() }
             ?: team.abbreviation?.takeIf { it.isNotBlank() }
             ?: team.name
@@ -605,7 +768,7 @@ class MatchRepositoryImpl(
             teamId = team.id,
             teamName = team.displayName.ifBlank { team.name },
             shortName = resolvedShortName,
-            formation = formation ?: "4-4-2",
+            formation = formation?.takeIf { it.isNotBlank() } ?: "4-4-2",
             teamColor = team.color,
             teamAlternateColor = team.alternateColor,
             starters = startersList,
@@ -614,12 +777,31 @@ class MatchRepositoryImpl(
     }
 
     private fun EspnRosterPlayerItemDto.toLineupPlayer(index: Int): LineupPlayer {
-        val posName = position?.name.orEmpty()
-        val slot = formationPlace ?: (index + 1)
+        val resolvedPos = position ?: athlete?.extractPosition()
+        val posName = resolvedPos?.name?.takeIf { it.isNotBlank() }
+            ?: resolvedPos?.displayName?.takeIf { it.isNotBlank() }
+            .orEmpty()
+        val posAbbr = resolvedPos?.abbreviation.orEmpty().uppercase()
+        val slot = formationPlace?.takeIf { it > 0 } ?: (index + 1)
         val line = when {
-            slot == 1 || posName.contains("Goalkeeper", ignoreCase = true) || posName.contains("Portero", ignoreCase = true) -> TacticalLine.GOALKEEPER
-            posName.contains("Defender", ignoreCase = true) || posName.contains("Back", ignoreCase = true) || slot in 2..5 -> TacticalLine.DEFENSE
-            posName.contains("Midfield", ignoreCase = true) || slot in 6..9 -> TacticalLine.MIDFIELD
+            slot == 1 ||
+                posAbbr in setOf("G", "GK", "POR") ||
+                posName.contains("Goalkeeper", ignoreCase = true) ||
+                posName.contains("Goalie", ignoreCase = true) ||
+                posName.contains("Portero", ignoreCase = true) ||
+                posName.contains("Arquero", ignoreCase = true) -> TacticalLine.GOALKEEPER
+            posAbbr in setOf("D", "DF", "CB", "LB", "RB", "LWB", "RWB", "CD", "LD", "LI") ||
+                posName.contains("Defender", ignoreCase = true) ||
+                posName.contains("Defense", ignoreCase = true) ||
+                posName.contains("Back", ignoreCase = true) ||
+                posName.contains("Defensa", ignoreCase = true) ||
+                posName.contains("Lateral", ignoreCase = true) ||
+                slot in 2..5 -> TacticalLine.DEFENSE
+            posAbbr in setOf("M", "MF", "CM", "CDM", "CAM", "DM", "AM", "LM", "RM", "MC", "MCD", "MCO", "MI", "MD") ||
+                posName.contains("Midfield", ignoreCase = true) ||
+                posName.contains("Mediocamp", ignoreCase = true) ||
+                posName.contains("Volante", ignoreCase = true) ||
+                slot in 6..9 -> TacticalLine.MIDFIELD
             else -> TacticalLine.FORWARD
         }
         val subInMinute = if (subbedIn) {
@@ -630,12 +812,15 @@ class MatchRepositoryImpl(
                 ?: subbedInFor?.athlete?.displayName?.takeIf { it.isNotBlank() }
         } else null
         val subForJersey = if (subbedIn) subbedInFor?.jersey else null
+        val resolvedJersey = jersey?.takeIf { it.isNotBlank() }
+            ?: athlete?.jersey?.takeIf { it.isNotBlank() }
+            ?: "$slot"
 
         return LineupPlayer(
             id = athlete?.id ?: "$slot",
             name = athlete?.shortName?.takeIf { it.isNotBlank() } ?: athlete?.displayName.orEmpty(),
-            jersey = jersey ?: "$slot",
-            position = posName,
+            jersey = resolvedJersey,
+            position = posName.ifBlank { posAbbr },
             formationPlace = slot,
             line = line,
             subbedIn = subbedIn,
@@ -793,6 +978,8 @@ class MatchRepositoryImpl(
         val aggregateHome = series?.competitors?.find { it.id == homeCompetitor.id }?.aggregateScore?.toInt()
         val aggregateAway = series?.competitors?.find { it.id == awayCompetitor.id }?.aggregateScore?.toInt()
         val seriesSummary = competition.notes.firstOrNull()?.text?.ifBlank { null }
+        val homeScorers = extractGoalScorers(competition.details, homeTeam.id)
+        val awayScorers = extractGoalScorers(competition.details, awayTeam.id)
 
         return Match(
             id = id,
@@ -817,7 +1004,9 @@ class MatchRepositoryImpl(
             legText = legText,
             aggregateHomeScore = aggregateHome,
             aggregateAwayScore = aggregateAway,
-            seriesSummary = seriesSummary
+            seriesSummary = seriesSummary,
+            homeScorers = homeScorers,
+            awayScorers = awayScorers
         )
     }
 
@@ -976,7 +1165,7 @@ class MatchRepositoryImpl(
                     prevUpcoming = d
                 } else {
                     val gap = ChronoUnit.DAYS.between(prevUpcoming, d)
-                    if (gap <= 1L) {
+                    if (gap <= 1L || (upcomingCluster.size == 1 && gap <= 7L)) {
                         upcomingCluster.add(d)
                         prevUpcoming = d
                     } else {
@@ -993,7 +1182,7 @@ class MatchRepositoryImpl(
                     nextPast = d
                 } else {
                     val gap = ChronoUnit.DAYS.between(d, nextPast)
-                    if (gap <= 1L) {
+                    if (gap <= 1L || (pastCluster.size == 1 && gap <= 7L)) {
                         pastCluster.add(d)
                         nextPast = d
                     } else {

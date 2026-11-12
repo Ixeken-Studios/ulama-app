@@ -207,6 +207,7 @@ fun MatchDetailBottomSheet(
                     } else {
                         when (selectedTab) {
                             MatchDetailTab.STATS -> {
+                                val showMatchLeaders = match.isFinished && matchDetail?.leaders?.isNotEmpty() == true
                                 if (matchDetail != null && matchDetail.stats.isNotEmpty()) {
                                     MatchStatsView(
                                         stats = matchDetail.stats,
@@ -214,7 +215,7 @@ fun MatchDetailBottomSheet(
                                         awayColor = resolvedColors.awayColor,
                                         modifier = Modifier.animateListEntry(index = 2, key = "${match.id}_stats")
                                     )
-                                } else if (matchDetail == null || (matchDetail.headToHead == null && matchDetail.leaders.isEmpty())) {
+                                } else if (matchDetail == null || (matchDetail.headToHead == null && !showMatchLeaders)) {
                                     Text(
                                         text = stringResource(R.string.stats_not_available),
                                         style = MaterialTheme.typography.bodyMedium,
@@ -223,10 +224,10 @@ fun MatchDetailBottomSheet(
                                     )
                                 }
 
-                                if (matchDetail?.leaders?.isNotEmpty() == true) {
+                                if (showMatchLeaders) {
                                     Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
                                     MatchLeadersCard(
-                                        leaders = matchDetail.leaders,
+                                        leaders = matchDetail?.leaders.orEmpty(),
                                         homeTeam = match.homeTeam,
                                         awayTeam = match.awayTeam,
                                         homeColor = resolvedColors.homeColor,
@@ -244,7 +245,7 @@ fun MatchDetailBottomSheet(
                                         homeColor = resolvedColors.homeColor,
                                         awayColor = resolvedColors.awayColor,
                                         modifier = Modifier.animateListEntry(
-                                            index = if (matchDetail.leaders.isNotEmpty()) 4 else 3,
+                                            index = if (showMatchLeaders) 4 else 3,
                                             key = "${match.id}_h2h"
                                         )
                                     )
@@ -253,7 +254,9 @@ fun MatchDetailBottomSheet(
                             MatchDetailTab.LINEUPS -> {
                                 val hasLineupData = matchDetail != null && (
                                     (matchDetail.homeLineup?.starters?.isNotEmpty() == true) ||
-                                    (matchDetail.awayLineup?.starters?.isNotEmpty() == true)
+                                    (matchDetail.awayLineup?.starters?.isNotEmpty() == true) ||
+                                    (matchDetail.homeLineup?.bench?.isNotEmpty() == true) ||
+                                    (matchDetail.awayLineup?.bench?.isNotEmpty() == true)
                                 )
                                 if (hasLineupData) {
                                     SoccerPitch(

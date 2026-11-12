@@ -16,6 +16,8 @@ data class FollowedMatch(
     val leagueCode: String,
     val homeTeamName: String,
     val awayTeamName: String,
+    val homeTeamId: String = "",
+    val awayTeamId: String = "",
     val homeTeamShortName: String = "",
     val awayTeamShortName: String = "",
     val homeTeamLogo: String = "",
@@ -41,11 +43,14 @@ data class FollowedMatch(
  */
 fun FollowedMatch.toMatch(): Match {
     val targetLeague = League.fromCode(leagueCode)
+    val resolvedDateUtc = if (startTimeUtcMillis > 0L) {
+        java.time.Instant.ofEpochMilli(startTimeUtcMillis).toString()
+    } else ""
     return Match(
         id = matchId,
-        dateUtc = "",
+        dateUtc = resolvedDateUtc,
         homeTeam = Team(
-            id = "team_home_$matchId",
+            id = homeTeamId.ifBlank { "team_home_$matchId" },
             name = homeTeamName,
             shortName = homeTeamShortName,
             abbreviation = homeTeamShortName.ifBlank { homeTeamName.take(3).uppercase() },
@@ -56,7 +61,7 @@ fun FollowedMatch.toMatch(): Match {
             shootoutScore = homeShootoutScore
         ),
         awayTeam = Team(
-            id = "team_away_$matchId",
+            id = awayTeamId.ifBlank { "team_away_$matchId" },
             name = awayTeamName,
             shortName = awayTeamShortName,
             abbreviation = awayTeamShortName.ifBlank { awayTeamName.take(3).uppercase() },

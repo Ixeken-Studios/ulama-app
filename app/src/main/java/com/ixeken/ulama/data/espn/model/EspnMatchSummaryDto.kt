@@ -1,6 +1,9 @@
 package com.ixeken.ulama.data.espn.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Estructuras DTO para el detalle del partido proveniente del endpoint summary de ESPN.
@@ -12,6 +15,7 @@ data class EspnMatchSummaryResponse(
     val boxscore: EspnBoxscoreDto? = null,
     val rosters: List<EspnRosterTeamDto> = emptyList(),
     val header: EspnSummaryHeaderDto? = null,
+    val keyEvents: List<EspnSummaryScoringPlayDto> = emptyList(),
     val broadcasts: List<EspnBroadcastDto> = emptyList(),
     val gameInfo: EspnGameInfoDto? = null,
     val lastFiveGames: List<EspnLastFiveGamesDto> = emptyList(),
@@ -26,7 +30,8 @@ data class EspnBoxscoreDto(
 
 @Serializable
 data class EspnBoxscoreTeamDto(
-    val team: EspnTeamDto,
+    val team: EspnTeamDto = EspnTeamDto(),
+    val homeAway: String? = null,
     val statistics: List<EspnStatisticItemDto> = emptyList()
 )
 
@@ -39,7 +44,8 @@ data class EspnStatisticItemDto(
 
 @Serializable
 data class EspnRosterTeamDto(
-    val team: EspnTeamDto,
+    val team: EspnTeamDto = EspnTeamDto(),
+    val homeAway: String? = null,
     val formation: String? = null,
     val roster: List<EspnRosterPlayerItemDto> = emptyList()
 )
@@ -74,6 +80,7 @@ data class EspnPlayerPlayDto(
 @Serializable
 data class EspnPlayerPositionDto(
     val name: String? = null,
+    val displayName: String? = null,
     val abbreviation: String? = null
 )
 
@@ -82,8 +89,30 @@ data class EspnAthleteDto(
     val id: String? = null,
     val displayName: String = "",
     val shortName: String? = null,
-    val jersey: String? = null
-)
+    val jersey: String? = null,
+    val position: JsonElement? = null
+) {
+    /**
+     * Extrae la posicion del futbolista tolerando tanto cadenas planas ("CD-R", "GK")
+     * en jugadas y lideres como objetos estructurados en plantillas de alineacion.
+     */
+    fun extractPosition(): EspnPlayerPositionDto? {
+        return when (val pos = position) {
+            is JsonPrimitive -> if (pos.isString && pos.content.isNotBlank()) {
+                EspnPlayerPositionDto(
+                    name = pos.content,
+                    abbreviation = pos.content.substringBefore("-").trim()
+                )
+            } else null
+            is JsonObject -> EspnPlayerPositionDto(
+                name = (pos["name"] as? JsonPrimitive)?.content,
+                displayName = (pos["displayName"] as? JsonPrimitive)?.content,
+                abbreviation = (pos["abbreviation"] as? JsonPrimitive)?.content
+            )
+            else -> null
+        }
+    }
+}
 
 @Serializable
 data class EspnSummaryHeaderDto(
@@ -92,8 +121,15 @@ data class EspnSummaryHeaderDto(
 
 @Serializable
 data class EspnSummaryCompetitionDto(
+    val competitors: List<EspnCompetitorDto> = emptyList(),
     val details: List<EspnSummaryScoringPlayDto> = emptyList(),
     val status: EspnStatusDto? = null
+)
+
+@Serializable
+data class EspnPlayTypeDto(
+    val id: String? = null,
+    val text: String? = null
 )
 
 @Serializable
@@ -101,9 +137,13 @@ data class EspnSummaryScoringPlayDto(
     val scoringPlay: Boolean = false,
     val penaltyKick: Boolean = false,
     val ownGoal: Boolean = false,
+    val text: String? = null,
+    val shortText: String? = null,
+    val type: EspnPlayTypeDto? = null,
     val clock: EspnClockDisplayDto? = null,
     val team: EspnSummaryTeamRefDto? = null,
-    val participants: List<EspnScoringParticipantDto> = emptyList()
+    val participants: List<EspnScoringParticipantDto> = emptyList(),
+    val athletesInvolved: List<EspnAthleteDto> = emptyList()
 )
 
 @Serializable

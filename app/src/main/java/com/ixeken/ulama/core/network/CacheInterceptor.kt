@@ -50,7 +50,6 @@ class ResponseCacheInterceptor : Interceptor {
         val response = chain.proceed(request)
         val path = request.url.encodedPath
         val cacheControlHeader = when {
-            path.contains("/summary") -> "public, max-age=86400, stale-while-revalidate=86400"
             path.contains("/standings") -> "public, max-age=900, stale-while-revalidate=3600"
             else -> "public, max-age=60, stale-while-revalidate=300"
         }

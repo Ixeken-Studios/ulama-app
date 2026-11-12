@@ -20,7 +20,9 @@ data class Match(
     val legText: String? = null,
     val aggregateHomeScore: Int? = null,
     val aggregateAwayScore: Int? = null,
-    val seriesSummary: String? = null
+    val seriesSummary: String? = null,
+    val homeScorers: List<GoalScorer> = emptyList(),
+    val awayScorers: List<GoalScorer> = emptyList()
 ) {
     /**
      * Determina si el encuentro corresponde a una serie eliminatoria directa o fase de liguilla.

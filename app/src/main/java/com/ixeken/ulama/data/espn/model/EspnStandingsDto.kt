@@ -7,14 +7,16 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class EspnStandingsResponse(
-    val children: List<EspnStandingsChildDto> = emptyList()
+    val children: List<EspnStandingsChildDto> = emptyList(),
+    val standings: EspnStandingsEntriesDto? = null
 )
 
 @Serializable
 data class EspnStandingsChildDto(
     val name: String = "",
     val abbreviation: String? = null,
-    val standings: EspnStandingsEntriesDto? = null
+    val standings: EspnStandingsEntriesDto? = null,
+    val children: List<EspnStandingsChildDto> = emptyList()
 )
 
 @Serializable
@@ -24,13 +26,13 @@ data class EspnStandingsEntriesDto(
 
 @Serializable
 data class EspnStandingsEntryDto(
-    val team: EspnStandingsTeamDto,
+    val team: EspnStandingsTeamDto = EspnStandingsTeamDto(),
     val stats: List<EspnStatDto> = emptyList()
 )
 
 @Serializable
 data class EspnStandingsTeamDto(
-    val id: String,
+    val id: String = "",
     val name: String = "",
     val displayName: String = "",
     val shortDisplayName: String? = null,
@@ -40,7 +42,7 @@ data class EspnStandingsTeamDto(
 
 @Serializable
 data class EspnLogoDto(
-    val href: String
+    val href: String = ""
 )
 
 @Serializable

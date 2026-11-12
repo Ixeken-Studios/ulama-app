@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
+import com.ixeken.ulama.core.model.GoalScorer
 import com.ixeken.ulama.core.model.Match
 import com.ixeken.ulama.core.model.MatchDetail
 import com.ixeken.ulama.core.model.MatchState
@@ -122,10 +123,12 @@ fun MatchDetailHeader(
             )
         }
 
-        // Fila de Goleadores estilo Apple Sports
-        if (matchDetail != null && (matchDetail.homeScorers.isNotEmpty() || matchDetail.awayScorers.isNotEmpty())) {
+        // Fila de Goleadores estilo Apple Sports (con respaldo inmediato desde el marcador si el detalle sigue cargando)
+        val homeScorers = matchDetail?.homeScorers?.takeIf { it.isNotEmpty() } ?: match.homeScorers
+        val awayScorers = matchDetail?.awayScorers?.takeIf { it.isNotEmpty() } ?: match.awayScorers
+        if (homeScorers.isNotEmpty() || awayScorers.isNotEmpty()) {
             Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
-            HeaderScorersRow(matchDetail = matchDetail)
+            HeaderScorersRow(homeScorers = homeScorers, awayScorers = awayScorers)
         }
 
         // Boton Seguir Notificaciones (M3 Expressive): Se oculta en partidos concluidos porque ya no emitiran eventos en vivo
@@ -588,7 +591,8 @@ private fun HeaderScoreCenter(
 
 @Composable
 private fun HeaderScorersRow(
-    matchDetail: MatchDetail,
+    homeScorers: List<GoalScorer>,
+    awayScorers: List<GoalScorer>,
     modifier: Modifier = Modifier
 ) {
     val scorerTextStyle = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 12.sp)
@@ -602,7 +606,7 @@ private fun HeaderScorersRow(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.End
         ) {
-            matchDetail.homeScorers.forEach { scorer ->
+            homeScorers.forEach { scorer ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -648,7 +652,7 @@ private fun HeaderScorersRow(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start
         ) {
-            matchDetail.awayScorers.forEach { scorer ->
+            awayScorers.forEach { scorer ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,

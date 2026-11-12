@@ -24,12 +24,14 @@ interface EspnApiService {
 
     @GET("v2/sports/soccer/{league}/standings")
     suspend fun getStandings(
-        @Path("league") league: String
+        @Path("league") league: String,
+        @Header("Cache-Control") cacheControl: String? = null
     ): EspnStandingsResponse
 
     @GET("site/v2/sports/soccer/{league}/summary")
     suspend fun getMatchSummary(
         @Path("league") league: String,
-        @Query("event") eventId: String
+        @Query("event") eventId: String,
+        @Header("Cache-Control") cacheControl: String? = null
     ): EspnMatchSummaryResponse
 }

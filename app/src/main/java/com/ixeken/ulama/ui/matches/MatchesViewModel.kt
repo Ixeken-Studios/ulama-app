@@ -249,7 +249,12 @@ class MatchesViewModel(
             _uiState.value.availableTeamsByLeague[targetLeague].orEmpty()
         }
         val cachedDetail = repository.getCachedMatchDetail(match.id)
-        val isConcluded = match.isFinished || cachedDetail?.isCompleted == true
+        val totalGoals = (match.homeTeam.score ?: 0) + (match.awayTeam.score ?: 0)
+        val cachedGoals = cachedDetail?.let { it.homeScorers.size + it.awayScorers.size } ?: 0
+        val isCacheCompleteAndSynced = cachedDetail != null &&
+            cachedDetail.isCompleted &&
+            match.isFinished &&
+            (totalGoals == 0 || cachedGoals > 0)
 
         _uiState.update {
             it.copy(
@@ -260,10 +265,15 @@ class MatchesViewModel(
             )
         }
 
-        // Si el encuentro ya concluyo y contamos con los datos completos en cache, evitamos peticiones de red.
-        if (cachedDetail == null || !isConcluded) {
+        // Si el encuentro ya concluyo y contamos con los datos completos y sincronizados en cache, evitamos peticiones de red.
+        if (!isCacheCompleteAndSynced) {
+            val shouldForceDetailRefresh = match.status.state == MatchState.LIVE || cachedDetail != null
             viewModelScope.launch {
-                val detailResult = repository.getMatchDetail(targetLeague, match.id)
+                val detailResult = repository.getMatchDetail(
+                    league = targetLeague,
+                    matchId = match.id,
+                    forceRefresh = shouldForceDetailRefresh
+                )
                 if (_uiState.value.selectedMatch?.id == match.id) {
                     _uiState.update {
                         it.copy(
@@ -463,10 +473,12 @@ class MatchesViewModel(
                 }
             }
             val targetLeagues = resolveFavoriteTargetLeagues(favIds)
+            val previousMatchesSnapshot = cachedAllMatches
             coroutineScope {
                 targetLeagues.map { stdLeague ->
                     async {
-                        repository.getMatches(stdLeague, forceRefresh = forceRefresh).getOrDefault(emptyList())
+                        val fallbackForLeague = previousMatchesSnapshot.filter { it.league == stdLeague }
+                        repository.getMatches(stdLeague, forceRefresh = forceRefresh).getOrElse { fallbackForLeague }
                     }
                 }.awaitAll()
             }.flatten()
@@ -538,10 +550,12 @@ class MatchesViewModel(
                 }
                 return@launch
             }
+            val previousMatchesSnapshot = cachedAllMatches
             coroutineScope {
                 targetLeagues.map { stdLeague ->
                     async {
-                        repository.getMatches(stdLeague, forceRefresh = forceRefresh).getOrDefault(emptyList())
+                        val fallbackForLeague = previousMatchesSnapshot.filter { it.league == stdLeague }
+                        repository.getMatches(stdLeague, forceRefresh = forceRefresh).getOrElse { fallbackForLeague }
                     }
                 }.awaitAll()
             }.flatten()
@@ -623,25 +637,35 @@ class MatchesViewModel(
 
     /**
      * Determina las ligas donde participan los equipos favoritos activos cuando las tablas
-     * ya se encuentran en memoria, reduciendo las consultas paralelas solo a los torneos relevantes.
+     * ya se encuentran en memoria, reduciendo las consultas paralelas solo a los torneos relevantes
+     * sin excluir ligas sin tabla (como Amistosos) ni competiciones donde el club ya tiene partidos cargados.
      */
     private fun resolveFavoriteTargetLeagues(favIds: Set<String>): List<League> {
         if (favIds.isEmpty()) return emptyList()
         val teamsByLeague = _uiState.value.availableTeamsByLeague
         if (teamsByLeague.isEmpty()) return League.standardLeagues
+        val leaguesFromCachedMatches = cachedAllMatches
+            .filter { it.homeTeam.id in favIds || it.awayTeam.id in favIds }
+            .map { it.league }
+            .toSet()
         val matchedLeagues = League.standardLeagues.filter { league ->
-            val entries = teamsByLeague[league]
-            if (!entries.isNullOrEmpty()) {
-                entries.any { it.teamId in favIds }
+            if (league in leaguesFromCachedMatches || !league.hasStandings) {
+                true
             } else {
-                league.hasStandings && league.tournamentYear == null
+                val entries = teamsByLeague[league]
+                if (!entries.isNullOrEmpty()) {
+                    entries.any { it.teamId in favIds }
+                } else {
+                    league.tournamentYear == null
+                }
             }
         }
         return matchedLeagues.ifEmpty { League.standardLeagues }
     }
 
     /**
-     * Precarga los clubes oficiales por competicion en paralelo para poblar la hoja modal de seleccion de favoritos.
+     * Precarga los clubes oficiales por competicion en paralelo para poblar la hoja modal de seleccion de favoritos,
+     * extrayendo participantes desde los partidos cuando una competicion activa carece de tabla de posiciones.
      */
     private fun loadAvailableTeamsByLeague(forceRefresh: Boolean = false) {
         if (isLoadingAvailableTeams && !forceRefresh) return
@@ -650,10 +674,40 @@ class MatchesViewModel(
             try {
                 val entries = coroutineScope {
                     League.standardLeagues
-                        .filter { it.hasStandings && it.tournamentYear == null }
+                        .filter { it.tournamentYear == null }
                         .map { league ->
                             async {
-                                league to repository.getStandings(league, forceRefresh = forceRefresh).getOrDefault(emptyList())
+                                val standings = if (league.hasStandings) {
+                                    repository.getStandings(league, forceRefresh = forceRefresh).getOrDefault(emptyList())
+                                } else {
+                                    emptyList()
+                                }
+                                val resolvedTeams = standings.ifEmpty {
+                                    val matches = repository.getMatches(league, forceRefresh = false).getOrDefault(emptyList())
+                                    matches.flatMap { listOf(it.homeTeam, it.awayTeam) }
+                                        .filter { it.id.isNotBlank() }
+                                        .distinctBy { it.id }
+                                        .sortedBy { it.name }
+                                        .mapIndexed { idx, team ->
+                                            StandingEntry(
+                                                rank = idx + 1,
+                                                teamName = team.name,
+                                                teamShortName = team.shortName,
+                                                teamAbbreviation = team.abbreviation,
+                                                logoUrl = team.logoUrl,
+                                                gamesPlayed = 0,
+                                                wins = 0,
+                                                draws = 0,
+                                                losses = 0,
+                                                goalsFor = 0,
+                                                goalsAgainst = 0,
+                                                goalDifference = 0,
+                                                points = 0,
+                                                teamId = team.id
+                                            )
+                                        }
+                                }
+                                league to resolvedTeams
                             }
                         }.awaitAll()
                 }
@@ -719,6 +773,8 @@ class MatchesViewModel(
             val followed = FollowedMatch(
                 matchId = matchId,
                 leagueCode = match.league.code,
+                homeTeamId = match.homeTeam.id,
+                awayTeamId = match.awayTeam.id,
                 homeTeamName = match.homeTeam.name,
                 awayTeamName = match.awayTeam.name,
                 homeTeamShortName = match.homeTeam.shortName,
@@ -770,6 +826,8 @@ class MatchesViewModel(
             val followed = FollowedMatch(
                 matchId = match.id,
                 leagueCode = match.league.code,
+                homeTeamId = match.homeTeam.id,
+                awayTeamId = match.awayTeam.id,
                 homeTeamName = match.homeTeam.name,
                 awayTeamName = match.awayTeam.name,
                 homeTeamShortName = match.homeTeam.shortName,

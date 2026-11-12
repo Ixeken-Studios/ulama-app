@@ -46,7 +46,7 @@ data class MatchesUiState(
     val resolvedDetailStandings: List<StandingEntry>
         get() = when {
             detailStandings.isNotEmpty() -> detailStandings
-            standings.isNotEmpty() -> standings
+            standings.isNotEmpty() && (selectedMatch == null || selectedMatch.league == selectedLeague || selectedLeague == League.DEBUG) -> standings
             else -> emptyList()
         }
 }
