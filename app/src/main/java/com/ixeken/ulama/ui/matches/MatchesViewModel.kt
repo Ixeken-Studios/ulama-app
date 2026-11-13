@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.ixeken.ulama.core.model.FollowedMatch
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.LeagueCategory
+import com.ixeken.ulama.core.model.sanitizeAggregateScores
 import com.ixeken.ulama.core.model.Match
 import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.RadialBracketBuilder
@@ -503,6 +504,7 @@ class MatchesViewModel(
             }.flatten()
                 .distinctBy { it.id }
                 .sortedBy { it.dateUtc }
+                .sanitizeAggregateScores()
 
             if (_uiState.value.selectedLeague != League.FAVORITES) return@launch
                     cachedAllMatches = allAggregated
@@ -580,6 +582,7 @@ class MatchesViewModel(
             }.flatten()
                 .distinctBy { it.id }
                 .sortedBy { it.dateUtc }
+                .sanitizeAggregateScores()
 
             if (_uiState.value.selectedLeague != League.MY_LEAGUES) return@launch
 

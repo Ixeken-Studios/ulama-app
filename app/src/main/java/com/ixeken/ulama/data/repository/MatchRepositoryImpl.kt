@@ -23,6 +23,7 @@ import com.ixeken.ulama.core.model.TableCutoff
 import com.ixeken.ulama.core.model.TableZoneType
 import com.ixeken.ulama.core.model.TacticalLine
 import com.ixeken.ulama.core.model.Team
+import com.ixeken.ulama.core.model.sanitizeAggregateScores
 import com.ixeken.ulama.core.model.TeamFormMatch
 import com.ixeken.ulama.core.model.TeamLineup
 import com.ixeken.ulama.data.espn.EspnApiService
@@ -96,6 +97,7 @@ class MatchRepositoryImpl(
                 val response = apiService.getScoreboard(league = league.code, dates = dates, cacheControl = cacheControlHeader)
                 val mapped = response.events.mapNotNull { it.toMatch(league) }
                     .filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
+                    .sanitizeAggregateScores()
                 if (mapped.isNotEmpty()) {
                     dateMatchesCache[dateKey] = Pair(mapped, System.currentTimeMillis())
                 }
@@ -179,6 +181,7 @@ class MatchRepositoryImpl(
                 }
                 else -> matchesList
             }.filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
+            .sanitizeAggregateScores()
 
             if (sanitizedList.isNotEmpty()) {
                 matchesCache[league] = Pair(sanitizedList, System.currentTimeMillis())

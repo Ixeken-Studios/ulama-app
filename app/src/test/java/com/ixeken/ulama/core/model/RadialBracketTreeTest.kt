@@ -322,6 +322,100 @@ class RadialBracketTreeTest {
     }
 
     @Test
+    fun isAggregateActive_isFalseForFirstLeg() {
+        val dummyHome = Team("1", "Team A", "TMA", "TMA", null, isHome = true, score = null, isWinner = false)
+        val dummyAway = Team("2", "Team B", "TMB", "TMB", null, isHome = false, score = null, isWinner = false)
+        val dummyStatus = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false)
+
+        val firstLeg = Match(
+            id = "leg1",
+            dateUtc = "2026-11-15T01:00:00Z",
+            homeTeam = dummyHome,
+            awayTeam = dummyAway,
+            status = dummyStatus,
+            venueName = null,
+            legNumber = 1,
+            aggregateHomeScore = 0,
+            aggregateAwayScore = 0
+        )
+        org.junit.Assert.assertFalse(firstLeg.isAggregateActive)
+    }
+
+    @Test
+    fun sanitizeAggregateScores_whenFirstLegIsScheduled_clearsAggregateFromSecondLeg() {
+        val mexico = Team("203", "Mexico", "MEX", "MEX", null, isHome = true, score = null, isWinner = false)
+        val jamaica = Team("1038", "Jamaica", "JAM", "JAM", null, isHome = false, score = null, isWinner = false)
+
+        val leg1Scheduled = Match(
+            id = "leg1",
+            dateUtc = "2026-11-15T01:00:00Z",
+            homeTeam = jamaica,
+            awayTeam = mexico,
+            status = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false),
+            venueName = "Independence Park",
+            seriesTitle = "Quarterfinals",
+            legNumber = 1
+        )
+
+        val leg2ScheduledWithPlaceholderAggregate = Match(
+            id = "leg2",
+            dateUtc = "2026-11-18T02:30:00Z",
+            homeTeam = mexico,
+            awayTeam = jamaica,
+            status = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false),
+            venueName = "Estadio BBVA",
+            seriesTitle = "Quarterfinals",
+            legNumber = 2,
+            aggregateHomeScore = 0,
+            aggregateAwayScore = 0
+        )
+
+        val sanitized = listOf(leg1Scheduled, leg2ScheduledWithPlaceholderAggregate).sanitizeAggregateScores()
+        val sanitizedLeg2 = sanitized.first { it.id == "leg2" }
+
+        org.junit.Assert.assertNull(sanitizedLeg2.aggregateHomeScore)
+        org.junit.Assert.assertNull(sanitizedLeg2.aggregateAwayScore)
+        org.junit.Assert.assertFalse(sanitizedLeg2.isAggregateActive)
+    }
+
+    @Test
+    fun sanitizeAggregateScores_whenFirstLegIsFinished_keepsAggregateInSecondLeg() {
+        val mexico = Team("203", "Mexico", "MEX", "MEX", null, isHome = true, score = 2, isWinner = true)
+        val jamaica = Team("1038", "Jamaica", "JAM", "JAM", null, isHome = false, score = 1, isWinner = false)
+
+        val leg1Finished = Match(
+            id = "leg1",
+            dateUtc = "2026-11-15T01:00:00Z",
+            homeTeam = jamaica,
+            awayTeam = mexico,
+            status = MatchStatus(MatchState.FINISHED, "90'", "FT", isCompleted = true),
+            venueName = "Independence Park",
+            seriesTitle = "Quarterfinals",
+            legNumber = 1
+        )
+
+        val leg2Scheduled = Match(
+            id = "leg2",
+            dateUtc = "2026-11-18T02:30:00Z",
+            homeTeam = mexico,
+            awayTeam = jamaica,
+            status = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false),
+            venueName = "Estadio BBVA",
+            seriesTitle = "Quarterfinals",
+            legNumber = 2,
+            aggregateHomeScore = 2,
+            aggregateAwayScore = 1
+        )
+
+        val sanitized = listOf(leg1Finished, leg2Scheduled).sanitizeAggregateScores()
+        val sanitizedLeg2 = sanitized.first { it.id == "leg2" }
+
+        assertEquals(2, sanitizedLeg2.aggregateHomeScore)
+        assertEquals(1, sanitizedLeg2.aggregateAwayScore)
+        assertTrue(sanitizedLeg2.isAggregateActive)
+    }
+
+    @Test
     fun league_knockoutConfiguration() {
         assertTrue(League.LIGA_MX.hasKnockoutBracket)
         assertEquals(8, League.LIGA_MX.knockoutBracketTeams)

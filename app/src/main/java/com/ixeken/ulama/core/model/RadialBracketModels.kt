@@ -219,7 +219,7 @@ object RadialBracketBuilder {
         val totalTeams = league.knockoutBracketTeams
         if (totalTeams < 2) return null
 
-        val allKnockoutMatches = matches.filter { it.isKnockout }
+        val allKnockoutMatches = matches.sanitizeAggregateScores().filter { it.isKnockout }
         if (allKnockoutMatches.isEmpty()) {
             return createEmptyTree(totalTeams, league.hasThirdPlaceMatch)
         }

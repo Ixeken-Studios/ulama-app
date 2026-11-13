@@ -48,9 +48,10 @@ data class Match(
 
     /**
      * Identifica si existe un marcador global valido registrado para ambos contendientes.
+     * Un partido de ida (legNumber == 1) no posee marcador global por definicion.
      */
     val isAggregateActive: Boolean
-        get() = aggregateHomeScore != null && aggregateAwayScore != null
+        get() = aggregateHomeScore != null && aggregateAwayScore != null && legNumber != 1
 
     /**
      * Determina si el encuentro deportivo ha finalizado de forma definitiva.
@@ -114,4 +115,44 @@ data class Match(
     val isAwayLoser: Boolean
         get() = isFinished && !isDraw && isHomeWinner
 }
+
+/**
+ * Normaliza los marcadores globales en una coleccion de partidos eliminatorios a dos vueltas.
+ * Garantiza que ningun partido de vuelta programado o en curso exhiba marcador global
+ * si el partido de ida correspondiente aun no ha concluido en su totalidad.
+ */
+fun List<Match>.sanitizeAggregateScores(): List<Match> {
+    if (this.isEmpty()) return this
+    val matchesByTeams = this.groupBy { match ->
+        setOf(match.homeTeam.id, match.awayTeam.id)
+    }
+
+    return this.map { match ->
+        if (match.aggregateHomeScore == null || match.aggregateAwayScore == null) return@map match
+
+        // El partido de ida de una serie eliminatoria nunca posee marcador global acumulado
+        if (match.legNumber == 1) {
+            return@map match.copy(aggregateHomeScore = null, aggregateAwayScore = null)
+        }
+
+        // Buscamos el partido de ida de la misma serie eliminatoria entre ambos contendientes
+        val pairMatches = matchesByTeams[setOf(match.homeTeam.id, match.awayTeam.id)].orEmpty()
+        val firstLeg = pairMatches.firstOrNull { other ->
+            other.id != match.id &&
+                (!match.isKnockout || other.isKnockout) &&
+                (
+                    (other.legNumber != null && match.legNumber != null && other.legNumber < match.legNumber) ||
+                    other.dateUtc < match.dateUtc
+                )
+        }
+
+        // Si existe el partido de ida y aun no ha concluido, se anula el global en el partido de vuelta
+        if (firstLeg != null && !firstLeg.isFinished) {
+            match.copy(aggregateHomeScore = null, aggregateAwayScore = null)
+        } else {
+            match
+        }
+    }
+}
+
 
