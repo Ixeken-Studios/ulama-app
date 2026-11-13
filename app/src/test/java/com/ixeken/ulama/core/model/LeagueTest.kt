@@ -63,7 +63,7 @@ class LeagueTest {
 
         assertTrue(League.CONCACAF_NATIONS_LEAGUE.hasKnockoutBracket)
         assertEquals(8, League.CONCACAF_NATIONS_LEAGUE.knockoutBracketTeams)
-        assertFalse(League.CONCACAF_NATIONS_LEAGUE.hasThirdPlaceMatch)
+        assertTrue(League.CONCACAF_NATIONS_LEAGUE.hasThirdPlaceMatch)
 
         assertTrue(League.GOLD_CUP.hasKnockoutBracket)
         assertEquals(8, League.GOLD_CUP.knockoutBracketTeams)

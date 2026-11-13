@@ -242,7 +242,8 @@ enum class League(
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2406.png",
         category = LeagueCategory.INTERNATIONAL,
         isTournament = true,
-        knockoutBracketTeams = 8
+        knockoutBracketTeams = 8,
+        hasThirdPlaceMatch = true
     ),
     FRIENDLIES(
         code = "fifa.friendly",

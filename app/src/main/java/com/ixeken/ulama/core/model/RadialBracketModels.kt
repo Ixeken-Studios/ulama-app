@@ -224,12 +224,16 @@ object RadialBracketBuilder {
             return createEmptyTree(totalTeams, league.hasThirdPlaceMatch)
         }
 
-        // Si existen partidos de fase regular o grupos posteriores a eliminatorias concluidas,
+        // Si existen partidos de fase regular o grupos muy posteriores (mas de 45 dias) a eliminatorias concluidas,
         // dichas eliminatorias corresponden a una edicion previa y no al certamen activo en curso.
+        // Se usa un margen de 45 dias porque en torneos multinivel (Concacaf/UEFA Nations League) los grupos de
+        // Ligas B y C se disputan en la misma ventana FIFA que los Cuartos de Final de la Liga A.
         val regularPhaseMatches = matches.filter { !it.isKnockout }
         val latestRegularDate = regularPhaseMatches.maxOfOrNull { it.dateUtc }
         val knockoutMatches = if (latestRegularDate != null) {
-            allKnockoutMatches.filter { it.dateUtc > latestRegularDate || !it.isFinished }
+            allKnockoutMatches.filter { match ->
+                !match.isFinished || !isPriorSeasonKnockout(match.dateUtc, latestRegularDate)
+            }
         } else {
             allKnockoutMatches
         }
@@ -241,7 +245,12 @@ object RadialBracketBuilder {
         val emptyTree = createEmptyTree(totalTeams, league.hasThirdPlaceMatch)
         val populatedRounds = emptyTree.rounds.map { it.copy(matches = it.matches.toMutableList()) }.toMutableList()
 
-        val groupedByRound = knockoutMatches.groupBy { normalizeRoundIndex(it.seriesTitle, totalTeams) }
+        val groupedByRound = knockoutMatches
+            .mapNotNull { match ->
+                val rIdx = normalizeRoundIndex(match.seriesTitle, totalTeams) ?: return@mapNotNull null
+                rIdx to match
+            }
+            .groupBy({ it.first }, { it.second })
 
         var resolvedChampion: RadialTeam? = null
         var resolvedThirdPlace: RadialMatch? = emptyTree.thirdPlaceMatch
@@ -348,14 +357,40 @@ object RadialBracketBuilder {
         )
     }
 
-    internal fun normalizeRoundIndex(seriesTitle: String?, totalTeams: Int): Int {
+    /**
+     * Determina si un partido de eliminatoria concluido pertenece a una edicion anterior al comparar
+     * su fecha ISO contra la fecha mas reciente de fase regular o de grupos (umbral de 45 dias).
+     */
+    private fun isPriorSeasonKnockout(knockoutDateUtc: String, latestRegularDateUtc: String): Boolean {
+        if (knockoutDateUtc >= latestRegularDateUtc) return false
+        return runCatching {
+            val koDate = java.time.LocalDate.parse(knockoutDateUtc.take(10))
+            val regDate = java.time.LocalDate.parse(latestRegularDateUtc.take(10))
+            java.time.temporal.ChronoUnit.DAYS.between(koDate, regDate) > 45L
+        }.getOrDefault(true)
+    }
+
+    internal fun normalizeRoundIndex(seriesTitle: String?, totalTeams: Int): Int? {
         val title = seriesTitle?.lowercase().orEmpty()
+        if (title.isBlank()) return null
+        if (title.contains("prelim") ||
+            title.contains("play-in") ||
+            title.contains("play in") ||
+            title.contains("relegation") ||
+            title.contains("qualif") ||
+            title.contains("repechaje") ||
+            title.contains("clasific")
+        ) {
+            return null
+        }
+
         return when {
             title.contains("tercer") || title.contains("third") || title.contains("3rd") || title.contains("3er") || title.contains("3°") || title.contains("3ro") -> -1
-            title.contains("dieciseis") || title.contains("round-of-32") || title.contains("round of 32") -> 0
+            title.contains("dieciseis") || title.contains("round-of-32") || title.contains("round of 32") -> if (totalTeams >= 32) 0 else null
             title.contains("octav") || title.contains("round-of-16") || title.contains("round of 16") -> when (totalTeams) {
                 32 -> 1
-                else -> 0
+                16 -> 0
+                else -> null
             }
             title.contains("cuart") || title.contains("quarter") -> when (totalTeams) {
                 32 -> 2
@@ -372,7 +407,7 @@ object RadialBracketBuilder {
                 16 -> 3
                 else -> 2
             }
-            else -> 0
+            else -> null
         }
     }
 
@@ -423,25 +458,36 @@ object RadialBracketBuilder {
         val shortA = teamAInfo.shortName.ifBlank { teamAInfo.abbreviation }
         val shortB = teamBInfo.shortName.ifBlank { teamBInfo.abbreviation }
 
-        val radialA = RadialTeam(
-            id = teamAInfo.id,
-            name = teamAInfo.name,
-            shortName = shortA,
-            crestUrl = teamAInfo.logoUrl.orEmpty(),
-            score = scoreA,
-            isWinner = winnerTeamId != null && winnerTeamId == teamAInfo.id
-        )
+        val radialA = if (teamAInfo.isPlaceholder) {
+            null
+        } else {
+            RadialTeam(
+                id = teamAInfo.id,
+                name = teamAInfo.name,
+                shortName = shortA,
+                crestUrl = teamAInfo.logoUrl.orEmpty(),
+                score = scoreA,
+                isWinner = winnerTeamId != null && winnerTeamId == teamAInfo.id
+            )
+        }
 
-        val radialB = RadialTeam(
-            id = teamBInfo.id,
-            name = teamBInfo.name,
-            shortName = shortB,
-            crestUrl = teamBInfo.logoUrl.orEmpty(),
-            score = scoreB,
-            isWinner = winnerTeamId != null && winnerTeamId == teamBInfo.id
-        )
+        val radialB = if (teamBInfo.isPlaceholder) {
+            null
+        } else {
+            RadialTeam(
+                id = teamBInfo.id,
+                name = teamBInfo.name,
+                shortName = shortB,
+                crestUrl = teamBInfo.logoUrl.orEmpty(),
+                score = scoreB,
+                isWinner = winnerTeamId != null && winnerTeamId == teamBInfo.id
+            )
+        }
+
+        val resolvedWinnerId = if (radialA == null && radialB == null) null else winnerTeamId
 
         val statusText = when {
+            radialA == null && radialB == null -> null
             scoreA != null && scoreB != null -> "$scoreA-$scoreB"
             latestMatch.status.displayClock.isNotBlank() -> latestMatch.status.displayClock
             else -> null
@@ -452,7 +498,7 @@ object RadialBracketBuilder {
             matchIndex = matchIndex,
             teamA = radialA,
             teamB = radialB,
-            winnerTeamId = winnerTeamId,
+            winnerTeamId = resolvedWinnerId,
             statusText = statusText
         )
     }

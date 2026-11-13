@@ -1953,6 +1953,141 @@ class MatchRepositoryTest {
         assertEquals("CD", detailAthletes.first().extractPosition()?.abbreviation)
         assertEquals("CD-R", detailAthletes.first().extractPosition()?.name)
     }
+
+    @Test
+    fun getMatches_futurePostponedAndPlaceholderMatches_mappedToScheduledAndFilteredCleanly() = runBlocking {
+        val afcApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                return EspnScoreboardResponse(
+                    events = listOf(
+                        // Partido de Fase de Grupos en Enero 2027 con STATUS_POSTPONED (state = post, completed = false)
+                        EspnEventDto(
+                            id = "afc_group_2027",
+                            date = "2027-01-20T10:30Z",
+                            name = "Japan vs Thailand",
+                            season = EspnSeasonDto(year = 2027, slug = "group-stage"),
+                            status = EspnStatusDto(
+                                type = EspnStatusTypeDto(
+                                    name = "STATUS_POSTPONED",
+                                    state = "post",
+                                    completed = false,
+                                    detail = "Postponed",
+                                    shortDetail = "Postponed"
+                                )
+                            ),
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "afc_group_2027",
+                                    date = "2027-01-20T10:30Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "627", homeAway = "home", team = EspnTeamDto(id = "627", name = "Japan", displayName = "Japan", logo = "https://logo/jpn.png")),
+                                        EspnCompetitorDto(id = "4396", homeAway = "away", team = EspnTeamDto(id = "4396", name = "Thailand", displayName = "Thailand", logo = "https://logo/tha.png"))
+                                    )
+                                )
+                            )
+                        ),
+                        // Partido plantilla de Octavos con dos placeholders sin seleccion real
+                        EspnEventDto(
+                            id = "afc_placeholder_r16",
+                            date = "2027-01-25T20:00Z",
+                            name = "Group C Winner vs 3rd Place Group A",
+                            season = EspnSeasonDto(year = 2027, slug = "round-of-16"),
+                            status = EspnStatusDto(
+                                type = EspnStatusTypeDto(
+                                    name = "STATUS_SCHEDULED",
+                                    state = "pre",
+                                    completed = false,
+                                    detail = "TBD",
+                                    shortDetail = "TBD"
+                                )
+                            ),
+                            competitions = listOf(
+                                EspnCompetitionDto(
+                                    id = "afc_placeholder_r16",
+                                    date = "2027-01-25T20:00Z",
+                                    competitors = listOf(
+                                        EspnCompetitorDto(id = "5927", homeAway = "home", team = EspnTeamDto(id = "5927", name = "Group C Winner", displayName = "Group C Winner", shortDisplayName = "1C", abbreviation = "1C", logo = "")),
+                                        EspnCompetitorDto(id = "16304", homeAway = "away", team = EspnTeamDto(id = "16304", name = "3rd Place Group A", displayName = "3rd Place Group A", shortDisplayName = "3 A", abbreviation = "3ABF", logo = ""))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getStandings(league: String, cacheControl: String?): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(afcApi, Dispatchers.Unconfined)
+        val matches = repo.getMatches(League.ASIAN_CUP, forceRefresh = true).getOrThrow()
+
+        // El cruce placeholder (1C vs 3 A) se descarta y el partido de grupo en 2027 con STATUS_POSTPONED queda como SCHEDULED
+        assertEquals(1, matches.size)
+        val match = matches.first()
+        assertEquals("afc_group_2027", match.id)
+        assertEquals(MatchState.SCHEDULED, match.status.state)
+        org.junit.Assert.assertFalse(match.isFinished)
+    }
+
+    @Test
+    fun getGroups_futureTournamentWithPublishedDraw_returns2027GroupsAndRejects2025Groups() = runBlocking {
+        val standingsApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String, cacheControl: String?): EspnStandingsResponse {
+                val seasonYear = if (league == League.ASIAN_CUP.code) 2027 else 2025
+                return EspnStandingsResponse(
+                    children = listOf(
+                        EspnStandingsChildDto(
+                            name = "Group A",
+                            standings = EspnStandingsEntriesDto(
+                                season = seasonYear,
+                                entries = listOf(
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "1", name = "Saudi Arabia", displayName = "Saudi Arabia"),
+                                        stats = listOf(EspnStatDto(name = "rank", value = 1.0), EspnStatDto(name = "points", value = 0.0))
+                                    ),
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "999", name = "TBD", displayName = "TBD"),
+                                        stats = listOf(EspnStatDto(name = "rank", value = 2.0), EspnStatDto(name = "points", value = 0.0))
+                                    )
+                                )
+                            )
+                        ),
+                        EspnStandingsChildDto(
+                            name = "Group B",
+                            standings = EspnStandingsEntriesDto(
+                                season = seasonYear,
+                                entries = listOf(
+                                    EspnStandingsEntryDto(
+                                        team = EspnStandingsTeamDto(id = "2", name = "Japan", displayName = "Japan"),
+                                        stats = listOf(EspnStatDto(name = "rank", value = 1.0), EspnStatDto(name = "points", value = 0.0))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) = com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(standingsApi, Dispatchers.Unconfined)
+        val afcGroups = repo.getGroups(League.ASIAN_CUP, forceRefresh = true).getOrThrow()
+        assertEquals(2, afcGroups.size)
+        // Verifica que la entrada "TBD" haya sido descartada de Group A
+        assertEquals(1, afcGroups.first().standings.size)
+        assertEquals("Saudi Arabia", afcGroups.first().standings.first().teamName)
+
+        // Gold Cup reporta season = 2025 (< tournamentYear 2027), por lo que debe rechazarse
+        val goldCupGroups = repo.getGroups(League.GOLD_CUP, forceRefresh = true).getOrThrow()
+        assertTrue(goldCupGroups.isEmpty())
+    }
 }
 
 

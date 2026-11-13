@@ -21,6 +21,7 @@ data class EspnStandingsChildDto(
 
 @Serializable
 data class EspnStandingsEntriesDto(
+    val season: Int? = null,
     val entries: List<EspnStandingsEntryDto> = emptyList()
 )
 

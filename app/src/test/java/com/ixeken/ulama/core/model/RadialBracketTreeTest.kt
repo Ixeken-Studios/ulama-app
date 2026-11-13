@@ -630,6 +630,65 @@ class RadialBracketTreeTest {
         assertTrue("Belgium must be in Left Wing in QF", qfBelIdx < 2)
     }
 
+    @Test
+    fun radialBracketBuilder_ignoresGoldCupPrelimsAndRelegationPlayoffs_keepsOnlyQuarterfinals() {
+        fun team(id: String, name: String) = Team(id, name, name, name.take(3).uppercase(), "https://logo/$id.png", false, 1, false)
+        val finished = MatchStatus(MatchState.FINISHED, "FT", "FT", isCompleted = true, isHalftime = false)
+        val scheduled = MatchStatus(MatchState.SCHEDULED, "", "TBD", isCompleted = false, isHalftime = false)
+
+        val prelim1 = Match("p1", "2026-11-12T22:00Z", team("a1", "Aruba"), team("a2", "Martinique"), finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Gold Cup Prelims", legNumber = 1)
+        val prelim2 = Match("p2", "2026-11-12T23:00Z", team("a3", "Antigua"), team("a4", "Trinidad"), finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Gold Cup Prelims", legNumber = 1)
+        val relPlayoff = Match("rp1", "2026-11-12T20:00Z", team("r1", "Malta"), team("r2", "Luxembourg"), finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Relegation Playoffs", legNumber = 1)
+        val leagueBGroupMatchLaterSameWeek = Match("lb1", "2026-11-18T23:00Z", team("b1", "Guyana"), team("b2", "Puerto Rico"), finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = null)
+
+        val qf1 = Match("qf1", "2026-11-13T00:30Z", team("c1", "Curaçao"), team("c2", "Panama"), finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Quarterfinals", legNumber = 1)
+        val qf2 = Match("qf2", "2026-11-14T02:00Z", team("c3", "Guatemala"), team("c4", "Canada"), finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Quarterfinals", legNumber = 1)
+        val qf3 = Match("qf3", "2026-11-14T21:30Z", team("c5", "Haiti"), team("c6", "United States"), scheduled, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Quarterfinals", legNumber = 1)
+        val qf4 = Match("qf4", "2026-11-15T01:00Z", team("c7", "Jamaica"), team("c8", "Mexico"), scheduled, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Quarterfinals", legNumber = 1)
+
+        val tree = RadialBracketBuilder.build(
+            listOf(prelim1, prelim2, relPlayoff, leagueBGroupMatchLaterSameWeek, qf1, qf2, qf3, qf4),
+            League.CONCACAF_NATIONS_LEAGUE
+        )
+
+        assertNotNull(tree)
+        assertTrue(League.CONCACAF_NATIONS_LEAGUE.hasThirdPlaceMatch)
+        assertNotNull(tree?.thirdPlaceMatch)
+        val qfMatches = tree?.rounds?.get(0)?.matches.orEmpty()
+        assertEquals(4, qfMatches.size)
+        org.junit.Assert.assertFalse(qfMatches.any { it.containsTeam("a1") || it.containsTeam("a3") || it.containsTeam("r1") })
+        assertTrue(qfMatches.any { it.containsTeam("c2") }) // Panama
+        assertTrue(qfMatches.any { it.containsTeam("c4") }) // Canada
+        assertTrue(qfMatches.any { it.containsTeam("c6") }) // United States
+        assertTrue(qfMatches.any { it.containsTeam("c8") }) // Mexico
+    }
+
+    @Test
+    fun radialBracketBuilder_treatsPlaceholderTeamsAsEmptySlots() {
+        val scheduled = MatchStatus(MatchState.SCHEDULED, "", "TBD", isCompleted = false, isHalftime = false)
+        val placeholder1C = Team("5927", "Group C Winner", "1C", "1C", "", true, null, false)
+        val placeholder3A = Team("16304", "3rd Place Group A", "3 A", "3ABF", "", false, null, false)
+        val placeholderR16W1 = Team("19282", "Round of 16 1 Winner", "RD16 W1", "RD16 W1", "", true, null, false)
+        val placeholderR16W3 = Team("19284", "Round of 16 3 Winner", "RD16 W3", "RD16 W3", "", false, null, false)
+
+        assertTrue(placeholder1C.isPlaceholder)
+        assertTrue(placeholder3A.isPlaceholder)
+        assertTrue(placeholderR16W1.isPlaceholder)
+
+        val r16PlaceholderMatch = Match("afc_r16", "2027-01-25T20:00Z", placeholder1C, placeholder3A, scheduled, null, League.ASIAN_CUP, seriesTitle = "round-of-16")
+        val qfPlaceholderMatch = Match("afc_qf", "2027-01-28T20:00Z", placeholderR16W1, placeholderR16W3, scheduled, null, League.ASIAN_CUP, seriesTitle = "quarterfinals")
+
+        val tree = RadialBracketBuilder.build(listOf(r16PlaceholderMatch, qfPlaceholderMatch), League.ASIAN_CUP)
+        assertNotNull(tree)
+        org.junit.Assert.assertFalse(tree?.hasAnyScheduledMatch == true)
+        tree?.rounds?.forEach { round ->
+            round.matches.forEach { m ->
+                assertNull(m.teamA)
+                assertNull(m.teamB)
+            }
+        }
+    }
+
     private fun createMockTree(totalTeams: Int): RadialBracketTree {
         val rounds = mutableListOf<RadialRound>()
         var matchesInRound = totalTeams / 2

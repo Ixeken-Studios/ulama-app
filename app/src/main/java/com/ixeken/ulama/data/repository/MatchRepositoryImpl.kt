@@ -95,6 +95,7 @@ class MatchRepositoryImpl(
                 }
                 val response = apiService.getScoreboard(league = league.code, dates = dates, cacheControl = cacheControlHeader)
                 val mapped = response.events.mapNotNull { it.toMatch(league) }
+                    .filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
                 if (mapped.isNotEmpty()) {
                     dateMatchesCache[dateKey] = Pair(mapped, System.currentTimeMillis())
                 }
@@ -177,7 +178,7 @@ class MatchRepositoryImpl(
                     matchesList.filter { it.dateUtc >= "$activeSeasonYear-01-01T00:00:00Z" }
                 }
                 else -> matchesList
-            }
+            }.filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
 
             if (sanitizedList.isNotEmpty()) {
                 matchesCache[league] = Pair(sanitizedList, System.currentTimeMillis())
@@ -233,15 +234,22 @@ class MatchRepositoryImpl(
                 }
             }
 
-            if (league.tournamentYear != null) {
-                // Competiciones internacionales que inician su nuevo certamen en una edicion futura:
-                // Retornamos tablas vacias para omitir clasificaciones historicas pasadas.
-                return@withLock Result.success(Pair(emptyList(), emptyList()))
-            }
-
             val cacheControlHeader = if (forceRefresh) "no-cache" else null
             val result = runCatching {
                 val response = apiService.getStandings(league = league.code, cacheControl = cacheControlHeader)
+                val targetTournamentYear = league.tournamentYear?.toIntOrNull()
+                if (targetTournamentYear != null) {
+                    val reportedSeason = response.children.firstNotNullOfOrNull { it.standings?.season }
+                        ?: response.standings?.season
+                    // Si el torneo inicia en un ano futuro pero ESPN aun devuelve la tabla de una edicion anterior
+                    // (season < targetTournamentYear o sin metadato de temporada), omitimos la tabla historica.
+                    if (reportedSeason == null || reportedSeason < targetTournamentYear) {
+                        groupsCache[league] = emptyList()
+                        standingsCache[league] = emptyList()
+                        standingsTimestampCache[league] = System.currentTimeMillis()
+                        return@runCatching Pair(emptyList<StandingEntry>(), emptyList<GroupStandings>())
+                    }
+                }
                 val flattenedChildren = flattenStandingsChildren(response.children)
 
                 if (flattenedChildren.size > 1) {
@@ -848,20 +856,33 @@ class MatchRepositoryImpl(
             ?: statusDto?.type?.detail.orEmpty()
         val displayClock = statusDto?.displayClock ?: ""
 
-        val isCompleted = statusDto?.type?.completed == true ||
+        val isPostponedOrUnplayed = typeName.contains("POSTPONED", ignoreCase = true) ||
+            typeName.contains("CANCELED", ignoreCase = true) ||
+            typeName.contains("CANCELLED", ignoreCase = true) ||
+            typeName.contains("ABANDONED", ignoreCase = true) ||
+            typeName.contains("SUSPENDED", ignoreCase = true) ||
+            typeName.contains("DELAYED", ignoreCase = true) ||
+            typeName.contains("TBD", ignoreCase = true) ||
+            detail.equals("Postponed", ignoreCase = true) ||
+            detail.equals("Canceled", ignoreCase = true) ||
+            detail.equals("TBD", ignoreCase = true)
+
+        val isCompleted = !isPostponedOrUnplayed && (
+            statusDto?.type?.completed == true ||
             typeName.equals("STATUS_FULL_TIME", ignoreCase = true) ||
             typeName.equals("STATUS_FINAL", ignoreCase = true) ||
             typeName.equals("STATUS_FINAL_AET", ignoreCase = true) ||
             typeName.equals("STATUS_FINAL_PEN", ignoreCase = true) ||
             typeName.equals("STATUS_FULL_TIME_AET", ignoreCase = true) ||
             typeName.equals("STATUS_FULL_TIME_PEN", ignoreCase = true) ||
-            statusDto?.type?.state.equals("post", ignoreCase = true) ||
             detail.equals("FT", ignoreCase = true) ||
             detail.equals("AET", ignoreCase = true) ||
             detail.startsWith("FT-", ignoreCase = true)
+        )
 
         val matchState = when {
             isCompleted -> MatchState.FINISHED
+            isPostponedOrUnplayed -> MatchState.SCHEDULED
             statusDto?.type?.state.equals("pre", ignoreCase = true) -> MatchState.SCHEDULED
             statusDto?.type?.state.equals("in", ignoreCase = true) -> MatchState.LIVE
             else -> MatchState.SCHEDULED
@@ -1100,11 +1121,19 @@ class MatchRepositoryImpl(
             ?: statsMap["pointDifferential"]?.displayValue?.toIntOrNull()
             ?: (goalsFor - goalsAgainst)
 
+        val resolvedTeamName = team.displayName.ifBlank { team.name }.trim()
+        if (resolvedTeamName.isEmpty() ||
+            resolvedTeamName.equals("TBD", ignoreCase = true) ||
+            resolvedTeamName.equals("TBA", ignoreCase = true)
+        ) {
+            return null
+        }
+
         return StandingEntry(
             rank = rank,
-            teamName = team.displayName.ifBlank { team.name },
-            teamShortName = team.shortDisplayName ?: team.name,
-            teamAbbreviation = team.abbreviation ?: team.name.take(3).uppercase(),
+            teamName = resolvedTeamName,
+            teamShortName = team.shortDisplayName ?: resolvedTeamName,
+            teamAbbreviation = team.abbreviation ?: resolvedTeamName.take(3).uppercase(),
             logoUrl = team.logos.firstOrNull()?.href,
             gamesPlayed = gamesPlayed,
             wins = wins,
