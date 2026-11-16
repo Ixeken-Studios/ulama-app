@@ -1,7 +1,8 @@
 package com.ixeken.ulama.core.model
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
-
+import com.ixeken.ulama.R
 import kotlinx.serialization.Serializable
 
 /**
@@ -30,3 +31,15 @@ data class MatchStatus(
     val isFinishedAet: Boolean = false,
     val isFinishedPenalties: Boolean = false
 )
+
+/**
+ * Determina el sufijo localizado de tiempo extra cuando el reloj remoto no incluye indicador.
+ */
+@StringRes
+fun resolveExtraTimeSuffixRes(clock: String): Int? {
+    if (clock.contains("TE", ignoreCase = true) || clock.contains("ET", ignoreCase = true)) {
+        return null
+    }
+    val mins = clock.filter { it.isDigit() }.toIntOrNull() ?: 90
+    return if (mins > 105) R.string.match_extra_time_second_suffix else R.string.match_extra_time_first_suffix
+}

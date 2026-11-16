@@ -433,7 +433,7 @@ private fun ThirdPlaceMacroBadge(
             horizontalArrangement = Arrangement.spacedBy(4.5.dp)
         ) {
             Text(
-                text = "3º",
+                text = stringResource(R.string.bracket_third_place_short),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

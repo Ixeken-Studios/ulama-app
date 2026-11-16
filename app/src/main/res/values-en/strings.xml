@@ -68,6 +68,11 @@
     <string name="match_status_live">Live</string>
     <string name="match_status_halftime">Half time</string>
     <string name="match_status_live_extra_time">Extra time</string>
+    <string name="match_extra_time_first_suffix"> (1ET)</string>
+    <string name="match_extra_time_second_suffix"> (2ET)</string>
+    <string name="goal_own_goal_tag">OG</string>
+    <string name="goal_penalty_tag">P</string>
+    <string name="bracket_third_place_short">3rd</string>
     <string name="match_status_live_penalties">Penalties</string>
     <string name="match_status_finished">FT</string>
     <string name="match_status_finished_aet">AET</string>

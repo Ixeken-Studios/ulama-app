@@ -5,6 +5,7 @@ import com.ixeken.ulama.R
 import com.ixeken.ulama.core.network.NetworkClient
 import com.ixeken.ulama.core.model.CutoffLineStyle
 import com.ixeken.ulama.core.model.FormResult
+import com.ixeken.ulama.core.model.GoalEvent
 import com.ixeken.ulama.core.model.GoalScorer
 import com.ixeken.ulama.core.model.GroupStandings
 import com.ixeken.ulama.core.model.HeadToHeadMatch
@@ -656,7 +657,7 @@ class MatchRepositoryImpl(
             .groupBy { resolveScorerName(it) }
             .filterKeys { it.isNotBlank() }
             .map { (name, playerPlays) ->
-                val minutes = playerPlays.mapNotNull { play ->
+                val events = playerPlays.mapNotNull { play ->
                     val baseClock = play.clock?.displayValue?.takeIf { c -> c.isNotBlank() } ?: return@mapNotNull null
                     val typeText = play.type?.text.orEmpty()
                     val isOg = play.ownGoal ||
@@ -665,13 +666,21 @@ class MatchRepositoryImpl(
                     val isPen = !isOg && (play.penaltyKick ||
                         typeText.contains("Penalty", ignoreCase = true) ||
                         typeText.contains("Penal", ignoreCase = true))
+                    val cleanClock = baseClock
+                        .replace(" (EC)", "")
+                        .replace(" (OG)", "")
+                        .replace(" (P)", "")
+                        .trim()
+                    GoalEvent(minute = cleanClock, isOwnGoal = isOg, isPenalty = isPen)
+                }
+                val minutes = events.joinToString(", ") { event ->
                     when {
-                        isOg && !baseClock.contains("EC") && !baseClock.contains("OG") -> "$baseClock (EC)"
-                        isPen && !baseClock.contains("(P)") -> "$baseClock (P)"
-                        else -> baseClock
+                        event.isOwnGoal -> "${event.minute} (OG)"
+                        event.isPenalty -> "${event.minute} (P)"
+                        else -> event.minute
                     }
-                }.joinToString(", ")
-                GoalScorer(playerName = name, minutesDisplay = minutes)
+                }
+                GoalScorer(playerName = name, minutesDisplay = minutes, goals = events)
             }
     }
 

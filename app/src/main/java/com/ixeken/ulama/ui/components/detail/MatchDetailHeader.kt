@@ -52,6 +52,7 @@ import com.ixeken.ulama.core.model.Match
 import com.ixeken.ulama.core.model.MatchDetail
 import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.Team
+import com.ixeken.ulama.core.model.resolveExtraTimeSuffixRes
 import androidx.compose.ui.platform.LocalContext
 import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.ui.components.RollingScoreText
@@ -527,12 +528,7 @@ private fun HeaderScoreCenter(
                     match.status.isShootout -> stringResource(R.string.match_status_live_penalties)
                     match.status.isExtraTime -> {
                         val clock = match.status.displayClock
-                        val extraSuffix = if (clock.contains("TE", ignoreCase = true) || clock.contains("ET", ignoreCase = true)) {
-                            ""
-                        } else {
-                            val mins = clock.filter { it.isDigit() }.toIntOrNull() ?: 90
-                            if (mins > 105) " (2TE)" else " (1TE)"
-                        }
+                        val extraSuffix = resolveExtraTimeSuffixRes(clock)?.let { stringResource(it) }.orEmpty()
                         if (clock.isNotBlank()) "$clock$extraSuffix" else stringResource(R.string.match_status_live_extra_time)
                     }
                     match.status.displayClock.isNotBlank() -> match.status.displayClock
@@ -590,6 +586,20 @@ private fun HeaderScoreCenter(
 }
 
 @Composable
+private fun formatGoalScorerMinutes(scorer: GoalScorer): String {
+    if (scorer.goals.isEmpty()) return scorer.minutesDisplay
+    val ownGoalTag = stringResource(R.string.goal_own_goal_tag)
+    val penaltyTag = stringResource(R.string.goal_penalty_tag)
+    return scorer.goals.joinToString(", ") { event ->
+        when {
+            event.isOwnGoal -> "${event.minute} ($ownGoalTag)"
+            event.isPenalty -> "${event.minute} ($penaltyTag)"
+            else -> event.minute
+        }
+    }
+}
+
+@Composable
 private fun HeaderScorersRow(
     homeScorers: List<GoalScorer>,
     awayScorers: List<GoalScorer>,
@@ -624,7 +634,7 @@ private fun HeaderScorersRow(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = scorer.minutesDisplay,
+                        text = formatGoalScorerMinutes(scorer),
                         style = scorerTextStyle,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
@@ -670,7 +680,7 @@ private fun HeaderScorersRow(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = scorer.minutesDisplay,
+                        text = formatGoalScorerMinutes(scorer),
                         style = scorerTextStyle,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,

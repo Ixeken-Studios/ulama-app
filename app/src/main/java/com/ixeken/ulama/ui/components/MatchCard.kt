@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.ixeken.ulama.core.model.resolveExtraTimeSuffixRes
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -340,12 +341,7 @@ private fun ScoreCenter(
                     match.status.isShootout -> stringResource(id = R.string.match_status_live_penalties)
                     match.status.isExtraTime -> {
                         val clock = match.status.displayClock
-                        val extraSuffix = if (clock.contains("TE", ignoreCase = true) || clock.contains("ET", ignoreCase = true)) {
-                            ""
-                        } else {
-                            val mins = clock.filter { it.isDigit() }.toIntOrNull() ?: 90
-                            if (mins > 105) " (2TE)" else " (1TE)"
-                        }
+                        val extraSuffix = resolveExtraTimeSuffixRes(clock)?.let { stringResource(it) }.orEmpty()
                         if (clock.isNotBlank()) "$clock$extraSuffix" else stringResource(R.string.match_status_live_extra_time)
                     }
                     match.status.displayClock.isNotBlank() -> match.status.displayClock

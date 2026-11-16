@@ -68,6 +68,11 @@
     <string name="match_status_live">En vivo</string>
     <string name="match_status_halftime">Medio tiempo</string>
     <string name="match_status_live_extra_time">T. Extra</string>
+    <string name="match_extra_time_first_suffix"> (1TE)</string>
+    <string name="match_extra_time_second_suffix"> (2TE)</string>
+    <string name="goal_own_goal_tag">AG</string>
+    <string name="goal_penalty_tag">P</string>
+    <string name="bracket_third_place_short">3º</string>
     <string name="match_status_live_penalties">Penales</string>
     <string name="match_status_finished">Finalizado</string>
     <string name="match_status_finished_aet">Finalizado (T.E.)</string>

@@ -43,13 +43,24 @@ data class MatchDetail(
 )
 
 /**
+ * Evento individual de gol para desacoplar el formateo localizado de etiquetas en UI.
+ */
+@Immutable
+data class GoalEvent(
+    val minute: String,
+    val isOwnGoal: Boolean = false,
+    val isPenalty: Boolean = false
+)
+
+/**
  * Anotador individual con minutos agrupados en una sola cadena.
  * Si un jugador anota multiples goles, se agrupan como "34', 88'" respetando el patron de Apple Sports.
  */
 @Immutable
 data class GoalScorer(
     val playerName: String,
-    val minutesDisplay: String
+    val minutesDisplay: String,
+    val goals: List<GoalEvent> = emptyList()
 )
 
 /**

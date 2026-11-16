@@ -22,6 +22,7 @@ import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.FollowedMatch
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.MatchState
+import com.ixeken.ulama.core.model.resolveExtraTimeSuffixRes
 import com.ixeken.ulama.core.network.ImageFallbackInterceptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -306,12 +307,7 @@ object MatchNotificationHelper {
             match.isShootout -> context.getString(R.string.match_status_live_penalties)
             match.isExtraTime -> {
                 val clock = match.clockDisplay.ifBlank { context.getString(R.string.match_status_live_extra_time) }
-                val suffix = if (clock.contains("TE", ignoreCase = true) || clock.contains("ET", ignoreCase = true)) {
-                    ""
-                } else {
-                    val mins = clock.filter { it.isDigit() }.toIntOrNull() ?: 90
-                    if (mins > 105) " (2TE)" else " (1TE)"
-                }
+                val suffix = resolveExtraTimeSuffixRes(clock)?.let { context.getString(it) }.orEmpty()
                 "$clock$suffix"
             }
             match.state == MatchState.LIVE -> {
