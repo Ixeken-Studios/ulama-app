@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.ixeken.ulama.core.model.FollowedMatch
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.LeagueCategory
 import com.ixeken.ulama.core.model.sanitizeAggregateScores
@@ -14,6 +13,7 @@ import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.RadialBracketBuilder
 import com.ixeken.ulama.core.model.TemporalFilter
 import com.ixeken.ulama.core.model.StandingEntry
+import com.ixeken.ulama.core.model.toFollowedMatch
 import com.ixeken.ulama.core.model.toMatch
 import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.data.repository.AppSettingsRepository
@@ -23,6 +23,8 @@ import com.ixeken.ulama.data.repository.FavoriteTeamsRepositoryImpl
 import com.ixeken.ulama.data.repository.MatchFollowRepository
 import com.ixeken.ulama.data.repository.MatchRepository
 import com.ixeken.ulama.data.repository.MatchRepositoryImpl
+import com.ixeken.ulama.service.FavoriteAutoFollowJobService
+import com.ixeken.ulama.service.FavoriteAutoFollowSync
 import com.ixeken.ulama.service.MatchAlarmScheduler
 import com.ixeken.ulama.service.MatchLiveNotificationService
 import com.ixeken.ulama.data.repository.MyLeaguesRepository
@@ -94,6 +96,7 @@ class MatchesViewModel(
                     }
                 }
                 if (appSettingsRepository?.settings?.value?.autoFollowFavorites == true) {
+                    appContext?.let { FavoriteAutoFollowJobService.syncSchedule(it) }
                     scanAndAutoFollowAllFavorites()
                 }
             }
@@ -112,6 +115,7 @@ class MatchesViewModel(
             ?.map { it.autoFollowFavorites }
             ?.distinctUntilChanged()
             ?.onEach { enabled ->
+                appContext?.let { FavoriteAutoFollowJobService.syncSchedule(it) }
                 if (enabled) {
                     scanAndAutoFollowAllFavorites()
                 }
@@ -804,32 +808,7 @@ class MatchesViewModel(
             manuallyUnfollowedMatchIds.remove(matchId)
             // Un partido finalizado no debe generar alarmas ni servicios de notificacion en segundo plano
             if (match.isFinished) return
-            val startTimeMillis = DateTimeUtils.parseUtcEpochMillis(match.dateUtc)
-            val followed = FollowedMatch(
-                matchId = matchId,
-                leagueCode = match.league.code,
-                homeTeamId = match.homeTeam.id,
-                awayTeamId = match.awayTeam.id,
-                homeTeamName = match.homeTeam.name,
-                awayTeamName = match.awayTeam.name,
-                homeTeamShortName = match.homeTeam.shortName,
-                awayTeamShortName = match.awayTeam.shortName,
-                homeTeamLogo = match.homeTeam.logoUrl.orEmpty(),
-                awayTeamLogo = match.awayTeam.logoUrl.orEmpty(),
-                homeScore = match.homeTeam.score ?: 0,
-                awayScore = match.awayTeam.score ?: 0,
-                state = match.status.state,
-                clockDisplay = match.status.displayClock,
-                periodDisplay = match.status.detail,
-                startTimeUtcMillis = startTimeMillis,
-                isHalftime = match.isHalftime,
-                isExtraTime = match.status.isExtraTime,
-                isShootout = match.status.isShootout,
-                isFinishedAet = match.status.isFinishedAet,
-                isFinishedPenalties = match.status.isFinishedPenalties,
-                homeShootoutScore = match.homeTeam.shootoutScore,
-                awayShootoutScore = match.awayTeam.shootoutScore
-            )
+            val followed = match.toFollowedMatch()
             followRepository.follow(followed)
             if (followed.state == MatchState.LIVE) {
                 MatchLiveNotificationService.start(context, matchId)
@@ -841,54 +820,25 @@ class MatchesViewModel(
 
 
     /**
-     * Sincroniza el seguimiento de partidos para los clubes favoritos activos si la opcion esta habilitada.
+     * Sincroniza y reconcilia el seguimiento de partidos para los clubes favoritos activos si la opcion esta habilitada.
      */
     private fun syncFavoriteMatchesFollowing(matches: List<Match>) {
-        val isAutoFollow = appSettingsRepository?.settings?.value?.autoFollowFavorites ?: false
+        val settings = appSettingsRepository?.settings?.value ?: return
         val favIds = favoriteTeamsRepository.favoriteTeamIds.value
-        if (!isAutoFollow || favIds.isEmpty()) return
-
-        val currentFollowed = followRepository.followedMatchIds.value
-        val candidateMatches = matches.filter { match ->
-            !match.isFinished &&
-            match.id !in currentFollowed &&
-            match.id !in manuallyUnfollowedMatchIds &&
-            (match.homeTeam.id in favIds || match.awayTeam.id in favIds)
-        }
-
-        candidateMatches.forEach { match ->
-            val startTimeMillis = DateTimeUtils.parseUtcEpochMillis(match.dateUtc)
-            val followed = FollowedMatch(
-                matchId = match.id,
-                leagueCode = match.league.code,
-                homeTeamId = match.homeTeam.id,
-                awayTeamId = match.awayTeam.id,
-                homeTeamName = match.homeTeam.name,
-                awayTeamName = match.awayTeam.name,
-                homeTeamShortName = match.homeTeam.shortName,
-                awayTeamShortName = match.awayTeam.shortName,
-                homeTeamLogo = match.homeTeam.logoUrl.orEmpty(),
-                awayTeamLogo = match.awayTeam.logoUrl.orEmpty(),
-                homeScore = match.homeTeam.score ?: 0,
-                awayScore = match.awayTeam.score ?: 0,
-                state = match.status.state,
-                clockDisplay = match.status.displayClock,
-                periodDisplay = match.status.detail,
-                startTimeUtcMillis = startTimeMillis,
-                isHalftime = match.isHalftime,
-                isExtraTime = match.status.isExtraTime,
-                isShootout = match.status.isShootout,
-                isFinishedAet = match.status.isFinishedAet,
-                isFinishedPenalties = match.status.isFinishedPenalties,
-                homeShootoutScore = match.homeTeam.shootoutScore,
-                awayShootoutScore = match.awayTeam.shootoutScore
-            )
-            followRepository.follow(followed)
+        FavoriteAutoFollowSync.syncMatches(
+            matches = matches,
+            favIds = favIds,
+            isAutoFollowEnabled = settings.autoFollowFavorites,
+            manuallyUnfollowedIds = manuallyUnfollowedMatchIds,
+            getExistingFollowed = followRepository::getFollowed,
+            saveFollowed = followRepository::follow,
+            leadMinutes = settings.notificationLeadMinutes
+        ) { followed, shouldStartNow ->
             appContext?.let { ctx ->
-                if (followed.state == MatchState.LIVE) {
-                    MatchLiveNotificationService.start(ctx, match.id)
+                if (shouldStartNow) {
+                    MatchLiveNotificationService.start(ctx, followed.matchId)
                 } else if (followed.state == MatchState.SCHEDULED) {
-                    MatchAlarmScheduler.scheduleKickoff(ctx, followed)
+                    MatchAlarmScheduler.scheduleKickoff(ctx, followed, settings.notificationLeadMinutes)
                 }
             }
         }

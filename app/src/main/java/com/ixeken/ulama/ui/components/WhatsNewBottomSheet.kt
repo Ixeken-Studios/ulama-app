@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -133,31 +134,33 @@ fun WhatsNewBottomSheet(
 
                 Spacer(modifier = Modifier.height(UlamaTheme.spacing.large))
 
-                // Lista segmentada conectada con las novedades de la version 2.0
+                // Lista segmentada conectada con las novedades de la version 2.0.1
+                val entries = remember {
+                    listOf(
+                        Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update),
+                        Triple(R.string.settings_about_changelog_feat5_title, R.string.settings_about_changelog_feat5_desc, R.drawable.ic_language),
+                        Triple(R.string.settings_about_changelog_feat1_title, R.string.settings_about_changelog_feat1_desc, R.drawable.ic_soccer_ball),
+                        Triple(R.string.settings_about_changelog_feat2_title, R.string.settings_about_changelog_feat2_desc, R.drawable.ic_palette),
+                        Triple(R.string.settings_about_changelog_feat3_title, R.string.settings_about_changelog_feat3_desc, R.drawable.ic_notifications_active)
+                    )
+                }
                 Column(
                     verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.connectedCardSpacing),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    WhatsNewFeatureCard(
-                        title = stringResource(R.string.settings_about_changelog_feat1_title),
-                        description = stringResource(R.string.settings_about_changelog_feat1_desc),
-                        icon = painterResource(R.drawable.ic_soccer_ball),
-                        shape = topConnectedShape
-                    )
-
-                    WhatsNewFeatureCard(
-                        title = stringResource(R.string.settings_about_changelog_feat2_title),
-                        description = stringResource(R.string.settings_about_changelog_feat2_desc),
-                        icon = painterResource(R.drawable.ic_palette),
-                        shape = middleConnectedShape
-                    )
-
-                    WhatsNewFeatureCard(
-                        title = stringResource(R.string.settings_about_changelog_feat3_title),
-                        description = stringResource(R.string.settings_about_changelog_feat3_desc),
-                        icon = painterResource(R.drawable.ic_notifications_active),
-                        shape = bottomConnectedShape
-                    )
+                    entries.forEachIndexed { index, (titleRes, descRes, iconRes) ->
+                        val shape = when (index) {
+                            0 -> topConnectedShape
+                            entries.lastIndex -> bottomConnectedShape
+                            else -> middleConnectedShape
+                        }
+                        WhatsNewFeatureCard(
+                            title = stringResource(titleRes),
+                            description = stringResource(descRes),
+                            icon = painterResource(iconRes),
+                            shape = shape
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(UlamaTheme.spacing.large))

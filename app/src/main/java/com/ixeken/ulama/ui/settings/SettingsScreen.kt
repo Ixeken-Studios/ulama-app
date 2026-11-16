@@ -100,6 +100,7 @@ import com.ixeken.ulama.core.model.AppSettings
 import com.ixeken.ulama.core.model.ColorPalette
 import com.ixeken.ulama.core.model.MotionStyle
 import com.ixeken.ulama.core.model.ThemeMode
+import com.ixeken.ulama.service.MatchAlarmScheduler
 import com.ixeken.ulama.ui.components.animateListEntry
 import com.ixeken.ulama.ui.components.bounceClick
 import com.ixeken.ulama.ui.theme.AmberPrimary
@@ -236,6 +237,7 @@ fun SettingsScreen(
                         appSettings = appSettings,
                         onNotificationLeadMinutesChanged = onNotificationLeadMinutesChanged,
                         onAutoFollowFavoritesChanged = onAutoFollowFavoritesChanged,
+                        onNavigateToPermissions = { destination = SettingsDestination.PERMISSIONS },
                         onBackClick = { destination = SettingsDestination.ROOT }
                     )
                 }
@@ -1285,6 +1287,35 @@ internal fun NotificationPermissionSettingCard(
 }
 
 /**
+ * Tarjeta interactiva para gestionar y solicitar el permiso de alarmas exactas del sistema.
+ * Garantiza que el despertador de partidos arranque puntual sin retrasos de Doze.
+ *
+ * @param hasPermission Indica si el permiso de alarmas exactas esta concedido.
+ * @param onRequestPermission Callback para abrir los ajustes de alarmas y recordatorios del sistema.
+ * @param shape Forma geometrica exterior adaptada a listas conectadas.
+ * @param modifier Modificador base de Compose.
+ */
+@Composable
+internal fun ExactAlarmPermissionSettingCard(
+    hasPermission: Boolean,
+    onRequestPermission: () -> Unit,
+    shape: Shape,
+    modifier: Modifier = Modifier
+) {
+    PermissionStatusCard(
+        title = stringResource(R.string.settings_permissions_alarm_title),
+        description = stringResource(R.string.settings_permissions_alarm_desc),
+        icon = painterResource(R.drawable.ic_notifications_active),
+        isGranted = hasPermission,
+        grantedLabel = stringResource(R.string.settings_permissions_alarm_granted),
+        actionLabel = stringResource(R.string.settings_permissions_alarm_action),
+        onRequest = onRequestPermission,
+        shape = shape,
+        modifier = modifier
+    )
+}
+
+/**
  * Tarjeta interactiva para gestionar y solicitar la excepcion de optimizaciones de bateria.
  * Permite que los servicios en segundo plano de Ulama funcionen sin restricciones del sistema.
  *
@@ -1785,9 +1816,47 @@ private fun NotificationsSettingsContent(
     appSettings: AppSettings,
     onNotificationLeadMinutesChanged: (Int) -> Unit,
     onAutoFollowFavoritesChanged: (Boolean) -> Unit,
+    onNavigateToPermissions: () -> Unit,
     onBackClick: () -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val context = LocalContext.current
+
+    var hasAllPermissions by remember {
+        mutableStateOf(
+            checkNotificationPermission(context) &&
+                MatchAlarmScheduler.canScheduleExactAlarms(context) &&
+                checkBatteryOptimization(context)
+        )
+    }
+
+    LifecycleResumeEffect(Unit) {
+        hasAllPermissions = checkNotificationPermission(context) &&
+            MatchAlarmScheduler.canScheduleExactAlarms(context) &&
+            checkBatteryOptimization(context)
+        onPauseOrDispose { }
+    }
+
+    val showPermissionsWarning = appSettings.autoFollowFavorites && !hasAllPermissions
+    val restRadius = UlamaTheme.shapes.cardRestRadius
+    val innerRadius = UlamaTheme.shapes.cardConnectedInnerRadius
+    val topConnectedShape = remember(restRadius, innerRadius) {
+        RoundedCornerShape(
+            topStart = restRadius,
+            topEnd = restRadius,
+            bottomStart = innerRadius,
+            bottomEnd = innerRadius
+        )
+    }
+    val bottomConnectedShape = remember(restRadius, innerRadius) {
+        RoundedCornerShape(
+            topStart = innerRadius,
+            topEnd = innerRadius,
+            bottomStart = restRadius,
+            bottomEnd = restRadius
+        )
+    }
+    val autoFollowCardShape = if (showPermissionsWarning) topConnectedShape else UlamaTheme.shapes.card
 
     Scaffold(
         modifier = Modifier
@@ -1883,23 +1952,93 @@ private fun NotificationsSettingsContent(
                     )
                 )
 
-                Surface(
-                    shape = UlamaTheme.shapes.card,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    border = UlamaTheme.borders.cardBorder,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateListEntry(index = 1, key = "notifications_auto_follow")
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.connectedCardSpacing),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    SettingsSwitchRow(
-                        title = stringResource(R.string.settings_notifications_auto_follow_favorites_title),
-                        description = stringResource(R.string.settings_notifications_auto_follow_favorites_desc),
-                        checked = appSettings.autoFollowFavorites,
-                        onCheckedChange = onAutoFollowFavoritesChanged,
-                        icon = painterResource(R.drawable.ic_star),
-                        iconContentDescription = stringResource(R.string.cd_fav_teams_star),
-                        shape = UlamaTheme.shapes.card
-                    )
+                    Surface(
+                        shape = autoFollowCardShape,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        border = UlamaTheme.borders.cardBorder,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateListEntry(index = 1, key = "notifications_auto_follow")
+                    ) {
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.settings_notifications_auto_follow_favorites_title),
+                            description = stringResource(R.string.settings_notifications_auto_follow_favorites_desc),
+                            checked = appSettings.autoFollowFavorites,
+                            onCheckedChange = onAutoFollowFavoritesChanged,
+                            icon = painterResource(R.drawable.ic_star),
+                            iconContentDescription = stringResource(R.string.cd_fav_teams_star),
+                            shape = autoFollowCardShape
+                        )
+                    }
+
+                    if (showPermissionsWarning) {
+                        val warningInteractionSource = remember { MutableInteractionSource() }
+                        Surface(
+                            shape = bottomConnectedShape,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateListEntry(index = 2, key = "notifications_permissions_warning")
+                                .clip(bottomConnectedShape)
+                                .bounceClick(enabled = true, interactionSource = warningInteractionSource)
+                                .clickable(
+                                    interactionSource = warningInteractionSource,
+                                    indication = ripple(),
+                                    onClick = onNavigateToPermissions
+                                )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(UlamaTheme.spacing.medium)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_security),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(UlamaTheme.spacing.medium))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.settings_notifications_permissions_warning_title),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.settings_notifications_permissions_warning_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))
+
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_chevron_right),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(UlamaTheme.spacing.large))
@@ -1927,6 +2066,9 @@ private fun PermissionsSettingsContent(
     var hasNotificationPermission by remember {
         mutableStateOf(checkNotificationPermission(context))
     }
+    var hasExactAlarmPermission by remember {
+        mutableStateOf(MatchAlarmScheduler.canScheduleExactAlarms(context))
+    }
     var isIgnoringBattery by remember {
         mutableStateOf(checkBatteryOptimization(context))
     }
@@ -1939,22 +2081,32 @@ private fun PermissionsSettingsContent(
 
     LifecycleResumeEffect(Unit) {
         hasNotificationPermission = checkNotificationPermission(context)
+        hasExactAlarmPermission = MatchAlarmScheduler.canScheduleExactAlarms(context)
         isIgnoringBattery = checkBatteryOptimization(context)
         onPauseOrDispose { }
     }
 
-    val topConnectedShape = RoundedCornerShape(
-        topStart = UlamaTheme.shapes.cardRestRadius,
-        topEnd = UlamaTheme.shapes.cardRestRadius,
-        bottomStart = UlamaTheme.shapes.cardConnectedInnerRadius,
-        bottomEnd = UlamaTheme.shapes.cardConnectedInnerRadius
-    )
-    val bottomConnectedShape = RoundedCornerShape(
-        topStart = UlamaTheme.shapes.cardConnectedInnerRadius,
-        topEnd = UlamaTheme.shapes.cardConnectedInnerRadius,
-        bottomStart = UlamaTheme.shapes.cardRestRadius,
-        bottomEnd = UlamaTheme.shapes.cardRestRadius
-    )
+    val restRadius = UlamaTheme.shapes.cardRestRadius
+    val innerRadius = UlamaTheme.shapes.cardConnectedInnerRadius
+    val topConnectedShape = remember(restRadius, innerRadius) {
+        RoundedCornerShape(
+            topStart = restRadius,
+            topEnd = restRadius,
+            bottomStart = innerRadius,
+            bottomEnd = innerRadius
+        )
+    }
+    val middleConnectedShape = remember(innerRadius) {
+        RoundedCornerShape(innerRadius)
+    }
+    val bottomConnectedShape = remember(restRadius, innerRadius) {
+        RoundedCornerShape(
+            topStart = innerRadius,
+            topEnd = innerRadius,
+            bottomStart = restRadius,
+            bottomEnd = restRadius
+        )
+    }
 
     Scaffold(
         modifier = Modifier
@@ -2046,13 +2198,22 @@ private fun PermissionsSettingsContent(
                         modifier = Modifier.animateListEntry(index = 0, key = "permissions_notif")
                     )
 
+                    ExactAlarmPermissionSettingCard(
+                        hasPermission = hasExactAlarmPermission,
+                        onRequestPermission = {
+                            requestExactAlarmPermission(context)
+                        },
+                        shape = middleConnectedShape,
+                        modifier = Modifier.animateListEntry(index = 1, key = "permissions_exact_alarm")
+                    )
+
                     BatteryOptimizationSettingCard(
                         isIgnoringBatteryOptimizations = isIgnoringBattery,
                         onRequestIgnoreBattery = {
                             requestIgnoreBatteryOptimizations(context)
                         },
                         shape = bottomConnectedShape,
-                        modifier = Modifier.animateListEntry(index = 1, key = "permissions_battery")
+                        modifier = Modifier.animateListEntry(index = 2, key = "permissions_battery")
                     )
                 }
             }
@@ -2106,6 +2267,25 @@ private fun openAppNotificationSettings(context: Context) {
             data = Uri.fromParts("package", context.packageName, null)
         }
         context.startActivity(fallback)
+    }
+}
+
+/**
+ * Abre la pantalla del sistema para otorgar permiso de alarmas y recordatorios exactos.
+ */
+private fun requestExactAlarmPermission(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            context.startActivity(fallback)
+        }
     }
 }
 
@@ -3013,19 +3193,34 @@ private fun AboutFeatureItemCard(
 private fun ChangelogBottomSheet(
     onDismissRequest: () -> Unit
 ) {
-    val topShape = RoundedCornerShape(
-        topStart = UlamaTheme.shapes.cardRestRadius,
-        topEnd = UlamaTheme.shapes.cardRestRadius,
-        bottomStart = UlamaTheme.shapes.cardConnectedInnerRadius,
-        bottomEnd = UlamaTheme.shapes.cardConnectedInnerRadius
-    )
-    val middleShape = RoundedCornerShape(UlamaTheme.shapes.cardConnectedInnerRadius)
-    val bottomShape = RoundedCornerShape(
-        topStart = UlamaTheme.shapes.cardConnectedInnerRadius,
-        topEnd = UlamaTheme.shapes.cardConnectedInnerRadius,
-        bottomStart = UlamaTheme.shapes.cardRestRadius,
-        bottomEnd = UlamaTheme.shapes.cardRestRadius
-    )
+    val restRadius = UlamaTheme.shapes.cardRestRadius
+    val innerRadius = UlamaTheme.shapes.cardConnectedInnerRadius
+    val topShape = remember(restRadius, innerRadius) {
+        RoundedCornerShape(
+            topStart = restRadius,
+            topEnd = restRadius,
+            bottomStart = innerRadius,
+            bottomEnd = innerRadius
+        )
+    }
+    val middleShape = remember(innerRadius) { RoundedCornerShape(innerRadius) }
+    val bottomShape = remember(restRadius, innerRadius) {
+        RoundedCornerShape(
+            topStart = innerRadius,
+            topEnd = innerRadius,
+            bottomStart = restRadius,
+            bottomEnd = restRadius
+        )
+    }
+    val entries = remember {
+        listOf(
+            Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update),
+            Triple(R.string.settings_about_changelog_feat5_title, R.string.settings_about_changelog_feat5_desc, R.drawable.ic_language),
+            Triple(R.string.settings_about_changelog_feat1_title, R.string.settings_about_changelog_feat1_desc, R.drawable.ic_soccer_ball),
+            Triple(R.string.settings_about_changelog_feat2_title, R.string.settings_about_changelog_feat2_desc, R.drawable.ic_palette),
+            Triple(R.string.settings_about_changelog_feat3_title, R.string.settings_about_changelog_feat3_desc, R.drawable.ic_notifications_active)
+        )
+    }
 
     AboutBaseBottomSheet(
         title = stringResource(R.string.settings_about_changelog_sheet_title),
@@ -3036,24 +3231,19 @@ private fun ChangelogBottomSheet(
             verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.connectedCardSpacing),
             modifier = Modifier.fillMaxWidth()
         ) {
-            AboutFeatureItemCard(
-                title = stringResource(R.string.settings_about_changelog_feat1_title),
-                description = stringResource(R.string.settings_about_changelog_feat1_desc),
-                icon = painterResource(R.drawable.ic_soccer_ball),
-                shape = topShape
-            )
-            AboutFeatureItemCard(
-                title = stringResource(R.string.settings_about_changelog_feat2_title),
-                description = stringResource(R.string.settings_about_changelog_feat2_desc),
-                icon = painterResource(R.drawable.ic_palette),
-                shape = middleShape
-            )
-            AboutFeatureItemCard(
-                title = stringResource(R.string.settings_about_changelog_feat3_title),
-                description = stringResource(R.string.settings_about_changelog_feat3_desc),
-                icon = painterResource(R.drawable.ic_notifications_active),
-                shape = bottomShape
-            )
+            entries.forEachIndexed { index, (titleRes, descRes, iconRes) ->
+                val shape = when (index) {
+                    0 -> topShape
+                    entries.lastIndex -> bottomShape
+                    else -> middleShape
+                }
+                AboutFeatureItemCard(
+                    title = stringResource(titleRes),
+                    description = stringResource(descRes),
+                    icon = painterResource(iconRes),
+                    shape = shape
+                )
+            }
         }
     }
 }

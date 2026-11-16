@@ -23,6 +23,15 @@ object MatchAlarmScheduler {
     const val EXTRA_MATCH_ID = "extra_match_id"
 
     /**
+     * Verifica si la aplicacion cuenta con permiso del sistema para agendar alarmas exactas.
+     */
+    fun canScheduleExactAlarms(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        val alarmManager = context.getSystemService<AlarmManager>() ?: return false
+        return alarmManager.canScheduleExactAlarms()
+    }
+
+    /**
      * Agenda el inicio del servicio para la marca temporal previa al silbatazo del partido.
      * Si no se especifica un margen, toma la anticipacion configurada en las preferencias del usuario.
      */
@@ -38,22 +47,38 @@ object MatchAlarmScheduler {
         val now = System.currentTimeMillis()
 
         if (triggerTime <= now) {
-            val isReasonablyRecent = now < match.startTimeUtcMillis + (3 * 60 * 60 * 1000L)
+            val isReasonablyRecent = now < match.startTimeUtcMillis + THREE_HOURS_MS
             if (isReasonablyRecent) {
                 MatchLiveNotificationService.start(context, match.matchId)
             }
             return
         }
 
+        scheduleAlarmAt(context, match.matchId, triggerTime)
+    }
+
+    /**
+     * Dispara una alarma exacta inmediata a 1 segundo vista cuando un JobService en segundo plano
+     * detecta un encuentro en vivo y requiere la exencion temporal del receptor para arrancar el servicio.
+     */
+    fun scheduleImmediateTrigger(context: Context, matchId: String) {
+        if (!canScheduleExactAlarms(context)) {
+            MatchLiveNotificationService.start(context, matchId)
+            return
+        }
+        scheduleAlarmAt(context, matchId, System.currentTimeMillis() + 1_000L)
+    }
+
+    private fun scheduleAlarmAt(context: Context, matchId: String, triggerTime: Long) {
         val alarmManager = context.getSystemService<AlarmManager>() ?: return
         val intent = Intent(context, MatchAlarmReceiver::class.java).apply {
             action = ACTION_START_MATCH_TRACKING
-            putExtra(EXTRA_MATCH_ID, match.matchId)
+            putExtra(EXTRA_MATCH_ID, matchId)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            match.matchId.hashCode(),
+            matchId.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -84,21 +109,26 @@ object MatchAlarmScheduler {
     }
 
     /**
-     * Reprograma las alarmas de todos los partidos seguidos en estado agendado
-     * cuando se modifica la preferencia de anticipacion.
+     * Reprograma las alarmas de todos los partidos seguidos activos y reactiva
+     * el seguimiento en primer plano si alguno ya se encuentra en juego o dentro del margen.
      */
     fun rescheduleAllFollowed(
         context: Context,
         leadMinutes: Int = AppSettingsRepositoryImpl.provide(context).settings.value.notificationLeadMinutes
     ) {
         val followRepository = MatchFollowRepository.getInstance(context)
+        followRepository.pruneFinishedOlderThan()
         val followedMatches = followRepository.followedMatches.value.values
         for (match in followedMatches) {
-            if (match.state == MatchState.SCHEDULED) {
-                scheduleKickoff(context, match, leadMinutes)
+            when (match.state) {
+                MatchState.LIVE -> MatchLiveNotificationService.start(context, match.matchId)
+                MatchState.SCHEDULED -> scheduleKickoff(context, match, leadMinutes)
+                MatchState.FINISHED -> Unit
             }
         }
     }
+
+    private const val THREE_HOURS_MS = 3L * 60L * 60L * 1000L
 
     /**
      * Cancela cualquier alarma previamente programada para este partido.

@@ -13,6 +13,7 @@ import androidx.core.content.getSystemService
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.Match
 import com.ixeken.ulama.core.model.MatchState
+import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.data.repository.AppSettingsRepositoryImpl
 import com.ixeken.ulama.data.repository.MatchFollowRepository
 import com.ixeken.ulama.data.repository.MatchRepositoryImpl
@@ -131,25 +132,30 @@ class MatchLiveNotificationService : Service() {
 
         val allFollowed = followRepository.followedMatches.value.values.toList()
         val requestedMatch = if (matchId != null) followRepository.getFollowed(matchId) else null
+        val alreadyTracked = matchId != null &&
+            isPollingActive &&
+            (matchId == currentForegroundMatchId || previousScores.containsKey(matchId))
 
         if (requestedMatch != null && isEligibleForTracking(requestedMatch)) {
-            val notif = MatchNotificationHelper.buildLiveNotification(this, requestedMatch)
-            if (currentForegroundMatchId == null) {
-                currentForegroundMatchId = requestedMatch.matchId
-                startForegroundCompat(requestedMatch.matchId.hashCode(), notif)
-            } else {
-                notificationManager().notify(requestedMatch.matchId.hashCode(), notif)
-            }
-            serviceScope.launch {
-                val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(requestedMatch.homeTeamLogo)
-                val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(requestedMatch.awayTeamLogo)
-                val richNotif = MatchNotificationHelper.buildLiveNotification(
-                    this@MatchLiveNotificationService,
-                    requestedMatch,
-                    homeLogoBitmap = homeLogo,
-                    awayLogoBitmap = awayLogo
-                )
-                notificationManager().notify(requestedMatch.matchId.hashCode(), richNotif)
+            if (!alreadyTracked) {
+                val notif = MatchNotificationHelper.buildLiveNotification(this, requestedMatch)
+                if (currentForegroundMatchId == null) {
+                    currentForegroundMatchId = requestedMatch.matchId
+                    startForegroundCompat(requestedMatch.matchId.hashCode(), notif)
+                } else {
+                    notificationManager().notify(requestedMatch.matchId.hashCode(), notif)
+                }
+                serviceScope.launch {
+                    val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(requestedMatch.homeTeamLogo)
+                    val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(requestedMatch.awayTeamLogo)
+                    val richNotif = MatchNotificationHelper.buildLiveNotification(
+                        this@MatchLiveNotificationService,
+                        requestedMatch,
+                        homeLogoBitmap = homeLogo,
+                        awayLogoBitmap = awayLogo
+                    )
+                    notificationManager().notify(requestedMatch.matchId.hashCode(), richNotif)
+                }
             }
         } else if (currentForegroundMatchId == null) {
             val firstActive = allFollowed.firstOrNull { isEligibleForTracking(it) }
@@ -196,43 +202,47 @@ class MatchLiveNotificationService : Service() {
      * Agrupa los partidos seguidos por liga y fecha para realizar una sola peticion HTTP por competicion.
      */
     private suspend fun pollFollowedMatchesLoop() {
-        while (serviceScope.isActive) {
-            val activeMatches = followRepository.followedMatches.value.values.filter {
-                isEligibleForTracking(it)
-            }
-
-            if (activeMatches.isEmpty()) {
-                currentForegroundMatchId = null
-                runCatching { stopForeground(STOP_FOREGROUND_DETACH) }
-                stopSelf()
-                break
-            }
-
-            val groupedByLeagueAndDate = activeMatches.groupBy { followed ->
-                Pair(League.fromCode(followed.leagueCode), resolvePollDateKey(followed))
-            }
-
-            for ((leagueAndDate, matchesInGroup) in groupedByLeagueAndDate) {
-                val (league, dateKey) = leagueAndDate
-                val dayMatches = runCatching {
-                    matchRepository.getMatches(league = league, dates = dateKey, forceRefresh = true).getOrNull()
-                }.getOrNull().orEmpty()
-
-                for (followed in matchesInGroup) {
-                    val match = dayMatches.firstOrNull { it.id == followed.matchId }
-                        ?: runCatching {
-                            matchRepository.getMatches(league = league, forceRefresh = true)
-                                .getOrNull()
-                                ?.firstOrNull { it.id == followed.matchId }
-                        }.getOrNull()
-                        ?: continue
-                    processPolledMatch(followed, match)
+        try {
+            while (serviceScope.isActive) {
+                val activeMatches = followRepository.followedMatches.value.values.filter {
+                    isEligibleForTracking(it)
                 }
-            }
 
-            val hasLiveRunning = activeMatches.any { it.state == MatchState.LIVE }
-            val delayMillis = if (hasLiveRunning) POLL_INTERVAL_LIVE_MS else POLL_INTERVAL_REST_MS
-            delay(delayMillis)
+                if (activeMatches.isEmpty()) {
+                    currentForegroundMatchId = null
+                    runCatching { stopForeground(STOP_FOREGROUND_DETACH) }
+                    stopSelf()
+                    break
+                }
+
+                val groupedByLeagueAndDate = activeMatches.groupBy { followed ->
+                    Pair(League.fromCode(followed.leagueCode), resolvePollDateKey(followed))
+                }
+
+                for ((leagueAndDate, matchesInGroup) in groupedByLeagueAndDate) {
+                    val (league, dateKey) = leagueAndDate
+                    val dayMatches = runCatching {
+                        matchRepository.getMatches(league = league, dates = dateKey, forceRefresh = true).getOrNull()
+                    }.getOrNull().orEmpty()
+
+                    for (followed in matchesInGroup) {
+                        val match = dayMatches.firstOrNull { it.id == followed.matchId }
+                            ?: runCatching {
+                                matchRepository.getMatches(league = league, forceRefresh = true)
+                                    .getOrNull()
+                                    ?.firstOrNull { it.id == followed.matchId }
+                            }.getOrNull()
+                            ?: continue
+                        processPolledMatch(followed, match)
+                    }
+                }
+
+                val hasLiveRunning = activeMatches.any { it.state == MatchState.LIVE }
+                val delayMillis = if (hasLiveRunning) POLL_INTERVAL_LIVE_MS else POLL_INTERVAL_REST_MS
+                delay(delayMillis)
+            }
+        } finally {
+            isPollingActive = false
         }
     }
 
@@ -268,12 +278,15 @@ class MatchLiveNotificationService : Service() {
         val homeScored = newHomeScore > prevScores.first
         val awayScored = newAwayScore > prevScores.second
 
+        val updatedStartMillis = DateTimeUtils.parseUtcEpochMillis(match.dateUtc)
+            .takeIf { it > 0L } ?: followed.startTimeUtcMillis
         val updatedMatch = followed.copy(
             homeScore = newHomeScore,
             awayScore = newAwayScore,
             state = newState,
             clockDisplay = newClock,
             periodDisplay = newPeriod,
+            startTimeUtcMillis = updatedStartMillis,
             isHalftime = match.isHalftime,
             isExtraTime = match.status.isExtraTime,
             isShootout = match.status.isShootout,
@@ -401,6 +414,8 @@ class MatchLiveNotificationService : Service() {
 
         /**
          * Metodo seguro para iniciar el servicio en primer plano desde cualquier contexto.
+         * Si el sistema restringe el arranque en segundo plano, publica una notificacion estandar
+         * de respaldo para evitar que el usuario pierda el aviso del encuentro.
          */
         fun start(context: Context, matchId: String) {
             runCatching {
@@ -408,6 +423,10 @@ class MatchLiveNotificationService : Service() {
                     putExtra(EXTRA_MATCH_ID, matchId)
                 }
                 ContextCompat.startForegroundService(context, intent)
+            }.onFailure {
+                MatchFollowRepository.getInstance(context).getFollowed(matchId)?.let { followed ->
+                    MatchNotificationHelper.postFallbackKickoffNotification(context, followed)
+                }
             }
         }
 

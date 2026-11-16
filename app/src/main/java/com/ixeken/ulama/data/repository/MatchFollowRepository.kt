@@ -57,6 +57,38 @@ class MatchFollowRepository private constructor(context: Context) {
         }
         _followedMatches.value = storedMap
         _followedMatchIds.value = storedMap.keys.toSet()
+        pruneFinishedOlderThan()
+    }
+
+    /**
+     * Depura partidos finalizados con antiguedad superior al umbral para evitar acumulacion en disco.
+     */
+    fun pruneFinishedOlderThan(
+        maxAgeMillis: Long = DEFAULT_FINISHED_PRUNE_AGE_MS,
+        nowMillis: Long = System.currentTimeMillis()
+    ) {
+        val current = _followedMatches.value
+        if (current.isEmpty()) return
+
+        val expiredIds = current.values
+            .filter { match ->
+                match.state == MatchState.FINISHED &&
+                    match.startTimeUtcMillis > 0L &&
+                    (nowMillis - match.startTimeUtcMillis) > maxAgeMillis
+            }
+            .map { it.matchId }
+
+        if (expiredIds.isEmpty()) return
+
+        val updated = current.toMutableMap()
+        val editor = prefs.edit()
+        for (expiredId in expiredIds) {
+            updated.remove(expiredId)
+            editor.remove(KEY_PREFIX + expiredId)
+        }
+        runCatching { editor.apply() }
+        _followedMatches.value = updated
+        _followedMatchIds.value = updated.keys.toSet()
     }
 
     /**
@@ -127,6 +159,7 @@ class MatchFollowRepository private constructor(context: Context) {
     companion object {
         private const val PREFS_NAME = "ulama_followed_matches_prefs"
         private const val KEY_PREFIX = "match_"
+        private const val DEFAULT_FINISHED_PRUNE_AGE_MS = 24L * 60L * 60L * 1000L
 
         @Volatile
         private var instance: MatchFollowRepository? = null

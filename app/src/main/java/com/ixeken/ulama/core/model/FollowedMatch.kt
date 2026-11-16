@@ -1,6 +1,7 @@
 package com.ixeken.ulama.core.model
 
 import androidx.compose.runtime.Immutable
+import com.ixeken.ulama.core.util.DateTimeUtils
 import kotlinx.serialization.Serializable
 
 /**
@@ -84,5 +85,37 @@ fun FollowedMatch.toMatch(): Match {
         ),
         venueName = null,
         league = targetLeague
+    )
+}
+
+/**
+ * Convierte un partido de dominio en su entidad persistible de seguimiento para notificaciones.
+ * Centraliza el mapeo para evitar duplicacion entre seguimiento manual y automatico.
+ */
+fun Match.toFollowedMatch(): FollowedMatch {
+    return FollowedMatch(
+        matchId = id,
+        leagueCode = league.code,
+        homeTeamId = homeTeam.id,
+        awayTeamId = awayTeam.id,
+        homeTeamName = homeTeam.name,
+        awayTeamName = awayTeam.name,
+        homeTeamShortName = homeTeam.shortName,
+        awayTeamShortName = awayTeam.shortName,
+        homeTeamLogo = homeTeam.logoUrl.orEmpty(),
+        awayTeamLogo = awayTeam.logoUrl.orEmpty(),
+        homeScore = homeTeam.score ?: 0,
+        awayScore = awayTeam.score ?: 0,
+        state = status.state,
+        clockDisplay = status.displayClock,
+        periodDisplay = status.detail,
+        startTimeUtcMillis = DateTimeUtils.parseUtcEpochMillis(dateUtc),
+        isHalftime = isHalftime,
+        isExtraTime = status.isExtraTime,
+        isShootout = status.isShootout,
+        isFinishedAet = status.isFinishedAet,
+        isFinishedPenalties = status.isFinishedPenalties,
+        homeShootoutScore = homeTeam.shootoutScore,
+        awayShootoutScore = awayTeam.shootoutScore
     )
 }

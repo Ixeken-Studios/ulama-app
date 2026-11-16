@@ -198,7 +198,7 @@
     <string name="fav_teams_global_count_format">%1$d favoritos</string>
     <string name="fav_teams_league_count_format">%1$d elegido</string>
     <string name="fav_teams_league_count_plural_format">%1$d elegidos</string>
-    <string name="fav_teams_back_to_leagues">Ver otras ligas</string>
+    <string name="fav_teams_back_to_leagues">Más ligas</string>
     <string name="fav_teams_done_action">Listo</string>
 
     <!-- Colección Virtual - Mis Ligas: Cuadrícula y selector multimodal de torneos agregados -->
@@ -279,12 +279,18 @@
     <string name="settings_notifications_section_favorites">Equipos favoritos</string>
     <string name="settings_notifications_auto_follow_favorites_title">Seguir automáticamente</string>
     <string name="settings_notifications_auto_follow_favorites_desc">Activa las alertas y Live Updates cuando jueguen tus clubes favoritos.</string>
+    <string name="settings_notifications_permissions_warning_title">Permisos pendientes</string>
+    <string name="settings_notifications_permissions_warning_desc">Activa notificaciones, alarmas exactas y batería sin restricciones para recibir alertas automáticas.</string>
 
-    <!-- Ajustes - Permisos: Diagnóstico y solicitudes de notificaciones y excepción de optimizaciones de batería -->
+    <!-- Ajustes - Permisos: Diagnóstico y solicitudes de notificaciones, alarmas exactas y excepción de batería -->
     <string name="settings_permissions_notif_title">Permiso de notificaciones</string>
     <string name="settings_permissions_notif_desc">Necesario para mostrar marcadores en la pantalla de bloqueo y Now Bar en tiempo real.</string>
     <string name="settings_permissions_notif_granted">Notificaciones activadas</string>
     <string name="settings_permissions_notif_action">Activar notificaciones</string>
+    <string name="settings_permissions_alarm_title">Alarmas y recordatorios</string>
+    <string name="settings_permissions_alarm_desc">Permite despertar la app exactamente a la hora del silbatazo inicial sin retrasos del sistema.</string>
+    <string name="settings_permissions_alarm_granted">Alarmas exactas activadas</string>
+    <string name="settings_permissions_alarm_action">Permitir alarmas</string>
     <string name="settings_permissions_battery_title">Batería sin restricciones</string>
     <string name="settings_permissions_battery_desc">Permite que el seguimiento de partidos y Now Bar funcionen en segundo plano sin pausas del sistema.</string>
     <string name="settings_permissions_battery_unrestricted">Sin restricciones</string>
@@ -305,7 +311,7 @@
     <string name="settings_about_privacy_espn_desc">Las consultas viajan directamente desde tu teléfono a las APIs públicas de ESPN. Solo se transmiten los datos técnicos estándares del protocolo HTTP requeridos para establecer la conexión, sin vincular ninguna identidad personal ni ubicación.</string>
 
     <!-- Ajustes - Información de la App y Legal: Versión, marca mesoamericana, créditos de autor y licencia MIT -->
-    <string name="settings_about_version_label">v2.0</string>
+    <string name="settings_about_version_label">v2.0.1</string>
     <string name="settings_about_brand_description">El nombre evoca al ulama, el antiguo juego de pelota mesoamericano</string>
     <string name="settings_about_creator_label">Creado por</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -331,7 +337,11 @@
     <string name="settings_about_check_on_start_desc">Buscar actualizaciones automáticamente al abrir la app</string>
     <string name="settings_about_changelog_title">Historial de cambios</string>
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
-    <string name="settings_about_changelog_sheet_subtitle">Versión 2.0 · Una nueva era para Ulama</string>
+    <string name="settings_about_changelog_sheet_subtitle">Versión 2.0.1 · Correcciones y mejoras</string>
+    <string name="settings_about_changelog_feat4_title">Estabilidad en ligas y alineaciones</string>
+    <string name="settings_about_changelog_feat4_desc">Corrección de errores en calendarios de ligas, llaves eliminatorias, reconstrucción de alineaciones y marcadores globales.</string>
+    <string name="settings_about_changelog_feat5_title">Información y localización</string>
+    <string name="settings_about_changelog_feat5_desc">Mejoras en los datos mostrados por partido junto con localización completa de autogoles, tiempos extras y etiquetas.</string>
     <string name="settings_about_changelog_feat1_title">Más allá del mundial</string>
     <string name="settings_about_changelog_feat1_desc">Soporte completo para ligas internacionales, torneos de clubes, tablas de posiciones y calendarios.</string>
     <string name="settings_about_changelog_feat2_title">Reimaginación estética</string>
@@ -365,7 +375,7 @@
     <string name="sheet_update_available_notes_label">Notas de la versión</string>
     <string name="sheet_update_available_download">Descargar actualización</string>
     <string name="sheet_update_available_later">Más tarde</string>
-    <string name="sheet_whats_new_title">Novedades de Ulama 2.0</string>
+    <string name="sheet_whats_new_title">Novedades de Ulama 2.0.1</string>
     <string name="sheet_whats_new_subtitle">Tu aplicación deportiva se ha renovado por completo</string>
     <string name="sheet_whats_new_action_explore">Comenzar a explorar</string>
 

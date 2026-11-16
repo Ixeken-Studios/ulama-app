@@ -63,6 +63,7 @@ import com.ixeken.ulama.core.model.ThemeMode
 import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.core.util.ImagePreloadHelper
 import com.ixeken.ulama.data.repository.AppSettingsRepositoryImpl
+import com.ixeken.ulama.service.FavoriteAutoFollowJobService
 import com.ixeken.ulama.service.MatchAlarmScheduler
 import com.ixeken.ulama.service.MatchNotificationHelper
 import com.ixeken.ulama.ui.components.EmptyFavoritesCard
@@ -179,21 +180,20 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val currentVersion = try {
-                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "2.0"
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "2.0.1"
                     } catch (_: Exception) {
-                        "2.0"
+                        "2.0.1"
                     }
 
                     val savedVersion = settingsRepository.settings.value.lastKnownVersion
-                    android.util.Log.d("UlamaUpdate", "currentVersion=$currentVersion, savedVersion=$savedVersion")
 
-                    if (savedVersion.isNotEmpty() && savedVersion != currentVersion) {
-                        android.util.Log.d("UlamaUpdate", "Triggering WhatsNewBottomSheet!")
-                        isWhatsNewSheetOpen = true
-                        settingsRepository.setLastKnownVersion(currentVersion)
-                    } else if (savedVersion.isEmpty()) {
-                        android.util.Log.d("UlamaUpdate", "Empty savedVersion, setting to currentVersion")
-                        settingsRepository.setLastKnownVersion(currentVersion)
+                    when {
+                        !appSettings.hasCompletedOnboarding -> settingsRepository.setLastKnownVersion(currentVersion)
+                        savedVersion.isNotEmpty() && savedVersion != currentVersion -> {
+                            isWhatsNewSheetOpen = true
+                            settingsRepository.setLastKnownVersion(currentVersion)
+                        }
+                        savedVersion.isEmpty() -> settingsRepository.setLastKnownVersion(currentVersion)
                     }
 
                     if (appSettings.checkUpdatesOnStart) {
@@ -218,6 +218,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LifecycleResumeEffect(Unit) {
+                    MatchAlarmScheduler.rescheduleAllFollowed(context)
+                    FavoriteAutoFollowJobService.syncSchedule(context)
                     viewModel.silentRefresh()
                     onPauseOrDispose {}
                 }

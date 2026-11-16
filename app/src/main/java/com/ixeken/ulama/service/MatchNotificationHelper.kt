@@ -1,11 +1,13 @@
 package com.ixeken.ulama.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -186,7 +188,8 @@ object MatchNotificationHelper {
         goalTeamName: String? = null,
         largeIconBitmap: Bitmap? = null,
         homeLogoBitmap: Bitmap? = null,
-        awayLogoBitmap: Bitmap? = null
+        awayLogoBitmap: Bitmap? = null,
+        isOngoing: Boolean = match.state != MatchState.FINISHED
     ): Notification {
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -373,8 +376,8 @@ object MatchNotificationHelper {
             .setSubText(leagueName)
             .setColor(brandColor)
             .setColorized(false)
-            .setOngoing(!isFinished)
-            .setAutoCancel(isFinished)
+            .setOngoing(isOngoing)
+            .setAutoCancel(!isOngoing)
             .setOnlyAlertOnce(!hasGoalAlert && !isFinished)
             .setShowWhen(false)
             .setContentIntent(openPendingIntent)
@@ -503,6 +506,28 @@ object MatchNotificationHelper {
         }
 
         return builder.build()
+    }
+
+    /**
+     * Publica una notificacion estandar cuando el sistema bloquea el arranque del Foreground Service
+     * en segundo plano, garantizando que el usuario reciba el aviso y reactive Live Updates al tocarla.
+     */
+    fun postFallbackKickoffNotification(context: Context, match: FollowedMatch) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        createNotificationChannels(context)
+        val manager = context.getSystemService<NotificationManager>() ?: return
+        val fallbackNotif = buildLiveNotification(
+            context = context,
+            match = match,
+            isOngoing = false
+        )
+        runCatching {
+            manager.notify(match.matchId.hashCode(), fallbackNotif)
+        }
     }
 }
 
