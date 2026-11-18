@@ -12,8 +12,10 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ixeken.ulama.core.model.ColorPalette
@@ -443,6 +445,18 @@ private val AmberDarkColorScheme = darkColorScheme(
 )
 
 /**
+ * Nivel 2: Colores semanticos deportivos desacoplados del esquema de acentos para mantener
+ * legibilidad reglamentaria de tarjetas disciplinarias en cualquier paleta seleccionada.
+ */
+@Immutable
+data class UlamaColors(
+    val cardYellow: Color = RefereeYellowCard,
+    val cardRed: Color = RefereeRedCard
+)
+
+val LocalUlamaColors = staticCompositionLocalOf { UlamaColors() }
+
+/**
  * CompositionLocal que expone si el tema visual activo es oscuro, respetando configuracion manual y de sistema.
  */
 val LocalDarkTheme = staticCompositionLocalOf { false }
@@ -492,6 +506,7 @@ fun UlamaTheme(
 
     CompositionLocalProvider(
         LocalDarkTheme provides darkTheme,
+        LocalUlamaColors provides UlamaColors(),
         LocalUlamaMotion provides motion,
         LocalUlamaShapes provides UlamaShapes(),
         LocalUlamaSpacing provides UlamaSpacing(),
@@ -516,6 +531,11 @@ object UlamaTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalDarkTheme.current
+
+    val colors: UlamaColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalUlamaColors.current
 
     val spacing: UlamaSpacing
         @Composable

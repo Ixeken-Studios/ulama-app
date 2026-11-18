@@ -288,3 +288,10 @@ val AmberDarkSurfaceContainerLow = Color(0xFF1E1B16)
 val AmberDarkSurfaceContainer = Color(0xFF221F1A)
 val AmberDarkSurfaceContainerHigh = Color(0xFF2C2924)
 val AmberDarkSurfaceContainerHighest = Color(0xFF37342E)
+
+/**
+ * Nivel 1: Tonos primitivos deportivos para tarjetas disciplinarias en cancha y banca.
+ * Se mantienen independientes de errorContainer para preservar reconocimiento reglamentario.
+ */
+val RefereeYellowCard = Color(0xFFF4C430)
+val RefereeRedCard = Color(0xFFE53935)

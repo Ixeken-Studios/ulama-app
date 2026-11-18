@@ -26,7 +26,7 @@ class GithubUpdateChecker(
         NetworkClient.getOkHttpClient(context)
     },
     private val installedVersionProvider: () -> String = {
-        context?.let { getInstalledVersionName(it) } ?: "2.0.1"
+        context?.let { getInstalledVersionName(it) } ?: "2.1.0"
     }
 ) {
 
@@ -145,9 +145,9 @@ class GithubUpdateChecker(
         private fun getInstalledVersionName(context: Context): String {
             return try {
                 val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                packageInfo.versionName ?: "2.0.1"
+                packageInfo.versionName ?: "2.1.0"
             } catch (_: Exception) {
-                "2.0.1"
+                "2.1.0"
             }
         }
     }

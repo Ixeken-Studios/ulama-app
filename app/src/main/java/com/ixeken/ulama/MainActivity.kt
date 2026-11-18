@@ -180,9 +180,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val currentVersion = try {
-                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "2.0.1"
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "2.1.0"
                     } catch (_: Exception) {
-                        "2.0.1"
+                        "2.1.0"
                     }
 
                     val savedVersion = settingsRepository.settings.value.lastKnownVersion

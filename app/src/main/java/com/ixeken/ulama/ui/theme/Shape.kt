@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
  * Valores fijos e inmutables que representan las magnitudes base.
  */
 val RadiusNone: Dp = 0.dp
+val RadiusMicro: Dp = 2.dp
 val RadiusExtraSmall: Dp = 4.dp
 val RadiusSmall: Dp = 8.dp
 val RadiusMediumSmall: Dp = 12.dp
@@ -43,6 +44,7 @@ data class UlamaShapes(
     val card: Shape = RoundedCornerShape(RadiusExtraLarge),
     val cardPressed: Shape = RoundedCornerShape(RadiusMedium),
     val container: Shape = RoundedCornerShape(RadiusLarge),
+    val disciplineCard: Shape = RoundedCornerShape(RadiusMicro),
     val chip: Shape = RoundedCornerShape(RadiusPill),
     val dropdown: Shape = RoundedCornerShape(RadiusMedium),
     val bottomSheet: Shape = RoundedCornerShape(

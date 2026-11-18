@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -31,8 +33,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,12 +95,13 @@ fun SoccerPitch(
         }
 
         // Terreno de Juego Verde Sobrio con altura optimizada para formaciones complejas
+        val pitchBackgroundColor = Color(0xFF26472D) // Verde cesped tenue sobrio
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(390.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF26472D)) // Verde cesped tenue sobrio
+                .background(pitchBackgroundColor)
                 .border(1.dp, Color(0xFF386641), RoundedCornerShape(16.dp))
         ) {
             val pitchLineColor = Color(0x60FFFFFF)
@@ -167,7 +174,12 @@ fun SoccerPitch(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     tacticalRows.forEach { rowPlayers ->
-                        TacticalRow(players = rowPlayers, badgeColor = teamBadgeColor, textColor = contrastTextColor)
+                        TacticalRow(
+                            players = rowPlayers,
+                            badgeColor = teamBadgeColor,
+                            textColor = contrastTextColor,
+                            pitchBackgroundColor = pitchBackgroundColor
+                        )
                     }
                 }
             }
@@ -247,6 +259,7 @@ private fun TacticalRow(
     players: List<LineupPlayer>,
     badgeColor: Color,
     textColor: Color,
+    pitchBackgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -258,6 +271,7 @@ private fun TacticalRow(
                 player = player,
                 badgeColor = badgeColor,
                 textColor = textColor,
+                pitchBackgroundColor = pitchBackgroundColor,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -269,26 +283,43 @@ private fun PlayerPitchBadge(
     player: LineupPlayer,
     badgeColor: Color,
     textColor: Color,
+    pitchBackgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val sentOffAlpha = if (player.isSentOff) 0.52f else 1f
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(badgeColor)
-                .border(1.5.dp, textColor.copy(alpha = 0.8f), CircleShape)
-        ) {
-            Text(
-                text = player.jersey,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                color = textColor,
-                textAlign = TextAlign.Center
+        // El contenedor exterior evita que CircleShape recorte el overlay de la tarjeta en esquina superior derecha
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(28.dp)
+                    .graphicsLayer { alpha = sentOffAlpha }
+                    .clip(CircleShape)
+                    .background(badgeColor)
+                    .border(1.5.dp, textColor.copy(alpha = 0.8f), CircleShape)
+            ) {
+                Text(
+                    text = player.jersey,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = textColor,
+                    textAlign = TextAlign.Center
+                )
+            }
+            DisciplineCardBadge(
+                yellowCards = player.yellowCards,
+                hasRedCard = player.hasRedCard,
+                cutoutBorderColor = pitchBackgroundColor,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(
+                        x = UlamaTheme.spacing.extraSmall,
+                        y = -UlamaTheme.spacing.extraSmall / 2
+                    )
             )
         }
 
@@ -306,6 +337,7 @@ private fun PlayerPitchBadge(
             modifier = Modifier
                 .widthIn(max = 68.dp)
                 .padding(horizontal = 2.dp)
+                .graphicsLayer { alpha = sentOffAlpha }
         )
     }
 }
@@ -316,6 +348,7 @@ private fun BenchPlayerItem(
     teamColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val sentOffAlpha = if (player.isSentOff) 0.6f else 1f
     Column(
         modifier = modifier.padding(vertical = 2.dp)
     ) {
@@ -329,7 +362,9 @@ private fun BenchPlayerItem(
                 fontWeight = FontWeight.Bold,
                 color = teamColor,
                 textAlign = TextAlign.End,
-                modifier = Modifier.width(22.dp)
+                modifier = Modifier
+                    .width(22.dp)
+                    .graphicsLayer { alpha = sentOffAlpha }
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
@@ -339,7 +374,9 @@ private fun BenchPlayerItem(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .graphicsLayer { alpha = sentOffAlpha }
             )
             if (player.subbedIn) {
                 Spacer(modifier = Modifier.width(4.dp))
@@ -349,6 +386,14 @@ private fun BenchPlayerItem(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
+                )
+            }
+            if (player.yellowCards > 0 || player.hasRedCard) {
+                Spacer(modifier = Modifier.width(UlamaTheme.spacing.extraSmall))
+                DisciplineCardBadge(
+                    yellowCards = player.yellowCards,
+                    hasRedCard = player.hasRedCard,
+                    cutoutBorderColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             }
         }
@@ -368,4 +413,94 @@ private fun BenchPlayerItem(
             }
         }
     }
+}
+
+/**
+ * Distintivo vertical compacto para amonestaciones y expulsiones en cancha y suplentes.
+ * Diferencia visualmente amarilla simple, roja directa y doble amarilla superpuesta sin recargar el texto.
+ */
+@Composable
+@NonRestartableComposable
+private fun DisciplineCardBadge(
+    yellowCards: Int,
+    hasRedCard: Boolean,
+    cutoutBorderColor: Color,
+    modifier: Modifier = Modifier
+) {
+    if (yellowCards <= 0 && !hasRedCard) return
+
+    val badgeWidth = UlamaTheme.dimensions.disciplineCardWidth
+    val badgeHeight = UlamaTheme.dimensions.disciplineCardHeight
+    val badgeShape = UlamaTheme.shapes.disciplineCard
+    val borderWidth = UlamaTheme.dimensions.disciplineCardBorder
+    val yellowColor = UlamaTheme.colors.cardYellow
+    val redColor = UlamaTheme.colors.cardRed
+    val isDoubleCard = yellowCards >= 2 || (yellowCards >= 1 && hasRedCard)
+
+    val description = stringResource(
+        when {
+            isDoubleCard -> R.string.cd_second_yellow_card
+            hasRedCard -> R.string.cd_red_card
+            else -> R.string.cd_yellow_card
+        }
+    )
+
+    if (isDoubleCard) {
+        val stackOffsetX = UlamaTheme.spacing.extraSmall
+        val stackOffsetY = stackOffsetX / 2
+        Box(
+            modifier = modifier
+                .size(width = badgeWidth + stackOffsetX, height = badgeHeight + stackOffsetY)
+                .semantics { contentDescription = description }
+        ) {
+            DisciplineCardRectangle(
+                fillColor = yellowColor,
+                borderColor = cutoutBorderColor,
+                shape = badgeShape,
+                width = badgeWidth,
+                height = badgeHeight,
+                borderWidth = borderWidth
+            )
+            DisciplineCardRectangle(
+                fillColor = redColor,
+                borderColor = cutoutBorderColor,
+                shape = badgeShape,
+                width = badgeWidth,
+                height = badgeHeight,
+                borderWidth = borderWidth,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
+        }
+    } else {
+        val singleColor = if (hasRedCard) redColor else yellowColor
+        DisciplineCardRectangle(
+            fillColor = singleColor,
+            borderColor = cutoutBorderColor,
+            shape = badgeShape,
+            width = badgeWidth,
+            height = badgeHeight,
+            borderWidth = borderWidth,
+            modifier = modifier.semantics { contentDescription = description }
+        )
+    }
+}
+
+@Composable
+@NonRestartableComposable
+private fun DisciplineCardRectangle(
+    fillColor: Color,
+    borderColor: Color,
+    shape: Shape,
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    borderWidth: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(width = width, height = height)
+            .clip(shape)
+            .background(fillColor)
+            .border(borderWidth, borderColor, shape)
+    )
 }

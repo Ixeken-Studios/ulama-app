@@ -25,6 +25,9 @@ val DimTableGdWidth: Dp = 32.dp
 val DimTablePtsWidth: Dp = 30.dp
 val DimTopBarLogo: Dp = 44.dp
 val DimPullToRefreshThreshold: Dp = 80.dp
+val DimDisciplineCardWidth: Dp = 8.dp
+val DimDisciplineCardHeight: Dp = 11.dp
+val DimDisciplineCardBorder: Dp = 1.5.dp
 
 /**
  * Nivel 2: Tokens semanticos de dimensiones para componentes de UI.
@@ -46,7 +49,10 @@ data class UlamaDimensions(
     val tableGdWidth: Dp = DimTableGdWidth,
     val tablePtsWidth: Dp = DimTablePtsWidth,
     val topBarLogo: Dp = DimTopBarLogo,
-    val pullToRefreshThreshold: Dp = DimPullToRefreshThreshold
+    val pullToRefreshThreshold: Dp = DimPullToRefreshThreshold,
+    val disciplineCardWidth: Dp = DimDisciplineCardWidth,
+    val disciplineCardHeight: Dp = DimDisciplineCardHeight,
+    val disciplineCardBorder: Dp = DimDisciplineCardBorder
 )
 
 val LocalUlamaDimensions = staticCompositionLocalOf { UlamaDimensions() }

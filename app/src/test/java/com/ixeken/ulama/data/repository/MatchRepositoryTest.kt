@@ -2088,6 +2088,80 @@ class MatchRepositoryTest {
         val goldCupGroups = repo.getGroups(League.GOLD_CUP, forceRefresh = true).getOrThrow()
         assertTrue(goldCupGroups.isEmpty())
     }
+
+    @Test
+    fun getMatchDetail_mapsYellowDoubleYellowAndRedCardsInLineups() = runBlocking {
+        val cardsApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String, cacheControl: String?) = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                    rosters = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnRosterTeamDto(
+                            homeAway = "home",
+                            team = EspnTeamDto(id = "10", name = "Local", displayName = "Local"),
+                            formation = "4-4-2",
+                            roster = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = true,
+                                    jersey = "4",
+                                    formationPlace = 4,
+                                    plays = listOf(com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(yellowCard = true)),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p1", displayName = "Amarillo")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = true,
+                                    jersey = "6",
+                                    formationPlace = 6,
+                                    plays = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(yellowCard = true),
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(yellowCard = true)
+                                    ),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p2", displayName = "DobleAmarilla")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = false,
+                                    jersey = "14",
+                                    subbedIn = true,
+                                    plays = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(substitution = true),
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(yellowCard = true),
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(redCard = true)
+                                    ),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p3", displayName = "SuplenteExpulsado")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = false,
+                                    jersey = "22",
+                                    plays = listOf(com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(redCard = true)),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p4", displayName = "RojaDirecta")
+                                )
+                            )
+                        )
+                    )
+                )
+        }
+
+        val repo = MatchRepositoryImpl(cardsApi, Dispatchers.Unconfined)
+        val detail = repo.getMatchDetail(League.LIGA_MX, "cards_match", forceRefresh = true).getOrThrow()
+        val starters = detail.homeLineup?.starters.orEmpty()
+        val bench = detail.homeLineup?.bench.orEmpty()
+
+        assertEquals(1, starters[0].yellowCards)
+        org.junit.Assert.assertFalse(starters[0].hasRedCard)
+        org.junit.Assert.assertFalse(starters[0].isSentOff)
+
+        assertEquals(2, starters[1].yellowCards)
+        assertTrue(starters[1].isSentOff)
+
+        assertEquals(1, bench[0].yellowCards)
+        assertTrue(bench[0].hasRedCard)
+        assertTrue(bench[0].isSentOff)
+
+        assertEquals(0, bench[1].yellowCards)
+        assertTrue(bench[1].hasRedCard)
+        assertTrue(bench[1].isSentOff)
+    }
 }
 
 

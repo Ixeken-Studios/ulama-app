@@ -104,8 +104,14 @@ data class LineupPlayer(
     val subbedIn: Boolean = false,
     val subInMinute: String? = null,
     val subbedInForName: String? = null,
-    val subbedInForJersey: String? = null
-)
+    val subbedInForJersey: String? = null,
+    val yellowCards: Int = 0,
+    val hasRedCard: Boolean = false
+) {
+    /** Indica expulsion por roja directa o doble amarilla para atenuar el dorsal en cancha. */
+    val isSentOff: Boolean
+        get() = hasRedCard || yellowCards >= 2
+}
 
 /**
  * Linea tactica en el terreno de juego para ubicar al jugador en las filas de la cancha interactiva.

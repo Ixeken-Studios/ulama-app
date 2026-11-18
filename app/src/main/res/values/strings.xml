@@ -112,6 +112,9 @@
     <string name="lineup_starters">Titulares</string>
     <string name="lineup_bench">Suplentes</string>
     <string name="lineup_subbed_in_for">por %1$s</string>
+    <string name="cd_yellow_card">Tarjeta amarilla</string>
+    <string name="cd_second_yellow_card">Doble amarilla y expulsión</string>
+    <string name="cd_red_card">Tarjeta roja</string>
     <string name="stat_possession">Posesión</string>
     <string name="stat_shots">Tiros Totales</string>
     <string name="stat_shots_on_target">Tiros al Arco</string>
@@ -311,7 +314,7 @@
     <string name="settings_about_privacy_espn_desc">Las consultas viajan directamente desde tu teléfono a las APIs públicas de ESPN. Solo se transmiten los datos técnicos estándares del protocolo HTTP requeridos para establecer la conexión, sin vincular ninguna identidad personal ni ubicación.</string>
 
     <!-- Ajustes - Información de la App y Legal: Versión, marca mesoamericana, créditos de autor y licencia MIT -->
-    <string name="settings_about_version_label">v2.0.1</string>
+    <string name="settings_about_version_label">v2.1.0</string>
     <string name="settings_about_brand_description">El nombre evoca al ulama, el antiguo juego de pelota mesoamericano</string>
     <string name="settings_about_creator_label">Creado por</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -337,9 +340,9 @@
     <string name="settings_about_check_on_start_desc">Buscar actualizaciones automáticamente al abrir la app</string>
     <string name="settings_about_changelog_title">Historial de cambios</string>
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
-    <string name="settings_about_changelog_sheet_subtitle">Versión 2.0.1 · Correcciones y mejoras</string>
-    <string name="settings_about_changelog_feat4_title">Estabilidad en ligas y alineaciones</string>
-    <string name="settings_about_changelog_feat4_desc">Corrección de errores en calendarios de ligas, llaves eliminatorias, reconstrucción de alineaciones y marcadores globales.</string>
+    <string name="settings_about_changelog_sheet_subtitle">Versión 2.1.0 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_feat4_title">Tarjetas en alineaciones y estabilidad</string>
+    <string name="settings_about_changelog_feat4_desc">Tarjetas amarillas, dobles amarillas y rojas en la cancha y banca, además de mejoras en calendarios, llaves y seguimiento automático.</string>
     <string name="settings_about_changelog_feat5_title">Información y localización</string>
     <string name="settings_about_changelog_feat5_desc">Mejoras en los datos mostrados por partido junto con localización completa de autogoles, tiempos extras y etiquetas.</string>
     <string name="settings_about_changelog_feat1_title">Más allá del mundial</string>
@@ -375,7 +378,7 @@
     <string name="sheet_update_available_notes_label">Notas de la versión</string>
     <string name="sheet_update_available_download">Descargar actualización</string>
     <string name="sheet_update_available_later">Más tarde</string>
-    <string name="sheet_whats_new_title">Novedades de Ulama 2.0.1</string>
+    <string name="sheet_whats_new_title">Novedades de Ulama 2.1.0</string>
     <string name="sheet_whats_new_subtitle">Tu aplicación deportiva se ha renovado por completo</string>
     <string name="sheet_whats_new_action_explore">Comenzar a explorar</string>
 

@@ -832,6 +832,8 @@ class MatchRepositoryImpl(
                 ?: subbedInFor?.athlete?.displayName?.takeIf { it.isNotBlank() }
         } else null
         val subForJersey = if (subbedIn) subbedInFor?.jersey else null
+        val yellowCardsCount = plays.count { it.yellowCard }
+        val hasRedCard = plays.any { it.redCard }
         val resolvedJersey = jersey?.takeIf { it.isNotBlank() }
             ?: athlete?.jersey?.takeIf { it.isNotBlank() }
             ?: "$slot"
@@ -846,7 +848,9 @@ class MatchRepositoryImpl(
             subbedIn = subbedIn,
             subInMinute = subInMinute,
             subbedInForName = subForName,
-            subbedInForJersey = subForJersey
+            subbedInForJersey = subForJersey,
+            yellowCards = yellowCardsCount,
+            hasRedCard = hasRedCard
         )
     }
 
