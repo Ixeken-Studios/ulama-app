@@ -1123,7 +1123,7 @@ internal fun ThemeModeSettingCard(
                         checked = isSelected,
                         onCheckedChange = { onThemeModeChanged(mode) },
                         shapes = shapes,
-                        colors = ToggleButtonDefaults.toggleButtonColors(
+                        colors = ToggleButtonDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             checkedContainerColor = MaterialTheme.colorScheme.primary,
@@ -1235,7 +1235,7 @@ internal fun NotificationLeadSettingCard(
                         checked = isSelected,
                         onCheckedChange = { onNotificationLeadMinutesChanged(minutes) },
                         shapes = shapes,
-                        colors = ToggleButtonDefaults.toggleButtonColors(
+                        colors = ToggleButtonDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             checkedContainerColor = MaterialTheme.colorScheme.primary,

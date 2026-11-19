@@ -1,7 +1,5 @@
 package com.ixeken.ulama.core.network
 
-import okhttp3.Call
-import okhttp3.Connection
 import okhttp3.Interceptor
 import okhttp3.Protocol
 import okhttp3.Request
@@ -10,7 +8,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.TimeUnit
+import java.lang.reflect.Proxy
 
 /**
  * Pruebas unitarias para validar el redimensionado automatico a 128px en el Combiner de ESPN,
@@ -23,52 +21,52 @@ class ImageFallbackInterceptorTest {
         ImageFallbackInterceptor.clearMissingDarkCacheForTest()
     }
 
+    private fun fakeChain(
+        initialUrl: String,
+        requestedUrls: MutableList<String>,
+        respond: (Request) -> Response
+    ): Interceptor.Chain {
+        var currentRequest = Request.Builder().url(initialUrl).build()
+        return Proxy.newProxyInstance(
+            Interceptor.Chain::class.java.classLoader,
+            arrayOf(Interceptor.Chain::class.java)
+        ) { _, method, args ->
+            when (method.name) {
+                "request" -> currentRequest
+                "proceed" -> {
+                    currentRequest = args[0] as Request
+                    requestedUrls.add(currentRequest.url.toString())
+                    respond(currentRequest)
+                }
+                else -> throw UnsupportedOperationException("Metodo no soportado en prueba: ${method.name}")
+            }
+        } as Interceptor.Chain
+    }
+
+    private fun buildResponse(request: Request, code: Int, body: String): Response =
+        Response.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_1_1)
+            .code(code)
+            .message(if (code == 200) "OK" else "Not Found")
+            .body(body.toResponseBody())
+            .build()
+
     @Test
     fun interceptor_retriesWithDefaultPathWhenDarkUrlReturns404_andMemoizesMissingDarkUrl() {
         val interceptor = ImageFallbackInterceptor()
         val requestedUrls = mutableListOf<String>()
-
-        fun createChain(initialUrl: String) = object : Interceptor.Chain {
-            private var currentRequest = Request.Builder()
-                .url(initialUrl)
-                .build()
-
-            override fun request(): Request = currentRequest
-
-            override fun proceed(request: Request): Response {
-                currentRequest = request
-                requestedUrls.add(request.url.toString())
-
-                return if (request.url.toString().contains("/500-dark/")) {
-                    Response.Builder()
-                        .request(request)
-                        .protocol(Protocol.HTTP_1_1)
-                        .code(404)
-                        .message("Not Found")
-                        .body("".toResponseBody())
-                        .build()
-                } else {
-                    Response.Builder()
-                        .request(request)
-                        .protocol(Protocol.HTTP_1_1)
-                        .code(200)
-                        .message("OK")
-                        .body("image-data".toResponseBody())
-                        .build()
-                }
+        val respond: (Request) -> Response = { request ->
+            if (request.url.toString().contains("/500-dark/")) {
+                buildResponse(request, 404, "")
+            } else {
+                buildResponse(request, 200, "image-data")
             }
-
-            override fun connection(): Connection? = null
-            override fun call(): Call = throw NotImplementedError()
-            override fun connectTimeoutMillis(): Int = 0
-            override fun withConnectTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-            override fun readTimeoutMillis(): Int = 0
-            override fun withReadTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-            override fun writeTimeoutMillis(): Int = 0
-            override fun withWriteTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
         }
 
-        val response1 = interceptor.intercept(createChain("https://a.espncdn.com/i/teamlogos/soccer/500-dark/388.png"))
+        val response1 = interceptor.intercept(
+            fakeChain("https://a.espncdn.com/i/teamlogos/soccer/500-dark/388.png", requestedUrls, respond)
+        )
 
         assertEquals(200, response1.code)
         assertEquals(2, requestedUrls.size)
@@ -82,7 +80,9 @@ class ImageFallbackInterceptorTest {
         )
 
         // Segunda llamada al mismo escudo: debe ir directo a /500/ sin pasar por el 404 de /500-dark/
-        val response2 = interceptor.intercept(createChain("https://a.espncdn.com/i/teamlogos/soccer/500-dark/388.png"))
+        val response2 = interceptor.intercept(
+            fakeChain("https://a.espncdn.com/i/teamlogos/soccer/500-dark/388.png", requestedUrls, respond)
+        )
         assertEquals(200, response2.code)
         assertEquals(3, requestedUrls.size)
         assertEquals(
@@ -96,37 +96,11 @@ class ImageFallbackInterceptorTest {
         val interceptor = ImageFallbackInterceptor()
         val requestedUrls = mutableListOf<String>()
 
-        val fakeChain = object : Interceptor.Chain {
-            private var currentRequest = Request.Builder()
-                .url("https://a.espncdn.com/i/teamlogos/soccer/500-dark/223.png")
-                .build()
-
-            override fun request(): Request = currentRequest
-
-            override fun proceed(request: Request): Response {
-                currentRequest = request
-                requestedUrls.add(request.url.toString())
-
-                return Response.Builder()
-                    .request(request)
-                    .protocol(Protocol.HTTP_1_1)
-                    .code(200)
-                    .message("OK")
-                    .body("image-data".toResponseBody())
-                    .build()
+        val response = interceptor.intercept(
+            fakeChain("https://a.espncdn.com/i/teamlogos/soccer/500-dark/223.png", requestedUrls) { request ->
+                buildResponse(request, 200, "image-data")
             }
-
-            override fun connection(): Connection? = null
-            override fun call(): Call = throw NotImplementedError()
-            override fun connectTimeoutMillis(): Int = 0
-            override fun withConnectTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-            override fun readTimeoutMillis(): Int = 0
-            override fun withReadTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-            override fun writeTimeoutMillis(): Int = 0
-            override fun withWriteTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-        }
-
-        val response = interceptor.intercept(fakeChain)
+        )
 
         assertEquals(200, response.code)
         assertEquals(1, requestedUrls.size)
@@ -141,37 +115,11 @@ class ImageFallbackInterceptorTest {
         val interceptor = ImageFallbackInterceptor()
         val requestedUrls = mutableListOf<String>()
 
-        val fakeChain = object : Interceptor.Chain {
-            private var currentRequest = Request.Builder()
-                .url("https://a.espncdn.com/i/teamlogos/soccer/500/99999.png")
-                .build()
-
-            override fun request(): Request = currentRequest
-
-            override fun proceed(request: Request): Response {
-                currentRequest = request
-                requestedUrls.add(request.url.toString())
-
-                return Response.Builder()
-                    .request(request)
-                    .protocol(Protocol.HTTP_1_1)
-                    .code(404)
-                    .message("Not Found")
-                    .body("".toResponseBody())
-                    .build()
+        val response = interceptor.intercept(
+            fakeChain("https://a.espncdn.com/i/teamlogos/soccer/500/99999.png", requestedUrls) { request ->
+                buildResponse(request, 404, "")
             }
-
-            override fun connection(): Connection? = null
-            override fun call(): Call = throw NotImplementedError()
-            override fun connectTimeoutMillis(): Int = 0
-            override fun withConnectTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-            override fun readTimeoutMillis(): Int = 0
-            override fun withReadTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-            override fun writeTimeoutMillis(): Int = 0
-            override fun withWriteTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
-        }
-
-        val response = interceptor.intercept(fakeChain)
+        )
 
         assertEquals(404, response.code)
         assertEquals(1, requestedUrls.size)

@@ -54,7 +54,7 @@ fun <T> ExpressiveConnectedButtonGroup(
                 onCheckedChange = { onOptionSelected(option) },
                 shapes = shapes,
                 interactionSource = interactionSource,
-                colors = ToggleButtonDefaults.toggleButtonColors(
+                colors = ToggleButtonDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
