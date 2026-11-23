@@ -24,6 +24,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Prueba unitaria para validar la transformacion y robustez de MatchRepositoryImpl.
@@ -1124,6 +1127,14 @@ class MatchRepositoryTest {
 
     @Test
     fun getMatches_friendlies_usesRollingCalendarClustersWithoutQueryDatesYear() = runBlocking {
+        val today = LocalDate.now(ZoneId.systemDefault())
+        val pastDate = today.minusDays(30)
+        val futureDate = today.plusDays(5)
+        val pastIso = pastDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val futureIso = futureDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val pastBasic = pastDate.format(DateTimeFormatter.BASIC_ISO_DATE)
+        val futureBasic = futureDate.format(DateTimeFormatter.BASIC_ISO_DATE)
+
         var initialQueryDates: String? = "NOT_CALLED"
         var initialQueryLimit: Int? = -1
         val queriedDates = mutableListOf<String?>()
@@ -1143,8 +1154,8 @@ class MatchRepositoryTest {
                         leagues = listOf(
                             com.ixeken.ulama.data.espn.model.EspnLeagueCalendarDto(
                                 calendar = listOf(
-                                    kotlinx.serialization.json.JsonPrimitive("2026-10-06T00:00Z"),
-                                    kotlinx.serialization.json.JsonPrimitive("2026-11-12T00:00Z")
+                                    kotlinx.serialization.json.JsonPrimitive("${pastIso}T00:00Z"),
+                                    kotlinx.serialization.json.JsonPrimitive("${futureIso}T00:00Z")
                                 )
                             )
                         ),
@@ -1153,16 +1164,17 @@ class MatchRepositoryTest {
                 }
 
                 val matchId = "friendly_$dates"
+                val isPastBatch = dates == pastBasic
                 return EspnScoreboardResponse(
                     events = listOf(
                         EspnEventDto(
                             id = matchId,
-                            date = if (dates.startsWith("202610")) "2026-10-06T20:00Z" else "2026-11-12T20:00Z",
-                            name = if (dates.startsWith("202610")) "Mexico vs USA" else "Brazil vs Argentina",
+                            date = if (isPastBatch) "${pastIso}T20:00Z" else "${futureIso}T20:00Z",
+                            name = if (isPastBatch) "Mexico vs USA" else "Brazil vs Argentina",
                             competitions = listOf(
                                 EspnCompetitionDto(
                                     id = matchId,
-                                    date = if (dates.startsWith("202610")) "2026-10-06T20:00Z" else "2026-11-12T20:00Z",
+                                    date = if (isPastBatch) "${pastIso}T20:00Z" else "${futureIso}T20:00Z",
                                     competitors = listOf(
                                         EspnCompetitorDto(id = "1", homeAway = "home", score = "2", team = EspnTeamDto(id = "1", name = "Team A")),
                                         EspnCompetitorDto(id = "2", homeAway = "away", score = "1", team = EspnTeamDto(id = "2", name = "Team B"))
@@ -1186,8 +1198,8 @@ class MatchRepositoryTest {
 
         // Verifica que se capturen partidos pasados y futuros a traves del calendario
         assertEquals(2, matches.size)
-        assertTrue(matches.any { it.id == "friendly_20261006" && it.dateUtc.contains("2026-10-06") })
-        assertTrue(matches.any { it.id == "friendly_20261112" && it.dateUtc.contains("2026-11-12") })
+        assertTrue(matches.any { it.id == "friendly_$pastBasic" && it.dateUtc.contains(pastIso) })
+        assertTrue(matches.any { it.id == "friendly_$futureBasic" && it.dateUtc.contains(futureIso) })
     }
 
     @Test
