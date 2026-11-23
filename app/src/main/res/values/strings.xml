@@ -104,14 +104,27 @@
     <!-- Visor de Detalle de Partido: Pestañas de estadísticas, alineaciones y seguimiento de encuentro -->
     <string name="tab_stats">Estadísticas</string>
     <string name="tab_lineups">Alineaciones</string>
+    <string name="tab_events">Eventos</string>
     <string name="tab_table">Tabla</string>
     <string name="match_follow">Seguir partido</string>
     <string name="match_following">Siguiendo</string>
     <string name="cd_follow_match">Seguir notificaciones del partido</string>
     <string name="cd_goal_icon">Gol anotado</string>
+    <string name="cd_player_scored">Jugador con gol anotado</string>
+    <string name="cd_event_goal">Gol en cronología</string>
+    <string name="cd_event_own_goal">Autogol en cronología</string>
+    <string name="cd_event_substitution">Sustitución en cronología</string>
     <string name="lineup_starters">Titulares</string>
     <string name="lineup_bench">Suplentes</string>
+    <string name="lineup_subbed_off">Salieron de cambio</string>
     <string name="lineup_subbed_in_for">por %1$s</string>
+    <string name="lineup_subbed_out_for">entró %1$s</string>
+    <string name="lineup_phase_label">Alineación en cancha</string>
+    <string name="lineup_phase_initial">Inicial</string>
+    <string name="lineup_phase_final">Final</string>
+    <string name="events_not_available">Eventos no disponibles</string>
+    <string name="event_assist_format">Asist. %1$s</string>
+    <string name="event_sub_out_format">Sale %1$s</string>
     <string name="cd_yellow_card">Tarjeta amarilla</string>
     <string name="cd_second_yellow_card">Doble amarilla y expulsión</string>
     <string name="cd_red_card">Tarjeta roja</string>
@@ -314,7 +327,7 @@
     <string name="settings_about_privacy_espn_desc">Las consultas viajan directamente desde tu teléfono a las APIs públicas de ESPN. Solo se transmiten los datos técnicos estándares del protocolo HTTP requeridos para establecer la conexión, sin vincular ninguna identidad personal ni ubicación.</string>
 
     <!-- Ajustes - Información de la App y Legal: Versión, marca mesoamericana, créditos de autor y licencia MIT -->
-    <string name="settings_about_version_label">v2.1.0</string>
+    <string name="settings_about_version_label">v2.2.0</string>
     <string name="settings_about_brand_description">El nombre evoca al ulama, el antiguo juego de pelota mesoamericano</string>
     <string name="settings_about_creator_label">Creado por</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -340,7 +353,9 @@
     <string name="settings_about_check_on_start_desc">Buscar actualizaciones automáticamente al abrir la app</string>
     <string name="settings_about_changelog_title">Historial de cambios</string>
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
-    <string name="settings_about_changelog_sheet_subtitle">Versión 2.1.0 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_sheet_subtitle">Versión 2.2.0 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_feat6_title">Cronología de eventos y once final</string>
+    <string name="settings_about_changelog_feat6_desc">Nueva pestaña Eventos con goles, tarjetas y cambios minuto a minuto, iconos en pestañas, balón para goleadores y vista Inicial o Final en cancha.</string>
     <string name="settings_about_changelog_feat4_title">Tarjetas en alineaciones y estabilidad</string>
     <string name="settings_about_changelog_feat4_desc">Tarjetas amarillas, dobles amarillas y rojas en la cancha y banca, además de mejoras en calendarios, llaves y seguimiento automático.</string>
     <string name="settings_about_changelog_feat5_title">Información y localización</string>
@@ -378,7 +393,7 @@
     <string name="sheet_update_available_notes_label">Notas de la versión</string>
     <string name="sheet_update_available_download">Descargar actualización</string>
     <string name="sheet_update_available_later">Más tarde</string>
-    <string name="sheet_whats_new_title">Novedades de Ulama 2.1.0</string>
+    <string name="sheet_whats_new_title">Novedades de Ulama 2.2.0</string>
     <string name="sheet_whats_new_subtitle">Tu aplicación deportiva se ha renovado por completo</string>
     <string name="sheet_whats_new_action_explore">Comenzar a explorar</string>
 

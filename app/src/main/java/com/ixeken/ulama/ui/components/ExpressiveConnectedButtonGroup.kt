@@ -12,6 +12,9 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -61,6 +64,7 @@ fun <T> ExpressiveConnectedButtonGroup(
                 ),
                 modifier = Modifier
                     .weight(1f)
+                    .semantics { role = Role.RadioButton }
                     .bounceClick(enabled = true, interactionSource = interactionSource)
             ) {
                 Text(

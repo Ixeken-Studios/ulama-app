@@ -88,7 +88,7 @@ fun MatchDetailBottomSheet(
 
     val availableTabs = remember(match.league, standings) {
         if (!match.league.hasStandings || standings.isEmpty()) {
-            listOf(MatchDetailTab.STATS, MatchDetailTab.LINEUPS)
+            listOf(MatchDetailTab.STATS, MatchDetailTab.LINEUPS, MatchDetailTab.EVENTS)
         } else {
             MatchDetailTab.entries
         }
@@ -183,12 +183,13 @@ fun MatchDetailBottomSheet(
                         }
                     }
                 } else {
-                    // Estados FINALIZADO y EN VIVO: Barra de pestanas reutilizable
+                    // Estados FINALIZADO y EN VIVO: Barra de pestanas reutilizable con iconos nativos
                     UlamaSegmentedTabs(
                         items = availableTabs,
                         selectedItem = if (selectedTab in availableTabs) selectedTab else MatchDetailTab.STATS,
                         onItemSelected = { selectedTab = it },
                         label = { stringResource(it.titleRes) },
+                        iconRes = { it.iconRes },
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateListEntry(index = 1, key = match.id)
@@ -273,6 +274,22 @@ fun MatchDetailBottomSheet(
                                 } else {
                                     Text(
                                         text = stringResource(R.string.lineups_not_available),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(vertical = 32.dp)
+                                    )
+                                }
+                            }
+                            MatchDetailTab.EVENTS -> {
+                                if (matchDetail != null && matchDetail.timelineEvents.isNotEmpty()) {
+                                    MatchTimelineCard(
+                                        events = matchDetail.timelineEvents,
+                                        matchId = match.id
+                                    )
+                                } else {
+                                    Text(
+                                        text = stringResource(R.string.events_not_available),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textAlign = TextAlign.Center,

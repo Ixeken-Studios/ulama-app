@@ -104,14 +104,27 @@
     <!-- Match Detail View: Statistics tabs, lineups, and match tracking toggles -->
     <string name="tab_stats">Stats</string>
     <string name="tab_lineups">Lineups</string>
+    <string name="tab_events">Events</string>
     <string name="tab_table">Table</string>
     <string name="match_follow">Follow match</string>
     <string name="match_following">Following</string>
     <string name="cd_follow_match">Follow match notifications</string>
     <string name="cd_goal_icon">Goal scored</string>
+    <string name="cd_player_scored">Player scored a goal</string>
+    <string name="cd_event_goal">Goal in timeline</string>
+    <string name="cd_event_own_goal">Own goal in timeline</string>
+    <string name="cd_event_substitution">Substitution in timeline</string>
     <string name="lineup_starters">Starting XI</string>
     <string name="lineup_bench">Substitutes</string>
+    <string name="lineup_subbed_off">Subbed off</string>
     <string name="lineup_subbed_in_for">for %1$s</string>
+    <string name="lineup_subbed_out_for">replaced by %1$s</string>
+    <string name="lineup_phase_label">Pitch lineup</string>
+    <string name="lineup_phase_initial">Starting</string>
+    <string name="lineup_phase_final">Final</string>
+    <string name="events_not_available">Events not available</string>
+    <string name="event_assist_format">Assist: %1$s</string>
+    <string name="event_sub_out_format">Out: %1$s</string>
     <string name="cd_yellow_card">Yellow card</string>
     <string name="cd_second_yellow_card">Second yellow and red card</string>
     <string name="cd_red_card">Red card</string>
@@ -314,7 +327,7 @@
     <string name="settings_about_privacy_espn_desc">Requests travel directly from your phone to public ESPN APIs. Only standard HTTP technical data required for connection is sent, without linking any personal identity or location.</string>
 
     <!-- Settings - About App & Legal: Versioning, brand backstory, credits, and MIT license -->
-    <string name="settings_about_version_label">v2.1.0</string>
+    <string name="settings_about_version_label">v2.2.0</string>
     <string name="settings_about_brand_description">The name evokes ulama, the ancient Mesoamerican ballgame</string>
     <string name="settings_about_creator_label">Created by</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -340,7 +353,9 @@
     <string name="settings_about_check_on_start_desc">Automatically check for updates when launching the app</string>
     <string name="settings_about_changelog_title">Changelog</string>
     <string name="settings_about_changelog_sheet_title">What\'s new</string>
-    <string name="settings_about_changelog_sheet_subtitle">Version 2.1.0 · Features and improvements</string>
+    <string name="settings_about_changelog_sheet_subtitle">Version 2.2.0 · Features and improvements</string>
+    <string name="settings_about_changelog_feat6_title">Match events timeline and final XI</string>
+    <string name="settings_about_changelog_feat6_desc">New Events tab with minute-by-minute goals, cards, and subs, tab icons, scorer badges, and Starting or Final pitch lineups.</string>
     <string name="settings_about_changelog_feat4_title">Cards in lineups and stability</string>
     <string name="settings_about_changelog_feat4_desc">Yellow, second yellow, and red cards on the pitch and substitutes, plus improvements to schedules, brackets, and auto-follow.</string>
     <string name="settings_about_changelog_feat5_title">Match info and localization</string>
@@ -378,7 +393,7 @@
     <string name="sheet_update_available_notes_label">Release notes</string>
     <string name="sheet_update_available_download">Download update</string>
     <string name="sheet_update_available_later">Later</string>
-    <string name="sheet_whats_new_title">What\'s new in Ulama 2.1.0</string>
+    <string name="sheet_whats_new_title">What\'s new in Ulama 2.2.0</string>
     <string name="sheet_whats_new_subtitle">Your sports application has been completely redesigned</string>
     <string name="sheet_whats_new_action_explore">Start exploring</string>
 

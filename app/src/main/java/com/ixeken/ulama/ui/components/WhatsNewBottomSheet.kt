@@ -138,9 +138,10 @@ fun WhatsNewBottomSheet(
 
                 Spacer(modifier = Modifier.height(UlamaTheme.spacing.large))
 
-                // Lista segmentada conectada con las novedades de la version 2.1.0
+                // Lista segmentada conectada con las novedades de la version 2.2.0
                 val entries = remember {
                     listOf(
+                        Triple(R.string.settings_about_changelog_feat6_title, R.string.settings_about_changelog_feat6_desc, R.drawable.ic_timeline),
                         Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update),
                         Triple(R.string.settings_about_changelog_feat5_title, R.string.settings_about_changelog_feat5_desc, R.drawable.ic_language),
                         Triple(R.string.settings_about_changelog_feat1_title, R.string.settings_about_changelog_feat1_desc, R.drawable.ic_soccer_ball),

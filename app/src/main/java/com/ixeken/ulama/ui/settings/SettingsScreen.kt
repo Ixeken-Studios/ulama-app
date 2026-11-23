@@ -3122,7 +3122,7 @@ private fun AboutFeatureItemCard(
 }
 
 /**
- * Hoja modal con el desglose de cambios y nuevas caracteristicas en Ulama 2.1.0.
+ * Hoja modal con el desglose de cambios y nuevas caracteristicas en Ulama 2.2.0.
  */
 @Composable
 private fun ChangelogBottomSheet(
@@ -3149,6 +3149,7 @@ private fun ChangelogBottomSheet(
     }
     val entries = remember {
         listOf(
+            Triple(R.string.settings_about_changelog_feat6_title, R.string.settings_about_changelog_feat6_desc, R.drawable.ic_timeline),
             Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update),
             Triple(R.string.settings_about_changelog_feat5_title, R.string.settings_about_changelog_feat5_desc, R.drawable.ic_language),
             Triple(R.string.settings_about_changelog_feat1_title, R.string.settings_about_changelog_feat1_desc, R.drawable.ic_soccer_ball),

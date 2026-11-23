@@ -1,5 +1,6 @@
 package com.ixeken.ulama.ui.components.detail
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,9 +51,15 @@ import androidx.compose.ui.unit.sp
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.LineupPlayer
 import com.ixeken.ulama.core.model.TeamLineup
+import com.ixeken.ulama.ui.components.ExpressiveConnectedButtonGroup
 import com.ixeken.ulama.ui.components.TeamColorText
 import com.ixeken.ulama.ui.components.UlamaSegmentedTabs
 import com.ixeken.ulama.ui.theme.UlamaTheme
+
+private enum class LineupPhase(@field:StringRes val labelRes: Int) {
+    INITIAL(R.string.lineup_phase_initial),
+    FINAL(R.string.lineup_phase_final)
+}
 
 /**
  * Pizarra tactica que renderiza el terreno de juego, las lineas dinamicas de jugadores titulares
@@ -68,6 +78,14 @@ fun SoccerPitch(
     val lineups = listOfNotNull(homeLineup, awayLineup)
     var selectedIndex by remember { mutableIntStateOf(0) }
     val currentLineup = lineups.getOrNull(selectedIndex) ?: lineups.first()
+    var selectedPhase by remember(currentLineup.teamId) { mutableStateOf(LineupPhase.INITIAL) }
+    val (displayedStarters, displayedSecondaryPlayers) = remember(currentLineup, selectedPhase) {
+        if (selectedPhase == LineupPhase.FINAL && currentLineup.hasSubstitutions) {
+            currentLineup.resolveFinalView()
+        } else {
+            currentLineup.starters to currentLineup.bench
+        }
+    }
 
     val isHome = currentLineup == homeLineup
     val teamBadgeColor = if (isHome) {
@@ -147,12 +165,12 @@ fun SoccerPitch(
                 )
             }
 
-            // Filas tacticas dinamicas segun la formacion del equipo
-            val tacticalRows = remember(currentLineup.formation, currentLineup.starters) {
-                TacticalFormationUtils.resolveTacticalRows(currentLineup.formation, currentLineup.starters)
+            // Filas tacticas dinamicas segun la formacion del equipo y fase seleccionada
+            val tacticalRows = remember(currentLineup.formation, displayedStarters) {
+                TacticalFormationUtils.resolveTacticalRows(currentLineup.formation, displayedStarters)
             }
 
-            if (currentLineup.starters.isEmpty()) {
+            if (displayedStarters.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -198,8 +216,33 @@ fun SoccerPitch(
             }
         }
 
-        // Bloque de Jugadores Suplentes (Cuadricula equilibrada de 2 columnas)
-        if (currentLineup.bench.isNotEmpty()) {
+        // Conmutador M3 Expressive Inicial | Final debajo de la cancha solo si hubo sustituciones
+        if (currentLineup.hasSubstitutions) {
+            Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.lineup_phase_label),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ExpressiveConnectedButtonGroup(
+                    options = LineupPhase.entries,
+                    selectedOption = selectedPhase,
+                    onOptionSelected = { selectedPhase = it },
+                    labelProvider = { stringResource(it.labelRes) },
+                    modifier = Modifier.widthIn(max = 200.dp)
+                )
+            }
+        }
+
+        // Bloque de Suplentes o Titulares que salieron de cambio (Cuadricula equilibrada de 2 columnas)
+        val isFinalView = selectedPhase == LineupPhase.FINAL && currentLineup.hasSubstitutions
+        if (displayedSecondaryPlayers.isNotEmpty()) {
             Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
             Surface(
                 shape = UlamaTheme.shapes.card,
@@ -213,15 +256,15 @@ fun SoccerPitch(
                         .padding(UlamaTheme.spacing.cardPadding)
                 ) {
                     Text(
-                        text = stringResource(R.string.lineup_bench),
+                        text = stringResource(if (isFinalView) R.string.lineup_subbed_off else R.string.lineup_bench),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(UlamaTheme.spacing.extraSmall))
 
-                    val benchPairs = remember(currentLineup.bench) {
-                        currentLineup.bench.chunked(2)
+                    val benchPairs = remember(displayedSecondaryPlayers) {
+                        displayedSecondaryPlayers.chunked(2)
                     }
 
                     benchPairs.forEach { pair ->
@@ -235,12 +278,14 @@ fun SoccerPitch(
                             BenchPlayerItem(
                                 player = pair[0],
                                 teamColor = teamBadgeColor,
+                                isFinalPhase = isFinalView,
                                 modifier = Modifier.weight(1f)
                             )
                             if (pair.size > 1) {
                                 BenchPlayerItem(
                                     player = pair[1],
                                     teamColor = teamBadgeColor,
+                                    isFinalPhase = isFinalView,
                                     modifier = Modifier.weight(1f)
                                 )
                             } else {
@@ -321,6 +366,16 @@ private fun PlayerPitchBadge(
                         y = -UlamaTheme.spacing.extraSmall / 2
                     )
             )
+            GoalScorerBadge(
+                goalsCount = player.goalsCount,
+                cutoutBorderColor = pitchBackgroundColor,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(
+                        x = UlamaTheme.spacing.extraSmall,
+                        y = UlamaTheme.spacing.extraSmall / 2
+                    )
+            )
         }
 
         Spacer(modifier = Modifier.height(2.dp))
@@ -346,6 +401,7 @@ private fun PlayerPitchBadge(
 private fun BenchPlayerItem(
     player: LineupPlayer,
     teamColor: Color,
+    isFinalPhase: Boolean,
     modifier: Modifier = Modifier
 ) {
     val sentOffAlpha = if (player.isSentOff) 0.6f else 1f
@@ -370,7 +426,7 @@ private fun BenchPlayerItem(
             Text(
                 text = player.name,
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = if (player.subbedIn) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (player.subbedIn || player.subbedOut) FontWeight.SemiBold else FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -378,7 +434,24 @@ private fun BenchPlayerItem(
                     .weight(1f, fill = false)
                     .graphicsLayer { alpha = sentOffAlpha }
             )
-            if (player.subbedIn) {
+            if (player.goalsCount > 0) {
+                Spacer(modifier = Modifier.width(UlamaTheme.spacing.extraSmall))
+                Icon(
+                    painter = painterResource(R.drawable.ic_soccer_ball),
+                    contentDescription = stringResource(R.string.cd_event_goal),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(12.dp)
+                )
+                if (player.goalsCount > 1) {
+                    Text(
+                        text = "×${player.goalsCount}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            if (!isFinalPhase && player.subbedIn) {
                 Spacer(modifier = Modifier.width(4.dp))
                 val subText = if (!player.subInMinute.isNullOrBlank()) "↑ ${player.subInMinute}" else "↑"
                 Text(
@@ -386,6 +459,15 @@ private fun BenchPlayerItem(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
+                )
+            } else if (isFinalPhase && player.subbedOut) {
+                Spacer(modifier = Modifier.width(4.dp))
+                val subText = if (!player.subOutMinute.isNullOrBlank()) "↓ ${player.subOutMinute}" else "↓"
+                Text(
+                    text = subText,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (player.yellowCards > 0 || player.hasRedCard) {
@@ -397,7 +479,7 @@ private fun BenchPlayerItem(
                 )
             }
         }
-        if (player.subbedIn && !player.subbedInForName.isNullOrBlank()) {
+        if (!isFinalPhase && player.subbedIn && !player.subbedInForName.isNullOrBlank()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -411,6 +493,59 @@ private fun BenchPlayerItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        } else if (isFinalPhase && player.subbedOut && !player.subbedOutForName.isNullOrBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(28.dp))
+                Text(
+                    text = stringResource(R.string.lineup_subbed_out_for, player.subbedOutForName.orEmpty()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Distintivo compacto de balon en la esquina inferior derecha del dorsal para goleadores.
+ */
+@Composable
+@NonRestartableComposable
+private fun GoalScorerBadge(
+    goalsCount: Int,
+    cutoutBorderColor: Color,
+    modifier: Modifier = Modifier
+) {
+    if (goalsCount <= 0) return
+
+    val description = stringResource(R.string.cd_player_scored)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(CircleShape)
+            .background(cutoutBorderColor)
+            .padding(horizontal = 1.5.dp, vertical = 1.dp)
+            .semantics { contentDescription = description }
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_soccer_ball),
+            contentDescription = null,
+            tint = Color(0xFFF9F2E1),
+            modifier = Modifier.size(11.dp)
+        )
+        if (goalsCount > 1) {
+            Text(
+                text = "$goalsCount",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 9.sp),
+                fontWeight = FontWeight.Black,
+                color = Color(0xFFF9F2E1),
+                modifier = Modifier.padding(start = 1.dp)
+            )
         }
     }
 }

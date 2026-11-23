@@ -19,6 +19,7 @@ import com.ixeken.ulama.core.model.MatchPlayerLeader
 import com.ixeken.ulama.core.model.MatchStatComparison
 import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.MatchStatus
+import com.ixeken.ulama.core.model.MatchTimelineEvent
 import com.ixeken.ulama.core.model.StandingEntry
 import com.ixeken.ulama.core.model.TableCutoff
 import com.ixeken.ulama.core.model.TableZoneType
@@ -27,6 +28,7 @@ import com.ixeken.ulama.core.model.Team
 import com.ixeken.ulama.core.model.sanitizeAggregateScores
 import com.ixeken.ulama.core.model.TeamFormMatch
 import com.ixeken.ulama.core.model.TeamLineup
+import com.ixeken.ulama.core.model.TimelineEventType
 import com.ixeken.ulama.data.espn.EspnApiService
 import com.ixeken.ulama.data.espn.model.EspnCompetitorDto
 import com.ixeken.ulama.data.espn.model.EspnEventDto
@@ -605,13 +607,23 @@ class MatchRepositoryImpl(
             }
         }
 
+        val goalCountsByAthleteId = countGoalsByAthleteId(rawScoringPlays)
+        val timelineEvents = extractTimelineEvents(
+            keyEvents = keyEvents,
+            fallbackDetails = competition?.details.orEmpty(),
+            homeTeamId = homeTeamId,
+            awayTeamId = awayTeamId,
+            homeRoster = homeRoster,
+            awayRoster = awayRoster
+        )
+
         return MatchDetail(
             matchId = matchId,
             homeScorers = homeScorers,
             awayScorers = awayScorers,
             stats = statsList,
-            homeLineup = homeRoster?.toTeamLineup(),
-            awayLineup = awayRoster?.toTeamLineup(),
+            homeLineup = homeRoster?.toTeamLineup(goalCountsByAthleteId),
+            awayLineup = awayRoster?.toTeamLineup(goalCountsByAthleteId),
             homeColor = homeTeamDto?.color,
             awayColor = awayTeamDto?.color,
             homeAlternateColor = homeTeamDto?.alternateColor,
@@ -624,8 +636,191 @@ class MatchRepositoryImpl(
             awayRecentForm = awayRecentForm,
             headToHead = h2h,
             leaders = matchLeaders,
+            timelineEvents = timelineEvents,
             isCompleted = isCompleted
         )
+    }
+
+    /**
+     * Construye la cronologia unificada del partido filtrando pausas internas de ESPN y
+     * combinando anotaciones, amonestaciones, expulsiones y sustituciones ordenadas por minuto.
+     */
+    private fun extractTimelineEvents(
+        keyEvents: List<EspnSummaryScoringPlayDto>,
+        fallbackDetails: List<EspnSummaryScoringPlayDto>,
+        homeTeamId: String,
+        awayTeamId: String,
+        homeRoster: EspnRosterTeamDto?,
+        awayRoster: EspnRosterTeamDto?
+    ): List<MatchTimelineEvent> {
+        val rawEvents = keyEvents.ifEmpty { fallbackDetails }
+        val yellowSeenByAthleteId = mutableSetOf<String>()
+
+        val mappedFromFeed = rawEvents.mapIndexedNotNull { index, play ->
+            if (play.shootout) return@mapIndexedNotNull null
+            val teamId = play.team?.id.orEmpty()
+            val isHomeTeam = when {
+                teamId.isNotBlank() && teamId == homeTeamId -> true
+                teamId.isNotBlank() && teamId == awayTeamId -> false
+                else -> return@mapIndexedNotNull null
+            }
+
+            val minute = play.clock?.displayValue?.trim().orEmpty().ifBlank { return@mapIndexedNotNull null }
+            val typeText = play.type?.text.orEmpty()
+            val typeSlug = play.type?.type.orEmpty()
+
+            var eventType = when {
+                play.ownGoal || typeSlug.contains("own-goal", true) || typeText.contains("own goal", true) -> TimelineEventType.OWN_GOAL
+                play.scoringPlay && (play.penaltyKick || typeText.contains("penalty", true)) -> TimelineEventType.PENALTY_GOAL
+                play.scoringPlay || typeSlug.startsWith("goal", true) || typeText.startsWith("Goal", true) -> TimelineEventType.GOAL
+                typeSlug.contains("second-yellow", true) || typeSlug.contains("yellow-red", true) ||
+                    typeText.contains("second yellow", true) -> TimelineEventType.SECOND_YELLOW
+                typeSlug.contains("red-card", true) || typeText.contains("red card", true) -> TimelineEventType.RED_CARD
+                typeSlug.contains("yellow-card", true) || typeText.contains("yellow card", true) -> TimelineEventType.YELLOW_CARD
+                typeSlug.contains("substitution", true) || typeText.contains("substitution", true) -> TimelineEventType.SUBSTITUTION
+                else -> null
+            } ?: return@mapIndexedNotNull null
+
+            val athletes = play.participants.mapNotNull { it.athlete }.ifEmpty { play.athletesInvolved }
+            val primaryAthlete = athletes.getOrNull(0)
+            val secondaryAthlete = athletes.getOrNull(1)
+
+            if (eventType == TimelineEventType.YELLOW_CARD) {
+                val athleteKey = primaryAthlete?.id?.takeIf { it.isNotBlank() }
+                    ?: primaryAthlete?.displayName?.takeIf { it.isNotBlank() }
+                if (athleteKey != null && !yellowSeenByAthleteId.add(athleteKey)) {
+                    eventType = TimelineEventType.SECOND_YELLOW
+                }
+            }
+
+            val primaryName = primaryAthlete?.let { a ->
+                a.shortName?.takeIf { it.isNotBlank() } ?: a.displayName.takeIf { it.isNotBlank() }
+            } ?: extractFallbackTimelinePlayerName(play, eventType) ?: return@mapIndexedNotNull null
+
+            val secondaryName = secondaryAthlete?.let { a ->
+                a.shortName?.takeIf { it.isNotBlank() } ?: a.displayName.takeIf { it.isNotBlank() }
+            }
+
+            val sortSec = play.clock?.value?.toInt() ?: parseClockToSeconds(minute)
+            val eventId = play.id?.takeIf { it.isNotBlank() } ?: "ev_${index}_${sortSec}_${primaryName}"
+
+            MatchTimelineEvent(
+                id = eventId,
+                minute = minute,
+                sortMinute = sortSec,
+                type = eventType,
+                isHomeTeam = isHomeTeam,
+                primaryPlayerName = primaryName,
+                secondaryPlayerName = secondaryName
+            )
+        }
+
+        val combined = if (mappedFromFeed.isNotEmpty()) {
+            mappedFromFeed
+        } else {
+            buildFallbackTimelineFromRosters(homeRoster, awayRoster)
+        }
+
+        return combined.sortedWith(
+            compareByDescending<MatchTimelineEvent> { it.sortMinute }
+                .thenBy { it.id }
+        )
+    }
+
+    private fun extractFallbackTimelinePlayerName(
+        play: EspnSummaryScoringPlayDto,
+        type: TimelineEventType
+    ): String? {
+        val raw = play.shortText?.takeIf { it.isNotBlank() } ?: play.text?.takeIf { it.isNotBlank() } ?: return null
+        val cleaned = when (type) {
+            TimelineEventType.YELLOW_CARD -> raw.replace("Yellow Card", "", ignoreCase = true)
+            TimelineEventType.SECOND_YELLOW -> raw.replace("Second Yellow Card", "", ignoreCase = true)
+            TimelineEventType.RED_CARD -> raw.replace("Red Card", "", ignoreCase = true)
+            TimelineEventType.SUBSTITUTION -> raw.replace("Substitution", "", ignoreCase = true)
+            TimelineEventType.GOAL,
+            TimelineEventType.OWN_GOAL,
+            TimelineEventType.PENALTY_GOAL -> raw.substringBefore("Goal").trim()
+        }.trim(' ', '-', ',', '.', ':')
+        return cleaned.takeIf { it.isNotBlank() }
+    }
+
+    private fun buildFallbackTimelineFromRosters(
+        homeRoster: EspnRosterTeamDto?,
+        awayRoster: EspnRosterTeamDto?
+    ): List<MatchTimelineEvent> {
+        val events = mutableListOf<MatchTimelineEvent>()
+        fun collect(rosterDto: EspnRosterTeamDto?, isHome: Boolean) {
+            rosterDto?.roster.orEmpty().forEachIndexed { playerIdx, item ->
+                val playerName = item.athlete?.shortName?.takeIf { it.isNotBlank() }
+                    ?: item.athlete?.displayName?.takeIf { it.isNotBlank() }
+                    ?: return@forEachIndexed
+                var yellowCount = 0
+                item.plays.forEachIndexed { playIdx, p ->
+                    val min = p.clock?.displayValue?.trim().orEmpty().ifBlank { return@forEachIndexed }
+                    val sortSec = p.clock?.value?.toInt() ?: parseClockToSeconds(min)
+                    val evType = when {
+                        p.scoringPlay -> TimelineEventType.GOAL
+                        p.redCard -> TimelineEventType.RED_CARD
+                        p.yellowCard -> {
+                            yellowCount++
+                            if (yellowCount >= 2) TimelineEventType.SECOND_YELLOW else TimelineEventType.YELLOW_CARD
+                        }
+                        p.substitution && item.subbedIn -> TimelineEventType.SUBSTITUTION
+                        else -> null
+                    } ?: return@forEachIndexed
+
+                    val secondary = if (evType == TimelineEventType.SUBSTITUTION) {
+                        item.subbedInFor?.athlete?.shortName?.takeIf { it.isNotBlank() }
+                            ?: item.subbedInFor?.athlete?.displayName?.takeIf { it.isNotBlank() }
+                    } else null
+
+                    events.add(
+                        MatchTimelineEvent(
+                            id = "roster_${isHome}_${playerIdx}_${playIdx}_$sortSec",
+                            minute = min,
+                            sortMinute = sortSec,
+                            type = evType,
+                            isHomeTeam = isHome,
+                            primaryPlayerName = playerName,
+                            secondaryPlayerName = secondary
+                        )
+                    )
+                }
+            }
+        }
+        collect(homeRoster, isHome = true)
+        collect(awayRoster, isHome = false)
+        return events
+    }
+
+    private fun parseClockToSeconds(clock: String): Int {
+        val cleaned = clock.replace("'", "").trim()
+        val parts = cleaned.split("+")
+        val base = parts.getOrNull(0)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+        val added = parts.getOrNull(1)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+        return base * 60 + added
+    }
+
+    /**
+     * Cuenta goles no autogoles por identificador de futbolista desde details/keyEvents
+     * como respaldo cuando roster[].plays omite las anotaciones del jugador.
+     */
+    private fun countGoalsByAthleteId(plays: List<EspnSummaryScoringPlayDto>): Map<String, Int> {
+        if (plays.isEmpty()) return emptyMap()
+        val counts = mutableMapOf<String, Int>()
+        plays.forEach { play ->
+            val typeText = play.type?.text.orEmpty()
+            val isGoal = play.scoringPlay || typeText.contains("Goal", ignoreCase = true)
+            val isOwnGoal = play.ownGoal || typeText.contains("Own Goal", ignoreCase = true)
+            if (isGoal && !isOwnGoal && !play.shootout) {
+                val scorerId = play.participants.firstOrNull()?.athlete?.id?.takeIf { it.isNotBlank() }
+                    ?: play.athletesInvolved.firstOrNull()?.id?.takeIf { it.isNotBlank() }
+                if (scorerId != null) {
+                    counts[scorerId] = (counts[scorerId] ?: 0) + 1
+                }
+            }
+        }
+        return counts
     }
 
     /**
@@ -772,15 +967,15 @@ class MatchRepositoryImpl(
         }
     }
 
-    private fun EspnRosterTeamDto.toTeamLineup(): TeamLineup {
+    private fun EspnRosterTeamDto.toTeamLineup(goalCountsByAthleteId: Map<String, Int> = emptyMap()): TeamLineup {
         val (rawStarters, rawBench) = when {
             roster.any { it.starter } -> roster.partition { it.starter }
             roster.any { (it.formationPlace ?: 0) in 1..11 } -> roster.partition { (it.formationPlace ?: 0) in 1..11 }
             roster.size >= 11 -> Pair(roster.take(11), roster.drop(11))
             else -> Pair(roster, emptyList())
         }
-        val startersList = rawStarters.mapIndexed { index, p -> p.toLineupPlayer(index) }
-        val benchList = rawBench.mapIndexed { index, p -> p.toLineupPlayer(index) }
+        val startersList = rawStarters.mapIndexed { index, p -> p.toLineupPlayer(index, goalCountsByAthleteId) }
+        val benchList = rawBench.mapIndexed { index, p -> p.toLineupPlayer(index, goalCountsByAthleteId) }
         val resolvedShortName = team.shortDisplayName?.takeIf { it.isNotBlank() }
             ?: team.abbreviation?.takeIf { it.isNotBlank() }
             ?: team.name
@@ -796,7 +991,10 @@ class MatchRepositoryImpl(
         )
     }
 
-    private fun EspnRosterPlayerItemDto.toLineupPlayer(index: Int): LineupPlayer {
+    private fun EspnRosterPlayerItemDto.toLineupPlayer(
+        index: Int,
+        goalCountsByAthleteId: Map<String, Int> = emptyMap()
+    ): LineupPlayer {
         val resolvedPos = position ?: athlete?.extractPosition()
         val posName = resolvedPos?.name?.takeIf { it.isNotBlank() }
             ?: resolvedPos?.displayName?.takeIf { it.isNotBlank() }
@@ -827,11 +1025,27 @@ class MatchRepositoryImpl(
         val subInMinute = if (subbedIn) {
             plays.firstOrNull { it.substitution }?.clock?.displayValue?.takeIf { it.isNotBlank() }
         } else null
+        val subForId = if (subbedIn) subbedInFor?.athlete?.id else null
         val subForName = if (subbedIn) {
             subbedInFor?.athlete?.shortName?.takeIf { it.isNotBlank() }
                 ?: subbedInFor?.athlete?.displayName?.takeIf { it.isNotBlank() }
         } else null
         val subForJersey = if (subbedIn) subbedInFor?.jersey else null
+
+        val subOutMinute = if (subbedOut) {
+            plays.firstOrNull { it.substitution }?.clock?.displayValue?.takeIf { it.isNotBlank() }
+        } else null
+        val subOutForId = if (subbedOut) subbedOutFor?.athlete?.id else null
+        val subOutForName = if (subbedOut) {
+            subbedOutFor?.athlete?.shortName?.takeIf { it.isNotBlank() }
+                ?: subbedOutFor?.athlete?.displayName?.takeIf { it.isNotBlank() }
+        } else null
+
+        val athleteId = athlete?.id.orEmpty()
+        val goalsCount = maxOf(
+            plays.count { it.scoringPlay && !it.ownGoal },
+            if (athleteId.isNotBlank()) goalCountsByAthleteId[athleteId] ?: 0 else 0
+        )
         val yellowCardsCount = plays.count { it.yellowCard }
         val hasRedCard = plays.any { it.redCard }
         val resolvedJersey = jersey?.takeIf { it.isNotBlank() }
@@ -839,7 +1053,7 @@ class MatchRepositoryImpl(
             ?: "$slot"
 
         return LineupPlayer(
-            id = athlete?.id ?: "$slot",
+            id = athleteId.ifBlank { "$slot" },
             name = athlete?.shortName?.takeIf { it.isNotBlank() } ?: athlete?.displayName.orEmpty(),
             jersey = resolvedJersey,
             position = posName.ifBlank { posAbbr },
@@ -847,8 +1061,14 @@ class MatchRepositoryImpl(
             line = line,
             subbedIn = subbedIn,
             subInMinute = subInMinute,
+            subbedInForId = subForId,
             subbedInForName = subForName,
             subbedInForJersey = subForJersey,
+            subbedOut = subbedOut,
+            subOutMinute = subOutMinute,
+            subbedOutForId = subOutForId,
+            subbedOutForName = subOutForName,
+            goalsCount = goalsCount,
             yellowCards = yellowCardsCount,
             hasRedCard = hasRedCard
         )
