@@ -66,7 +66,8 @@ object MatchNotificationHelper {
             val request = Request.Builder().url(ImageFallbackInterceptor.toCombinerUrl(url, 128)).build()
             httpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
-                    val bytes = response.body?.bytes() ?: return@use null
+                    val bytes = response.body.bytes()
+                    if (bytes.isEmpty()) return@use null
                     val original = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@use null
                     val scaled = if (original.width == 128 && original.height == 128) {
                         original

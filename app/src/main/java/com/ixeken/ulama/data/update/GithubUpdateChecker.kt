@@ -59,7 +59,7 @@ class GithubUpdateChecker(
                 when (resp.code) {
                     403, 404 -> UpdateCheckResult.RepoNotFoundOrPrivate
                     in 200..299 -> {
-                        val bodyString = resp.body?.string().orEmpty()
+                        val bodyString = resp.body.string()
                         if (bodyString.isBlank()) {
                             UpdateCheckResult.RepoNotFoundOrPrivate
                         } else {

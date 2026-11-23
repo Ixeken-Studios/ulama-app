@@ -148,7 +148,7 @@ class DateTimeUtilsTest {
         val spanishHeader = DateTimeUtils.formatDateHeader(
             dateUtc = matchUtc,
             zoneId = mexicoZone,
-            locale = java.util.Locale("es", "MX")
+            locale = java.util.Locale.forLanguageTag("es-MX")
         )
         val englishHeader = DateTimeUtils.formatDateHeader(
             dateUtc = matchUtc,
