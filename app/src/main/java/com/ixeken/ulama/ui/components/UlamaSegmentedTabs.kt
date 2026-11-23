@@ -2,8 +2,6 @@ package com.ixeken.ulama.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -23,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,7 +77,7 @@ fun <T> UlamaSegmentedTabs(
                 }
             }
 
-            val containerColor by animateColorAsState(
+            val containerColorState = animateColorAsState(
                 targetValue = if (isSelected) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
@@ -87,7 +86,7 @@ fun <T> UlamaSegmentedTabs(
                 label = "SegmentedTabContainerColor"
             )
 
-            val contentColor by animateColorAsState(
+            val contentColorState = animateColorAsState(
                 targetValue = if (isSelected) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
@@ -113,7 +112,8 @@ fun <T> UlamaSegmentedTabs(
                         }
                     }
                     .clip(animatedShape)
-                    .background(containerColor)
+                    // Lectura diferida a fase de dibujado para evitar recomposiciones durante la transicion de color
+                    .drawBehind { drawRect(containerColorState.value) }
                     .clickable(
                         interactionSource = interactionSource,
                         indication = ripple(),
@@ -123,9 +123,9 @@ fun <T> UlamaSegmentedTabs(
             ) {
                 Text(
                     text = label(item),
+                    color = { contentColorState.value },
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,

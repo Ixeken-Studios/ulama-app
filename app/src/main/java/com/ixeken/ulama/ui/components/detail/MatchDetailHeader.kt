@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -707,7 +708,7 @@ private fun HeaderFollowButton(
         morphedRadius = UlamaTheme.shapes.buttonSelectedRadius
     )
 
-    val containerColor by animateColorAsState(
+    val containerColorState = animateColorAsState(
         targetValue = if (isFollowing) {
             MaterialTheme.colorScheme.primary
         } else {
@@ -716,7 +717,7 @@ private fun HeaderFollowButton(
         label = "FollowButtonContainerColor"
     )
 
-    val contentColor by animateColorAsState(
+    val contentColorState = animateColorAsState(
         targetValue = if (isFollowing) {
             MaterialTheme.colorScheme.onPrimary
         } else {
@@ -738,7 +739,8 @@ private fun HeaderFollowButton(
             .defaultMinSize(minHeight = 40.dp)
             .bounceClick(enabled = true, interactionSource = interactionSource)
             .clip(animatedShape)
-            .background(containerColor)
+            // Lectura diferida a fase de dibujado para evitar recomposiciones durante la transicion de color
+            .drawBehind { drawRect(containerColorState.value) }
             .then(borderModifier)
             .clickable(
                 interactionSource = interactionSource,
@@ -753,8 +755,8 @@ private fun HeaderFollowButton(
         ) {
             Icon(
                 painter = painterResource(if (isFollowing) R.drawable.ic_check else R.drawable.ic_notifications),
+                tint = { contentColorState.value },
                 contentDescription = stringResource(R.string.cd_follow_match),
-                tint = contentColor,
                 modifier = Modifier
                     .size(18.dp)
                     .iconPop(trigger = isFollowing)
@@ -762,9 +764,9 @@ private fun HeaderFollowButton(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = stringResource(if (isFollowing) R.string.match_following else R.string.match_follow),
+                color = { contentColorState.value },
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = contentColor
+                fontWeight = FontWeight.SemiBold
             )
         }
     }

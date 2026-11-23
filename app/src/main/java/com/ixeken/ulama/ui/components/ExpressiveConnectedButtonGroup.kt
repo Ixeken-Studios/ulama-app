@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -14,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * Grupo de botones conectados oficial de Material 3 Expressive para seleccion unica.
@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
  * @param labelProvider Funcion que resuelve la cadena de texto de la opcion.
  * @param modifier Modificador base para la fila contenedora.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <T> ExpressiveConnectedButtonGroup(
     options: List<T>,
@@ -68,7 +67,8 @@ fun <T> ExpressiveConnectedButtonGroup(
                     text = labelProvider(option),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

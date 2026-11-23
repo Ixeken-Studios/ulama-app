@@ -18,8 +18,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +65,10 @@ fun MatchDetailBottomSheet(
     onFollowToggle: () -> Unit = {},
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    sheetState: SheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
 ) {
     var selectedTab by remember { mutableStateOf(MatchDetailTab.STATS) }
 
@@ -227,7 +231,7 @@ fun MatchDetailBottomSheet(
                                 if (showMatchLeaders) {
                                     Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
                                     MatchLeadersCard(
-                                        leaders = matchDetail?.leaders.orEmpty(),
+                                        leaders = matchDetail.leaders,
                                         homeTeam = match.homeTeam,
                                         awayTeam = match.awayTeam,
                                         homeColor = resolvedColors.homeColor,

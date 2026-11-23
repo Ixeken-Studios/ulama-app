@@ -43,10 +43,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -54,9 +52,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -65,8 +62,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.ripple
+import com.ixeken.ulama.ui.components.ExpressiveConnectedButtonGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
@@ -263,7 +261,6 @@ fun SettingsScreen(
  * Vista raiz de ajustes organizada en un contenedor agrupado para preferencias del sistema
  * y una tarjeta independiente para la informacion de la aplicacion y su version.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsRootContent(
     appSettings: AppSettings,
@@ -514,14 +511,6 @@ private fun SettingsCategoryRow(
 
     Box(modifier = clickableModifier) {
         ListItem(
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
             supportingContent = {
                 Text(
                     text = description,
@@ -548,7 +537,14 @@ private fun SettingsCategoryRow(
             colors = ListItemDefaults.colors(
                 containerColor = Color.Transparent
             )
-        )
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -556,7 +552,6 @@ private fun SettingsCategoryRow(
  * Subpantalla de Apariencia con diseno Pixel: tarjetas homogeneas con el mismo color de contenedor,
  * selector de muestras de paleta y conmutadores con iconos en el thumb.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppearanceSettingsContent(
     appSettings: AppSettings,
@@ -1051,7 +1046,6 @@ internal fun ColorPaletteSettingCard(
  * Tarjeta interactiva de seleccion de modo de tema claro, oscuro o del sistema.
  * Utiliza botonera conectada de Material 3 Expressive y distintivo circular uniforme.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ThemeModeSettingCard(
     themeMode: ThemeMode,
@@ -1101,45 +1095,18 @@ internal fun ThemeModeSettingCard(
                 )
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-            ) {
-                val themeModes = listOf(
-                    ThemeMode.SYSTEM to stringResource(R.string.settings_theme_mode_system),
-                    ThemeMode.LIGHT to stringResource(R.string.settings_theme_mode_light),
-                    ThemeMode.DARK to stringResource(R.string.settings_theme_mode_dark)
-                )
-
-                themeModes.forEachIndexed { index, (mode, label) ->
-                    val isSelected = themeMode == mode
-                    val shapes = when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        themeModes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    }
-
-                    ToggleButton(
-                        checked = isSelected,
-                        onCheckedChange = { onThemeModeChanged(mode) },
-                        shapes = shapes,
-                        colors = ToggleButtonDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            maxLines = 1
-                        )
+            ExpressiveConnectedButtonGroup(
+                options = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK),
+                selectedOption = themeMode,
+                onOptionSelected = onThemeModeChanged,
+                labelProvider = { mode ->
+                    when (mode) {
+                        ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_mode_system)
+                        ThemeMode.LIGHT -> stringResource(R.string.settings_theme_mode_light)
+                        ThemeMode.DARK -> stringResource(R.string.settings_theme_mode_dark)
                     }
                 }
-            }
+            )
         }
     }
 }
@@ -1148,7 +1115,6 @@ internal fun ThemeModeSettingCard(
  * Tarjeta interactiva de seleccion de anticipacion para notificaciones de inicio de partidos.
  * Construida con botonera conectada de Material 3 Expressive y distintivo circular uniforme.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun NotificationLeadSettingCard(
     leadMinutes: Int,
@@ -1213,46 +1179,18 @@ internal fun NotificationLeadSettingCard(
                 5
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-            ) {
-                val options = listOf(
-                    0 to stringResource(R.string.settings_notifications_lead_0),
-                    5 to stringResource(R.string.settings_notifications_lead_5),
-                    10 to stringResource(R.string.settings_notifications_lead_10)
-                )
-
-                options.forEachIndexed { index, (minutes, label) ->
-                    val isSelected = selectedOption == minutes
-                    val shapes = when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    }
-
-                    ToggleButton(
-                        checked = isSelected,
-                        onCheckedChange = { onNotificationLeadMinutesChanged(minutes) },
-                        shapes = shapes,
-                        colors = ToggleButtonDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            checkedContainerColor = MaterialTheme.colorScheme.primary,
-                            checkedContentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+            ExpressiveConnectedButtonGroup(
+                options = leadOptions,
+                selectedOption = selectedOption,
+                onOptionSelected = onNotificationLeadMinutesChanged,
+                labelProvider = { minutes ->
+                    when (minutes) {
+                        0 -> stringResource(R.string.settings_notifications_lead_0)
+                        10 -> stringResource(R.string.settings_notifications_lead_10)
+                        else -> stringResource(R.string.settings_notifications_lead_5)
                     }
                 }
-            }
+            )
         }
     }
 }
@@ -1488,14 +1426,6 @@ private fun SettingsSwitchRow(
             )
     ) {
         ListItem(
-            headlineContent = {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
             supportingContent = {
                 Text(
                     text = description,
@@ -1545,7 +1475,14 @@ private fun SettingsSwitchRow(
             colors = ListItemDefaults.colors(
                 containerColor = Color.Transparent
             )
-        )
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -1607,7 +1544,6 @@ private fun buildNotificationsSummary(settings: AppSettings): String {
  * @param onAppLanguageChanged Callback invocado al seleccionar un idioma diferente.
  * @param onBackClick Accion para retornar a la vista raiz de ajustes.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LanguageSettingsContent(
     currentLanguage: AppLanguage,
@@ -1773,14 +1709,6 @@ private fun LanguageOptionCard(
                 )
         ) {
             ListItem(
-                headlineContent = {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
                 supportingContent = {
                     Text(
                         text = description,
@@ -1801,7 +1729,14 @@ private fun LanguageOptionCard(
                 colors = ListItemDefaults.colors(
                     containerColor = Color.Transparent
                 )
-            )
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }
@@ -1810,7 +1745,6 @@ private fun LanguageOptionCard(
  * Subpantalla de Notificaciones con diseno Pixel: tarjeta homogenea con selector
  * de 3 opciones (0 min, 5 min y 10 min) utilizando UlamaSegmentedTabs.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun NotificationsSettingsContent(
     appSettings: AppSettings,
@@ -2055,7 +1989,6 @@ private fun NotificationsSettingsContent(
  *
  * @param onBackClick Accion para retornar a la vista raiz de ajustes.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PermissionsSettingsContent(
     onBackClick: () -> Unit
@@ -2320,7 +2253,6 @@ private fun requestIgnoreBatteryOptimizations(context: Context) {
  *
  * @param onBackClick Accion para retornar a la vista principal de ajustes.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AboutSettingsContent(
     appSettings: AppSettings,
@@ -3058,7 +2990,10 @@ private fun AboutBaseBottomSheet(
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,

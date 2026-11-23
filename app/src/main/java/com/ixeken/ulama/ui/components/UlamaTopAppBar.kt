@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,7 +46,6 @@ import com.ixeken.ulama.ui.theme.UlamaTheme
  * @param onManageFavorites Callback para abrir el selector de favoritos.
  * @param modifier Modificador base de Compose para el contenedor superior.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UlamaTopAppBar(
     selectedLeague: League,

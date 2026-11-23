@@ -3,7 +3,6 @@ package com.ixeken.ulama.ui.theme
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
@@ -471,7 +470,6 @@ val LocalDarkTheme = staticCompositionLocalOf { false }
  * @param isExpressiveMotion Conmuta entre simulacion de fisicas con rebote (Expressive) o curvas estandar (Standard).
  * @param content Contenido composable envuelto bajo la jerarquia del tema.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UlamaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
