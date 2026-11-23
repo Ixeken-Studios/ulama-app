@@ -111,20 +111,27 @@
     <string name="cd_follow_match">Follow match notifications</string>
     <string name="cd_goal_icon">Goal scored</string>
     <string name="cd_player_scored">Player scored a goal</string>
+    <string name="cd_player_assisted">Player assisted a goal</string>
     <string name="cd_event_goal">Goal in timeline</string>
     <string name="cd_event_own_goal">Own goal in timeline</string>
     <string name="cd_event_substitution">Substitution in timeline</string>
     <string name="lineup_starters">Starting XI</string>
     <string name="lineup_bench">Substitutes</string>
-    <string name="lineup_subbed_off">Subbed off</string>
     <string name="lineup_subbed_in_for">for %1$s</string>
-    <string name="lineup_subbed_out_for">replaced by %1$s</string>
     <string name="lineup_phase_label">Pitch lineup</string>
     <string name="lineup_phase_initial">Starting</string>
     <string name="lineup_phase_final">Final</string>
+    <string name="lineup_disclaimer">Positions and formations are for reference and may vary during the match.</string>
     <string name="events_not_available">Events not available</string>
+    <string name="event_title_goal">Goal</string>
+    <string name="event_title_penalty_goal">Penalty goal</string>
+    <string name="event_title_own_goal">Own goal</string>
+    <string name="event_title_yellow_card">Yellow card</string>
+    <string name="event_title_second_yellow">Second yellow</string>
+    <string name="event_title_red_card">Red card</string>
+    <string name="event_title_substitution">Substitution</string>
     <string name="event_assist_format">Assist: %1$s</string>
-    <string name="event_sub_out_format">Out: %1$s</string>
+    <string name="event_sub_in_out_format">In: %1$s · Out: %2$s</string>
     <string name="cd_yellow_card">Yellow card</string>
     <string name="cd_second_yellow_card">Second yellow and red card</string>
     <string name="cd_red_card">Red card</string>
@@ -240,7 +247,7 @@
     <string name="settings_section_privacy">Privacy</string>
     <string name="settings_section_privacy_desc">Zero telemetry and on-device network use</string>
     <string name="settings_section_about">About app</string>
-    <string name="settings_section_about_desc">Version 2.0 · MIT License</string>
+    <string name="settings_section_about_desc">Version 2.2.0 · MIT License</string>
 
     <!-- Settings - Appearance: Theme switching, color palettes, and motion physics -->
     <string name="settings_section_colors_style">Colors and theme</string>

@@ -111,20 +111,27 @@
     <string name="cd_follow_match">Seguir notificaciones del partido</string>
     <string name="cd_goal_icon">Gol anotado</string>
     <string name="cd_player_scored">Jugador con gol anotado</string>
+    <string name="cd_player_assisted">Jugador con asistencia de gol</string>
     <string name="cd_event_goal">Gol en cronología</string>
     <string name="cd_event_own_goal">Autogol en cronología</string>
     <string name="cd_event_substitution">Sustitución en cronología</string>
     <string name="lineup_starters">Titulares</string>
     <string name="lineup_bench">Suplentes</string>
-    <string name="lineup_subbed_off">Salieron de cambio</string>
     <string name="lineup_subbed_in_for">por %1$s</string>
-    <string name="lineup_subbed_out_for">entró %1$s</string>
     <string name="lineup_phase_label">Alineación en cancha</string>
     <string name="lineup_phase_initial">Inicial</string>
     <string name="lineup_phase_final">Final</string>
+    <string name="lineup_disclaimer">Las posiciones y esquemas son referenciales y pueden variar durante el partido.</string>
     <string name="events_not_available">Eventos no disponibles</string>
+    <string name="event_title_goal">Gol</string>
+    <string name="event_title_penalty_goal">Gol de penal</string>
+    <string name="event_title_own_goal">Autogol</string>
+    <string name="event_title_yellow_card">Tarjeta amarilla</string>
+    <string name="event_title_second_yellow">Doble amarilla</string>
+    <string name="event_title_red_card">Tarjeta roja</string>
+    <string name="event_title_substitution">Sustitución</string>
     <string name="event_assist_format">Asist. %1$s</string>
-    <string name="event_sub_out_format">Sale %1$s</string>
+    <string name="event_sub_in_out_format">Entra %1$s · Sale %2$s</string>
     <string name="cd_yellow_card">Tarjeta amarilla</string>
     <string name="cd_second_yellow_card">Doble amarilla y expulsión</string>
     <string name="cd_red_card">Tarjeta roja</string>
@@ -240,7 +247,7 @@
     <string name="settings_section_privacy">Privacidad</string>
     <string name="settings_section_privacy_desc">Cero telemetría y uso de red on-device</string>
     <string name="settings_section_about">Información de la app</string>
-    <string name="settings_section_about_desc">Versión 2.0 · Licencia MIT</string>
+    <string name="settings_section_about_desc">Versión 2.2.0 · Licencia MIT</string>
 
     <!-- Ajustes - Apariencia: Opciones de tema claro/oscuro, paletas de colores y estilos de física/movimiento -->
     <string name="settings_section_colors_style">Colores y tema</string>

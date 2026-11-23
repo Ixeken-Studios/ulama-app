@@ -2295,6 +2295,9 @@ class MatchRepositoryTest {
                             participants = listOf(
                                 com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
                                     athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_star", displayName = "Efraín Álvarez")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_assist", displayName = "Richard Ledezma")
                                 )
                             )
                         )
@@ -2309,6 +2312,10 @@ class MatchRepositoryTest {
                                     starter = true,
                                     jersey = "11",
                                     formationPlace = 11,
+                                    position = com.ixeken.ulama.data.espn.model.EspnPlayerPositionDto(
+                                        name = "Attacking Midfielder Left",
+                                        abbreviation = "AM-L"
+                                    ),
                                     subbedOut = true,
                                     subbedOutFor = com.ixeken.ulama.data.espn.model.EspnSubbedInForDto(
                                         jersey = "14",
@@ -2323,8 +2330,25 @@ class MatchRepositoryTest {
                                     athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_star", displayName = "Efraín Álvarez")
                                 ),
                                 com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = true,
+                                    jersey = "7",
+                                    formationPlace = 7,
+                                    plays = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(
+                                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "21'"),
+                                            scoringPlay = true,
+                                            didAssist = true
+                                        )
+                                    ),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_assist", displayName = "Richard Ledezma")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
                                     starter = false,
                                     jersey = "14",
+                                    position = com.ixeken.ulama.data.espn.model.EspnPlayerPositionDto(
+                                        name = "Substitute",
+                                        abbreviation = "SUB"
+                                    ),
                                     subbedIn = true,
                                     subbedInFor = com.ixeken.ulama.data.espn.model.EspnSubbedInForDto(
                                         jersey = "11",
@@ -2335,7 +2359,7 @@ class MatchRepositoryTest {
                                             clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "67'"),
                                             substitution = true
                                         ),
-                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(scoringPlay = true)
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(scoringPlay = true, didScore = true)
                                     ),
                                     athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_sub", displayName = "Ricardo Marín")
                                 )
@@ -2349,18 +2373,20 @@ class MatchRepositoryTest {
         val detail = repo.getMatchDetail(League.LIGA_MX, "lineup_sub_match", forceRefresh = true).getOrThrow()
         val homeLineup = detail.homeLineup!!
 
-        assertEquals(1, homeLineup.starters.first().goalsCount)
+        assertEquals(1, homeLineup.starters[0].goalsCount)
+        assertEquals(0, homeLineup.starters[0].assistsCount)
+        // Quien solo dio asistencia con scoringPlay=true y didAssist=true no debe contar como gol
+        assertEquals(0, homeLineup.starters[1].goalsCount)
+        assertEquals(1, homeLineup.starters[1].assistsCount)
         assertEquals(1, homeLineup.bench.first().goalsCount)
         assertTrue(homeLineup.hasSubstitutions)
 
-        val (finalStarters, exitedPlayers) = homeLineup.resolveFinalView()
-        assertEquals(1, finalStarters.size)
-        assertEquals("Ricardo Marín", finalStarters.first().name)
-        assertEquals(11, finalStarters.first().formationPlace)
-        assertEquals(1, exitedPlayers.size)
-        assertEquals("Efraín Álvarez", exitedPlayers.first().name)
-        assertEquals("67'", exitedPlayers.first().subOutMinute)
-        assertEquals("Ricardo Marín", exitedPlayers.first().subbedOutForName)
+        val finalStarters = homeLineup.resolveFinalStarters()
+        assertEquals(2, finalStarters.size)
+        assertEquals("Ricardo Marín", finalStarters[0].name)
+        assertEquals(11, finalStarters[0].formationPlace)
+        assertEquals("Attacking Midfielder Left", finalStarters[0].position)
+        assertEquals("Richard Ledezma", finalStarters[1].name)
     }
 }
 

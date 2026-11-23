@@ -75,6 +75,8 @@ data class EspnPlayerPlayDto(
     val clock: EspnClockDisplayDto? = null,
     val substitution: Boolean = false,
     val scoringPlay: Boolean = false,
+    val didScore: Boolean = false,
+    val didAssist: Boolean = false,
     val ownGoal: Boolean = false,
     val redCard: Boolean = false,
     val yellowCard: Boolean = false

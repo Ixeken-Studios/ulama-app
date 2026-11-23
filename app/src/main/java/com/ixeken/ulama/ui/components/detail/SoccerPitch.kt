@@ -1,5 +1,6 @@
 package com.ixeken.ulama.ui.components.detail
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -79,12 +80,9 @@ fun SoccerPitch(
     var selectedIndex by remember { mutableIntStateOf(0) }
     val currentLineup = lineups.getOrNull(selectedIndex) ?: lineups.first()
     var selectedPhase by remember(currentLineup.teamId) { mutableStateOf(LineupPhase.INITIAL) }
-    val (displayedStarters, displayedSecondaryPlayers) = remember(currentLineup, selectedPhase) {
-        if (selectedPhase == LineupPhase.FINAL && currentLineup.hasSubstitutions) {
-            currentLineup.resolveFinalView()
-        } else {
-            currentLineup.starters to currentLineup.bench
-        }
+    val isFinalView = selectedPhase == LineupPhase.FINAL && currentLineup.hasSubstitutions
+    val displayedStarters = remember(currentLineup, isFinalView) {
+        if (isFinalView) currentLineup.resolveFinalStarters() else currentLineup.starters
     }
 
     val isHome = currentLineup == homeLineup
@@ -108,21 +106,33 @@ fun SoccerPitch(
                 label = { it.shortName.ifBlank { it.teamName } },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = UlamaTheme.spacing.contentSpacing)
+                    .padding(bottom = UlamaTheme.spacing.small)
             )
         }
 
-        // Terreno de Juego Verde Sobrio con altura optimizada para formaciones complejas
-        val pitchBackgroundColor = Color(0xFF26472D) // Verde cesped tenue sobrio
+        // Leyenda permanente centrada sobre posiciones referenciales antes de la cancha
+        Text(
+            text = stringResource(R.string.lineup_disclaimer),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = UlamaTheme.spacing.small)
+        )
+
+        // Terreno de Juego Verde Sobrio mediante tokens semanticos de nivel 3
+        val pitchBackgroundColor = UlamaTheme.colors.pitchTurf
+        val pitchBorderColor = UlamaTheme.colors.pitchBorder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(390.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(pitchBackgroundColor)
-                .border(1.dp, Color(0xFF386641), RoundedCornerShape(16.dp))
+                .border(UlamaTheme.dimensions.borderThin, pitchBorderColor, RoundedCornerShape(16.dp))
         ) {
-            val pitchLineColor = Color(0x60FFFFFF)
+            val pitchLineColor = UlamaTheme.colors.pitchLines
 
             // Lineas reglamentarias de la cancha
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -240,9 +250,8 @@ fun SoccerPitch(
             }
         }
 
-        // Bloque de Suplentes o Titulares que salieron de cambio (Cuadricula equilibrada de 2 columnas)
-        val isFinalView = selectedPhase == LineupPhase.FINAL && currentLineup.hasSubstitutions
-        if (displayedSecondaryPlayers.isNotEmpty()) {
+        // Bloque fijo de Jugadores Suplentes (Cuadricula equilibrada de 2 columnas)
+        if (currentLineup.bench.isNotEmpty()) {
             Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
             Surface(
                 shape = UlamaTheme.shapes.card,
@@ -256,15 +265,15 @@ fun SoccerPitch(
                         .padding(UlamaTheme.spacing.cardPadding)
                 ) {
                     Text(
-                        text = stringResource(if (isFinalView) R.string.lineup_subbed_off else R.string.lineup_bench),
+                        text = stringResource(R.string.lineup_bench),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(UlamaTheme.spacing.extraSmall))
 
-                    val benchPairs = remember(displayedSecondaryPlayers) {
-                        displayedSecondaryPlayers.chunked(2)
+                    val benchPairs = remember(currentLineup.bench) {
+                        currentLineup.bench.chunked(2)
                     }
 
                     benchPairs.forEach { pair ->
@@ -278,14 +287,12 @@ fun SoccerPitch(
                             BenchPlayerItem(
                                 player = pair[0],
                                 teamColor = teamBadgeColor,
-                                isFinalPhase = isFinalView,
                                 modifier = Modifier.weight(1f)
                             )
                             if (pair.size > 1) {
                                 BenchPlayerItem(
                                     player = pair[1],
                                     teamColor = teamBadgeColor,
-                                    isFinalPhase = isFinalView,
                                     modifier = Modifier.weight(1f)
                                 )
                             } else {
@@ -366,13 +373,29 @@ private fun PlayerPitchBadge(
                         y = -UlamaTheme.spacing.extraSmall / 2
                     )
             )
-            GoalScorerBadge(
-                goalsCount = player.goalsCount,
+            PitchStatBadge(
+                count = player.goalsCount,
+                iconRes = R.drawable.ic_soccer_ball,
+                iconTint = UlamaTheme.colors.pitchGoalIcon,
+                descriptionRes = R.string.cd_player_scored,
                 cutoutBorderColor = pitchBackgroundColor,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .offset(
                         x = UlamaTheme.spacing.extraSmall,
+                        y = UlamaTheme.spacing.extraSmall / 2
+                    )
+            )
+            PitchStatBadge(
+                count = player.assistsCount,
+                iconRes = R.drawable.ic_steps,
+                iconTint = UlamaTheme.colors.pitchAssistIcon,
+                descriptionRes = R.string.cd_player_assisted,
+                cutoutBorderColor = pitchBackgroundColor,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(
+                        x = -UlamaTheme.spacing.extraSmall,
                         y = UlamaTheme.spacing.extraSmall / 2
                     )
             )
@@ -384,7 +407,7 @@ private fun PlayerPitchBadge(
             text = player.name,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp, lineHeight = 11.sp),
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFFF9F2E1),
+            color = UlamaTheme.colors.pitchPlayerText,
             textAlign = TextAlign.Center,
             minLines = 2,
             maxLines = 2,
@@ -401,7 +424,6 @@ private fun PlayerPitchBadge(
 private fun BenchPlayerItem(
     player: LineupPlayer,
     teamColor: Color,
-    isFinalPhase: Boolean,
     modifier: Modifier = Modifier
 ) {
     val sentOffAlpha = if (player.isSentOff) 0.6f else 1f
@@ -426,7 +448,7 @@ private fun BenchPlayerItem(
             Text(
                 text = player.name,
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = if (player.subbedIn || player.subbedOut) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (player.subbedIn) FontWeight.SemiBold else FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -434,24 +456,19 @@ private fun BenchPlayerItem(
                     .weight(1f, fill = false)
                     .graphicsLayer { alpha = sentOffAlpha }
             )
-            if (player.goalsCount > 0) {
-                Spacer(modifier = Modifier.width(UlamaTheme.spacing.extraSmall))
-                Icon(
-                    painter = painterResource(R.drawable.ic_soccer_ball),
-                    contentDescription = stringResource(R.string.cd_event_goal),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(12.dp)
-                )
-                if (player.goalsCount > 1) {
-                    Text(
-                        text = "×${player.goalsCount}",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            if (!isFinalPhase && player.subbedIn) {
+            BenchStatBadge(
+                count = player.goalsCount,
+                iconRes = R.drawable.ic_soccer_ball,
+                iconTint = MaterialTheme.colorScheme.primary,
+                descriptionRes = R.string.cd_player_scored
+            )
+            BenchStatBadge(
+                count = player.assistsCount,
+                iconRes = R.drawable.ic_steps,
+                iconTint = MaterialTheme.colorScheme.secondary,
+                descriptionRes = R.string.cd_player_assisted
+            )
+            if (player.subbedIn) {
                 Spacer(modifier = Modifier.width(4.dp))
                 val subText = if (!player.subInMinute.isNullOrBlank()) "↑ ${player.subInMinute}" else "↑"
                 Text(
@@ -459,15 +476,6 @@ private fun BenchPlayerItem(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
-                )
-            } else if (isFinalPhase && player.subbedOut) {
-                Spacer(modifier = Modifier.width(4.dp))
-                val subText = if (!player.subOutMinute.isNullOrBlank()) "↓ ${player.subOutMinute}" else "↓"
-                Text(
-                    text = subText,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (player.yellowCards > 0 || player.hasRedCard) {
@@ -479,7 +487,7 @@ private fun BenchPlayerItem(
                 )
             }
         }
-        if (!isFinalPhase && player.subbedIn && !player.subbedInForName.isNullOrBlank()) {
+        if (player.subbedIn && !player.subbedInForName.isNullOrBlank()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -493,37 +501,27 @@ private fun BenchPlayerItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        } else if (isFinalPhase && player.subbedOut && !player.subbedOutForName.isNullOrBlank()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Spacer(modifier = Modifier.width(28.dp))
-                Text(
-                    text = stringResource(R.string.lineup_subbed_out_for, player.subbedOutForName.orEmpty()),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
     }
 }
 
 /**
- * Distintivo compacto de balon en la esquina inferior derecha del dorsal para goleadores.
+ * Distintivo compacto reutilizable en la cancha para goles (esquina inferior derecha)
+ * y asistencias (esquina inferior izquierda) con borde de recorte del color del cesped.
  */
 @Composable
 @NonRestartableComposable
-private fun GoalScorerBadge(
-    goalsCount: Int,
+private fun PitchStatBadge(
+    count: Int,
+    @DrawableRes iconRes: Int,
+    iconTint: Color,
+    @StringRes descriptionRes: Int,
     cutoutBorderColor: Color,
     modifier: Modifier = Modifier
 ) {
-    if (goalsCount <= 0) return
+    if (count <= 0) return
 
-    val description = stringResource(R.string.cd_player_scored)
+    val description = stringResource(descriptionRes)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -533,20 +531,47 @@ private fun GoalScorerBadge(
             .semantics { contentDescription = description }
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_soccer_ball),
+            painter = painterResource(iconRes),
             contentDescription = null,
-            tint = Color(0xFFF9F2E1),
+            tint = iconTint,
             modifier = Modifier.size(11.dp)
         )
-        if (goalsCount > 1) {
+        if (count > 1) {
             Text(
-                text = "$goalsCount",
+                text = "$count",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 9.sp),
                 fontWeight = FontWeight.Black,
-                color = Color(0xFFF9F2E1),
+                color = iconTint,
                 modifier = Modifier.padding(start = 1.dp)
             )
         }
+    }
+}
+
+@Composable
+@NonRestartableComposable
+private fun BenchStatBadge(
+    count: Int,
+    @DrawableRes iconRes: Int,
+    iconTint: Color,
+    @StringRes descriptionRes: Int
+) {
+    if (count <= 0) return
+
+    Spacer(modifier = Modifier.width(UlamaTheme.spacing.extraSmall))
+    Icon(
+        painter = painterResource(iconRes),
+        contentDescription = stringResource(descriptionRes),
+        tint = iconTint,
+        modifier = Modifier.size(12.dp)
+    )
+    if (count > 1) {
+        Text(
+            text = "×$count",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = iconTint
+        )
     }
 }
 

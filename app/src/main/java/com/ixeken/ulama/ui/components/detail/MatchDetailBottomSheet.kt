@@ -285,7 +285,11 @@ fun MatchDetailBottomSheet(
                                 if (matchDetail != null && matchDetail.timelineEvents.isNotEmpty()) {
                                     MatchTimelineCard(
                                         events = matchDetail.timelineEvents,
-                                        matchId = match.id
+                                        matchId = match.id,
+                                        homeTeam = match.homeTeam,
+                                        awayTeam = match.awayTeam,
+                                        homeColor = resolvedColors.homeColor,
+                                        awayColor = resolvedColors.awayColor
                                     )
                                 } else {
                                     Text(

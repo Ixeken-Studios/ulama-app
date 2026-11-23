@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,19 +35,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.MatchTimelineEvent
+import com.ixeken.ulama.core.model.Team
 import com.ixeken.ulama.core.model.TimelineEventType
+import com.ixeken.ulama.ui.components.TeamColorText
 import com.ixeken.ulama.ui.components.animateListEntry
 import com.ixeken.ulama.ui.theme.UlamaTheme
 
 /**
- * Cronologia de eventos clave del encuentro con tarjetas conectadas Material 3 Expressive.
- * Muestra en un eje temporal central los goles, tarjetas disciplinarias y sustituciones
- * separando visualmente las acciones del equipo local a la izquierda y visitante a la derecha.
+ * Cronologia de eventos clave del encuentro a ancho completo con codigo de color por club.
+ * Cada fila conectada presenta la barra cromatica del equipo, el minuto, el titulo del evento,
+ * la abreviatura del club y el detalle completo del futbolista involucrado.
  */
 @Composable
 fun MatchTimelineCard(
     events: List<MatchTimelineEvent>,
     matchId: String,
+    homeTeam: Team,
+    awayTeam: Team,
+    homeColor: Color,
+    awayColor: Color,
     modifier: Modifier = Modifier
 ) {
     if (events.isEmpty()) return
@@ -53,6 +61,21 @@ fun MatchTimelineCard(
     val outerRadius = UlamaTheme.shapes.cardRestRadius
     val innerRadius = UlamaTheme.shapes.cardConnectedInnerRadius
     val cardBorder = UlamaTheme.borders.cardBorder
+    val isDark = UlamaTheme.isDark
+
+    val accessibleHomeColor = remember(homeColor, isDark) {
+        DetailColorUtils.getAccessibleTeamColor(homeColor, isDark)
+    }
+    val accessibleAwayColor = remember(awayColor, isDark) {
+        DetailColorUtils.getAccessibleTeamColor(awayColor, isDark)
+    }
+
+    val homeShort = remember(homeTeam) {
+        homeTeam.shortName.takeIf { it.isNotBlank() } ?: homeTeam.name
+    }
+    val awayShort = remember(awayTeam) {
+        awayTeam.shortName.takeIf { it.isNotBlank() } ?: awayTeam.name
+    }
 
     val singleShape = UlamaTheme.shapes.card
     val topShape = remember(outerRadius, innerRadius) {
@@ -84,6 +107,9 @@ fun MatchTimelineCard(
                 index == events.lastIndex -> bottomShape
                 else -> middleShape
             }
+            val rawTeamColor = if (event.isHomeTeam) homeColor else awayColor
+            val barColor = if (event.isHomeTeam) accessibleHomeColor else accessibleAwayColor
+            val teamLabel = if (event.isHomeTeam) homeShort else awayShort
 
             Surface(
                 shape = rowShape,
@@ -98,38 +124,41 @@ fun MatchTimelineCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            horizontal = UlamaTheme.spacing.medium,
-                            vertical = UlamaTheme.spacing.small
+                            horizontal = UlamaTheme.spacing.cardPadding,
+                            vertical = UlamaTheme.spacing.medium
                         )
                 ) {
                     Box(
-                        contentAlignment = Alignment.CenterEnd,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (event.isHomeTeam) {
-                            TimelineSideContent(event = event, alignRight = true)
-                        }
-                    }
+                        modifier = Modifier
+                            .width(UlamaTheme.spacing.extraSmall)
+                            .height(28.dp)
+                            .clip(CircleShape)
+                            .background(barColor)
+                    )
+
+                    Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))
 
                     Text(
                         text = event.minute,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .padding(horizontal = UlamaTheme.spacing.small)
-                            .widthIn(min = 40.dp)
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black,
+                        color = barColor,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.widthIn(min = 38.dp)
                     )
 
-                    Box(
-                        contentAlignment = Alignment.CenterStart,
+                    Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))
+
+                    TimelineEventBody(
+                        event = event,
+                        teamLabel = teamLabel,
+                        rawTeamColor = rawTeamColor,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        if (!event.isHomeTeam) {
-                            TimelineSideContent(event = event, alignRight = false)
-                        }
-                    }
+                    )
+
+                    Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))
+
+                    TimelineEventBadge(type = event.type)
                 }
             }
         }
@@ -138,67 +167,83 @@ fun MatchTimelineCard(
 
 @Composable
 @NonRestartableComposable
-private fun TimelineSideContent(
+private fun TimelineEventBody(
     event: MatchTimelineEvent,
-    alignRight: Boolean
+    teamLabel: String,
+    rawTeamColor: Color,
+    modifier: Modifier = Modifier
 ) {
-    val alignment = if (alignRight) Alignment.End else Alignment.Start
-    val textAlign = if (alignRight) TextAlign.End else TextAlign.Start
+    val eventTitle = stringResource(
+        when (event.type) {
+            TimelineEventType.GOAL -> R.string.event_title_goal
+            TimelineEventType.PENALTY_GOAL -> R.string.event_title_penalty_goal
+            TimelineEventType.OWN_GOAL -> R.string.event_title_own_goal
+            TimelineEventType.YELLOW_CARD -> R.string.event_title_yellow_card
+            TimelineEventType.SECOND_YELLOW -> R.string.event_title_second_yellow
+            TimelineEventType.RED_CARD -> R.string.event_title_red_card
+            TimelineEventType.SUBSTITUTION -> R.string.event_title_substitution
+        }
+    )
 
-    val title = when (event.type) {
-        TimelineEventType.PENALTY_GOAL ->
-            "${event.primaryPlayerName} (${stringResource(R.string.goal_penalty_tag)})"
-        TimelineEventType.OWN_GOAL ->
-            "${event.primaryPlayerName} (${stringResource(R.string.goal_own_goal_tag)})"
-        else -> event.primaryPlayerName
-    }
-
-    val subtitle = when (event.type) {
+    val detailText = when (event.type) {
         TimelineEventType.GOAL,
-        TimelineEventType.PENALTY_GOAL -> event.secondaryPlayerName?.let {
-            stringResource(R.string.event_assist_format, it)
+        TimelineEventType.PENALTY_GOAL -> {
+            val assist = event.secondaryPlayerName?.let {
+                stringResource(R.string.event_assist_format, it)
+            }
+            if (assist != null) "${event.primaryPlayerName} · $assist" else event.primaryPlayerName
         }
-        TimelineEventType.SUBSTITUTION -> event.secondaryPlayerName?.let {
-            stringResource(R.string.event_sub_out_format, it)
-        }
-        else -> null
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (alignRight) Arrangement.End else Arrangement.Start
-    ) {
-        if (!alignRight) {
-            TimelineEventBadge(type = event.type)
-            Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))
-        }
-
-        Column(horizontalAlignment = alignment) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = textAlign
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = textAlign
-                )
+        TimelineEventType.SUBSTITUTION -> {
+            val outName = event.secondaryPlayerName
+            if (!outName.isNullOrBlank()) {
+                stringResource(R.string.event_sub_in_out_format, event.primaryPlayerName, outName)
+            } else {
+                event.primaryPlayerName
             }
         }
+        TimelineEventType.OWN_GOAL,
+        TimelineEventType.YELLOW_CARD,
+        TimelineEventType.SECOND_YELLOW,
+        TimelineEventType.RED_CARD -> event.primaryPlayerName
+    }
 
-        if (alignRight) {
-            Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))
-            TimelineEventBadge(type = event.type)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.extraSmall)
+        ) {
+            Text(
+                text = eventTitle,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "·",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TeamColorText(
+                text = teamLabel,
+                color = rawTeamColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
+        Text(
+            text = detailText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -211,19 +256,19 @@ private fun TimelineEventBadge(type: TimelineEventType) {
             painter = painterResource(R.drawable.ic_soccer_ball),
             contentDescription = stringResource(R.string.cd_event_goal),
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(UlamaTheme.dimensions.iconSmall)
+            modifier = Modifier.size(UlamaTheme.dimensions.iconMedium)
         )
         TimelineEventType.OWN_GOAL -> Icon(
             painter = painterResource(R.drawable.ic_soccer_ball),
             contentDescription = stringResource(R.string.cd_event_own_goal),
             tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(UlamaTheme.dimensions.iconSmall)
+            modifier = Modifier.size(UlamaTheme.dimensions.iconMedium)
         )
         TimelineEventType.SUBSTITUTION -> Icon(
             painter = painterResource(R.drawable.ic_swap_horiz),
             contentDescription = stringResource(R.string.cd_event_substitution),
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(UlamaTheme.dimensions.iconSmall)
+            modifier = Modifier.size(UlamaTheme.dimensions.iconMedium)
         )
         TimelineEventType.YELLOW_CARD -> TimelineCardRect(
             color = UlamaTheme.colors.cardYellow,

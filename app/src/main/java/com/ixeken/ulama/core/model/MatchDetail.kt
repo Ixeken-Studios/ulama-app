@@ -103,8 +103,8 @@ data class TeamLineup(
      * Proyecta el once final en cancha intercambiando cada titular sustituido por su reemplazo
      * directo o en cadena y preservando el orden tactico original asignado al inicio.
      */
-    fun resolveFinalView(): Pair<List<LineupPlayer>, List<LineupPlayer>> {
-        if (!hasSubstitutions) return starters to bench
+    fun resolveFinalStarters(): List<LineupPlayer> {
+        if (!hasSubstitutions) return starters
 
         val subbedInPlayers = bench.filter { it.subbedIn }
         val replacementByOutId = mutableMapOf<String, LineupPlayer>()
@@ -114,7 +114,7 @@ data class TeamLineup(
             sub.subbedInForName?.takeIf { it.isNotBlank() }?.let { replacementByOutName[it.lowercase()] = sub }
         }
 
-        val finalStarters = starters.map { starter ->
+        return starters.map { starter ->
             var current = starter
             val visitedIds = mutableSetOf<String>()
             while (current.subbedOut) {
@@ -124,14 +124,12 @@ data class TeamLineup(
                     ?: break
                 current = next.copy(
                     formationPlace = starter.formationPlace,
-                    line = starter.line
+                    line = starter.line,
+                    position = starter.position
                 )
             }
             current
         }
-
-        val exitedPlayers = (starters + subbedInPlayers).filter { it.subbedOut }
-        return finalStarters to exitedPlayers
     }
 }
 
@@ -156,6 +154,7 @@ data class LineupPlayer(
     val subbedOutForId: String? = null,
     val subbedOutForName: String? = null,
     val goalsCount: Int = 0,
+    val assistsCount: Int = 0,
     val yellowCards: Int = 0,
     val hasRedCard: Boolean = false
 ) {

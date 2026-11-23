@@ -196,7 +196,29 @@ class MatchesViewModel(
         if (now - lastRefreshTimeMillis < 10_000L) return
         if (_uiState.value.isLoading || _uiState.value.isRefreshing) return
         lastRefreshTimeMillis = now
-        loadData(_uiState.value.selectedLeague, forceRefresh = true, isSilent = true)
+        val state = _uiState.value
+        loadData(state.selectedLeague, forceRefresh = true, isSilent = true)
+
+        // Si el visor de detalle esta abierto en un partido en vivo, refrescamos tambien sus eventos y estadisticas
+        val activeMatch = state.selectedMatch
+        if (activeMatch != null &&
+            activeMatch.status.state == MatchState.LIVE &&
+            !com.ixeken.ulama.data.debug.DebugLeagueData.isDebugMatch(activeMatch.id)
+        ) {
+            val targetLeague = if (!activeMatch.league.isVirtual) activeMatch.league else state.selectedLeague
+            viewModelScope.launch {
+                val detailResult = repository.getMatchDetail(
+                    league = targetLeague,
+                    matchId = activeMatch.id,
+                    forceRefresh = true
+                )
+                if (_uiState.value.selectedMatch?.id == activeMatch.id) {
+                    _uiState.update {
+                        it.copy(matchDetail = detailResult.getOrNull() ?: it.matchDetail)
+                    }
+                }
+            }
+        }
     }
 
     /**

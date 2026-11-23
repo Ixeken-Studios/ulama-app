@@ -450,7 +450,13 @@ private val AmberDarkColorScheme = darkColorScheme(
 @Immutable
 data class UlamaColors(
     val cardYellow: Color = RefereeYellowCard,
-    val cardRed: Color = RefereeRedCard
+    val cardRed: Color = RefereeRedCard,
+    val pitchTurf: Color = PitchTurfGreen,
+    val pitchBorder: Color = DarkGreen,
+    val pitchLines: Color = PitchLineWhite,
+    val pitchPlayerText: Color = LightVanilla,
+    val pitchGoalIcon: Color = LightVanilla,
+    val pitchAssistIcon: Color = LightGreen
 )
 
 val LocalUlamaColors = staticCompositionLocalOf { UlamaColors() }

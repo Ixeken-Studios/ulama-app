@@ -52,14 +52,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ixeken.ulama.core.model.ColorPalette
 import com.ixeken.ulama.core.util.LocaleHelper
 import com.ixeken.ulama.core.model.League
+import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.MotionStyle
 import com.ixeken.ulama.core.model.TemporalFilter
 import com.ixeken.ulama.core.model.ThemeMode
+import kotlinx.coroutines.delay
 import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.core.util.ImagePreloadHelper
 import com.ixeken.ulama.data.repository.AppSettingsRepositoryImpl
@@ -222,6 +227,22 @@ class MainActivity : ComponentActivity() {
                     FavoriteAutoFollowJobService.syncSchedule(context)
                     viewModel.silentRefresh()
                     onPauseOrDispose {}
+                }
+
+                // Sondeo automatico cada 30s exclusivamente en primer plano (RESUMED) y con partidos en vivo
+                val hasLiveMatches = remember(uiState.matches, uiState.selectedMatch) {
+                    uiState.matches.any { it.status.state == MatchState.LIVE } ||
+                        uiState.selectedMatch?.status?.state == MatchState.LIVE
+                }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                LaunchedEffect(lifecycleOwner, hasLiveMatches) {
+                    if (!hasLiveMatches) return@LaunchedEffect
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        while (true) {
+                            delay(30_000L)
+                            viewModel.silentRefresh()
+                        }
+                    }
                 }
 
                 // Precargamos los escudos del selector de favoritos solo cuando el modal se abre

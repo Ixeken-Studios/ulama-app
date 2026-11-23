@@ -607,7 +607,7 @@ class MatchRepositoryImpl(
             }
         }
 
-        val goalCountsByAthleteId = countGoalsByAthleteId(rawScoringPlays)
+        val (goalCountsByAthleteId, assistCountsByAthleteId) = countGoalsAndAssistsByAthleteId(rawScoringPlays)
         val timelineEvents = extractTimelineEvents(
             keyEvents = keyEvents,
             fallbackDetails = competition?.details.orEmpty(),
@@ -622,8 +622,8 @@ class MatchRepositoryImpl(
             homeScorers = homeScorers,
             awayScorers = awayScorers,
             stats = statsList,
-            homeLineup = homeRoster?.toTeamLineup(goalCountsByAthleteId),
-            awayLineup = awayRoster?.toTeamLineup(goalCountsByAthleteId),
+            homeLineup = homeRoster?.toTeamLineup(goalCountsByAthleteId, assistCountsByAthleteId),
+            awayLineup = awayRoster?.toTeamLineup(goalCountsByAthleteId, assistCountsByAthleteId),
             homeColor = homeTeamDto?.color,
             awayColor = awayTeamDto?.color,
             homeAlternateColor = homeTeamDto?.alternateColor,
@@ -802,25 +802,32 @@ class MatchRepositoryImpl(
     }
 
     /**
-     * Cuenta goles no autogoles por identificador de futbolista desde details/keyEvents
-     * como respaldo cuando roster[].plays omite las anotaciones del jugador.
+     * Cuenta goles no autogoles y asistencias por identificador de futbolista desde details/keyEvents
+     * como respaldo ante datos incompletos de roster[].plays, evitando confundir asistencias con goles.
      */
-    private fun countGoalsByAthleteId(plays: List<EspnSummaryScoringPlayDto>): Map<String, Int> {
-        if (plays.isEmpty()) return emptyMap()
-        val counts = mutableMapOf<String, Int>()
+    private fun countGoalsAndAssistsByAthleteId(
+        plays: List<EspnSummaryScoringPlayDto>
+    ): Pair<Map<String, Int>, Map<String, Int>> {
+        if (plays.isEmpty()) return emptyMap<String, Int>() to emptyMap()
+        val goalCounts = mutableMapOf<String, Int>()
+        val assistCounts = mutableMapOf<String, Int>()
         plays.forEach { play ->
             val typeText = play.type?.text.orEmpty()
             val isGoal = play.scoringPlay || typeText.contains("Goal", ignoreCase = true)
             val isOwnGoal = play.ownGoal || typeText.contains("Own Goal", ignoreCase = true)
             if (isGoal && !isOwnGoal && !play.shootout) {
-                val scorerId = play.participants.firstOrNull()?.athlete?.id?.takeIf { it.isNotBlank() }
-                    ?: play.athletesInvolved.firstOrNull()?.id?.takeIf { it.isNotBlank() }
+                val athletes = play.participants.mapNotNull { it.athlete }.ifEmpty { play.athletesInvolved }
+                val scorerId = athletes.getOrNull(0)?.id?.takeIf { it.isNotBlank() }
                 if (scorerId != null) {
-                    counts[scorerId] = (counts[scorerId] ?: 0) + 1
+                    goalCounts[scorerId] = (goalCounts[scorerId] ?: 0) + 1
+                }
+                val assistId = athletes.getOrNull(1)?.id?.takeIf { it.isNotBlank() }
+                if (assistId != null) {
+                    assistCounts[assistId] = (assistCounts[assistId] ?: 0) + 1
                 }
             }
         }
-        return counts
+        return goalCounts to assistCounts
     }
 
     /**
@@ -967,15 +974,22 @@ class MatchRepositoryImpl(
         }
     }
 
-    private fun EspnRosterTeamDto.toTeamLineup(goalCountsByAthleteId: Map<String, Int> = emptyMap()): TeamLineup {
+    private fun EspnRosterTeamDto.toTeamLineup(
+        goalCountsByAthleteId: Map<String, Int> = emptyMap(),
+        assistCountsByAthleteId: Map<String, Int> = emptyMap()
+    ): TeamLineup {
         val (rawStarters, rawBench) = when {
             roster.any { it.starter } -> roster.partition { it.starter }
             roster.any { (it.formationPlace ?: 0) in 1..11 } -> roster.partition { (it.formationPlace ?: 0) in 1..11 }
             roster.size >= 11 -> Pair(roster.take(11), roster.drop(11))
             else -> Pair(roster, emptyList())
         }
-        val startersList = rawStarters.mapIndexed { index, p -> p.toLineupPlayer(index, goalCountsByAthleteId) }
-        val benchList = rawBench.mapIndexed { index, p -> p.toLineupPlayer(index, goalCountsByAthleteId) }
+        val startersList = rawStarters.mapIndexed { index, p ->
+            p.toLineupPlayer(index, goalCountsByAthleteId, assistCountsByAthleteId)
+        }
+        val benchList = rawBench.mapIndexed { index, p ->
+            p.toLineupPlayer(index, goalCountsByAthleteId, assistCountsByAthleteId)
+        }
         val resolvedShortName = team.shortDisplayName?.takeIf { it.isNotBlank() }
             ?: team.abbreviation?.takeIf { it.isNotBlank() }
             ?: team.name
@@ -993,7 +1007,8 @@ class MatchRepositoryImpl(
 
     private fun EspnRosterPlayerItemDto.toLineupPlayer(
         index: Int,
-        goalCountsByAthleteId: Map<String, Int> = emptyMap()
+        goalCountsByAthleteId: Map<String, Int> = emptyMap(),
+        assistCountsByAthleteId: Map<String, Int> = emptyMap()
     ): LineupPlayer {
         val resolvedPos = position ?: athlete?.extractPosition()
         val posName = resolvedPos?.name?.takeIf { it.isNotBlank() }
@@ -1042,9 +1057,20 @@ class MatchRepositoryImpl(
         } else null
 
         val athleteId = athlete?.id.orEmpty()
+        // ESPN marca scoringPlay = true tanto al goleador (didScore) como al asistidor (didAssist).
+        val hasExplicitGoalFlags = plays.any { it.didScore || it.didAssist }
+        val goalsFromPlays = if (hasExplicitGoalFlags) {
+            plays.count { it.didScore && !it.ownGoal }
+        } else {
+            plays.count { it.scoringPlay && !it.ownGoal }
+        }
         val goalsCount = maxOf(
-            plays.count { it.scoringPlay && !it.ownGoal },
+            goalsFromPlays,
             if (athleteId.isNotBlank()) goalCountsByAthleteId[athleteId] ?: 0 else 0
+        )
+        val assistsCount = maxOf(
+            plays.count { it.didAssist },
+            if (athleteId.isNotBlank()) assistCountsByAthleteId[athleteId] ?: 0 else 0
         )
         val yellowCardsCount = plays.count { it.yellowCard }
         val hasRedCard = plays.any { it.redCard }
@@ -1069,6 +1095,7 @@ class MatchRepositoryImpl(
             subbedOutForId = subOutForId,
             subbedOutForName = subOutForName,
             goalsCount = goalsCount,
+            assistsCount = assistsCount,
             yellowCards = yellowCardsCount,
             hasRedCard = hasRedCard
         )
