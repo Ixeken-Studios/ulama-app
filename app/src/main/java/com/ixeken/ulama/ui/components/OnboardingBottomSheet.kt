@@ -6,7 +6,10 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,8 +53,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.AppSettings
 import com.ixeken.ulama.core.model.ColorPalette
@@ -530,5 +536,117 @@ private fun OnboardingStepNotifications(
                 shape = bottomConnectedShape
             )
         }
+    }
+}
+
+/**
+ * Elemento circular compacto utilizado en el recorrido inicial para elegir liga predeterminada.
+ */
+@Composable
+private fun LeagueCircleItem(
+    league: League,
+    isSelected: Boolean,
+    badgeCount: Int,
+    isDark: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    circleSize: Dp = 57.dp,
+    iconSize: Dp = 26.dp,
+    logoSize: Dp = 34.dp
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+    ) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                ),
+                modifier = Modifier
+                    .size(circleSize)
+                    .bounceClick(enabled = true, interactionSource = interactionSource)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = ripple(),
+                        onClick = onClick
+                    )
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(UlamaTheme.spacing.small)
+                ) {
+                    when (league) {
+                        League.FAVORITES -> {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_star),
+                                contentDescription = stringResource(league.nameRes),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(iconSize)
+                            )
+                        }
+                        League.MY_LEAGUES -> {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_trophy),
+                                contentDescription = stringResource(league.nameRes),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(iconSize)
+                            )
+                        }
+                        else -> {
+                            AsyncImage(
+                                model = league.getLogoUrl(isDark),
+                                contentDescription = stringResource(
+                                    R.string.cd_league_logo,
+                                    stringResource(league.nameRes)
+                                ),
+                                modifier = Modifier.size(logoSize)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (badgeCount > 0) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(18.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = badgeCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(UlamaTheme.spacing.extraSmall))
+
+        val leagueName = stringResource(league.nameRes)
+        Text(
+            text = leagueName,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
     }
 }

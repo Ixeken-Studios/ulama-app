@@ -35,6 +35,7 @@ data class MatchesUiState(
     val favoriteTeamIds: Set<String> = emptySet(),
     val myLeagueCodes: Set<String> = emptySet(),
     val availableTeamsByLeague: Map<League, List<StandingEntry>> = emptyMap(),
+    val loadingTeamLeagues: Set<League> = emptySet(),
     val errorMessage: String? = null,
     @param:StringRes val errorMessageRes: Int? = null
 ) {

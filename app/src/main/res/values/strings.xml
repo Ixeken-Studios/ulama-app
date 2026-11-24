@@ -2,8 +2,6 @@
     <!-- Identidad y Navegación General: Nombre de la app, accesibilidad de navegación y barras superiores -->
     <string name="app_name">Ulama</string>
     <string name="cd_league_selector">Abrir selector de ligas</string>
-    <string name="select_league_title">Selecciona una liga</string>
-    <string name="cd_close_league_selector">Cerrar selector de ligas</string>
     <string name="cd_back_button">Volver</string>
 
     <!-- Ligas y Competiciones: Nombres de los torneos soportados en la aplicación -->
@@ -212,27 +210,15 @@
 
     <!-- Colección Virtual - Mis Equipos: Selección jerárquica y gestión de clubes favoritos -->
     <string name="league_favorites">Mis equipos</string>
-    <string name="fav_teams_title">Mis equipos</string>
-    <string name="fav_teams_select_league_subtitle">Selecciona una liga para explorar sus clubes</string>
-    <string name="fav_teams_league_clubs_subtitle">Marca los clubes que deseas agregar a tus favoritos</string>
     <string name="fav_teams_empty_description">Aún no tienes clubes favoritos seleccionados. Elige tus equipos para ver todos sus partidos en un solo lugar.</string>
     <string name="fav_teams_edit_action">Editar favoritos</string>
-    <string name="fav_teams_picker_action">Mis equipos</string>
     <string name="fav_teams_global_count_format">%1$d favoritos</string>
-    <string name="fav_teams_league_count_format">%1$d elegido</string>
-    <string name="fav_teams_league_count_plural_format">%1$d elegidos</string>
-    <string name="fav_teams_back_to_leagues">Más ligas</string>
-    <string name="fav_teams_done_action">Listo</string>
 
     <!-- Colección Virtual - Mis Ligas: Cuadrícula y selector multimodal de torneos agregados -->
     <string name="league_my_leagues">Mis ligas</string>
-    <string name="my_leagues_edit_action">Mis ligas</string>
-    <string name="my_leagues_title">Mis ligas</string>
-    <string name="my_leagues_subtitle">Elige las ligas que quieres consultar en una sola vista</string>
     <string name="my_leagues_empty_title">Sin ligas seleccionadas</string>
     <string name="my_leagues_empty_desc">Aún no tienes ligas seleccionadas. Elige tus competiciones para ver todos sus encuentros juntos.</string>
     <string name="my_leagues_empty_action">Elegir ligas</string>
-    <string name="my_leagues_done_action">Listo</string>
 
     <!-- Ajustes - Navegación y Raíz: Títulos y accesos de las categorías principales de configuración -->
     <string name="settings_title">Ajustes</string>
@@ -423,8 +409,6 @@
     <string name="cd_team_crest">Escudo de %1$s</string>
     <string name="cd_league_logo">Logotipo de %1$s</string>
     <string name="cd_fav_teams_star">Icono de equipos favoritos</string>
-    <string name="cd_back_to_leagues">Volver al selector de ligas</string>
-    <string name="cd_my_leagues_icon">Icono de mis ligas</string>
     <string name="cd_settings_chevron">Ver opciones de %1$s</string>
     <string name="cd_settings_palette">Icono de apariencia</string>
     <string name="cd_settings_colors">Icono de paleta de colores</string>
@@ -478,4 +462,48 @@
     <string name="debug_squash_tab_alpha">Modo Alfa</string>
     <string name="debug_squash_tab_beta">Modo Beta</string>
     <string name="debug_squash_tab_gamma">Modo Gamma</string>
+
+    <!-- Centro de Competiciones: Regiones geográficas, subregiones y acciones del selector -->
+    <string name="region_all">Todas</string>
+    <string name="region_global">Global</string>
+    <string name="region_americas">América</string>
+    <string name="region_europe">Europa</string>
+    <string name="region_africa">África</string>
+    <string name="region_asia">Asia</string>
+    <string name="region_oceania">Oceanía</string>
+    <string name="subregion_european_competitions">Competiciones europeas</string>
+    <string name="subregion_england">Inglaterra</string>
+    <string name="subregion_spain">España</string>
+    <string name="subregion_italy">Italia</string>
+    <string name="subregion_germany">Alemania</string>
+    <string name="subregion_france">Francia</string>
+    <string name="subregion_netherlands">Países Bajos</string>
+    <string name="subregion_mexico">México</string>
+    <string name="subregion_concacaf">Concacaf</string>
+    <string name="subregion_africa">África</string>
+    <string name="subregion_asia">Asia</string>
+    <string name="subregion_global_tournaments">Torneos globales</string>
+    <string name="competitions_title">Competiciones</string>
+    <string name="competitions_search_placeholder">Buscar liga, país o equipo...</string>
+    <string name="competitions_all_section">Todas</string>
+    <string name="competitions_view_matches">Ver partidos</string>
+    <string name="competitions_teams_search_placeholder">Buscar club en %1$s...</string>
+    <string name="competitions_teams_all_search_placeholder">Buscar entre tus equipos...</string>
+    <string name="competitions_add_to_my_leagues">Mis ligas</string>
+    <string name="competitions_follow_team">Seguir</string>
+    <string name="competitions_following_team">Siguiendo</string>
+    <string name="competitions_empty_region_title">Sin competiciones en %1$s</string>
+    <string name="competitions_empty_region_desc">Aún no hay torneos disponibles para esta región. Prueba otra área en el mapa o vuelve a todas.</string>
+    <string name="competitions_reset_filter">Ver todas</string>
+    <string name="competitions_empty_teams">No hay clubes disponibles para mostrar.</string>
+    <string name="competitions_empty_search">Sin coincidencias para "%1$s"</string>
+    <string name="competitions_empty_favorites">Aún no sigues ningún club. Explora una liga para comenzar.</string>
+    <string name="cd_clear_search">Limpiar búsqueda</string>
+    <string name="cd_confirm_selection">Confirmar selección</string>
+    <string name="cd_open_teams">Explorar equipos de %1$s</string>
+    <string name="cd_toggle_my_league">Alternar %1$s en Mis ligas</string>
+    <string name="competitions_team_league_subtitle">Club · %1$s</string>
+    <string name="competitions_teams_count_subtitle">%1$d equipos</string>
+    <string name="competitions_search_leagues_header">Ligas y torneos</string>
+    <string name="competitions_search_teams_header">Equipos</string>
 </resources>

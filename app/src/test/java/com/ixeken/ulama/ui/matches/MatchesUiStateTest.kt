@@ -139,6 +139,16 @@ class MatchesUiStateTest {
         org.junit.Assert.assertNotNull(stateWithBrackets.radialBracket32)
         assertEquals(32, stateWithBrackets.radialBracket32?.totalTeams)
     }
+
+    @Test
+    fun matchesUiState_tracksPerLeagueTeamLoadingIndependently() {
+        val initial = MatchesUiState()
+        org.junit.Assert.assertTrue(initial.loadingTeamLeagues.isEmpty())
+
+        val loading = initial.copy(loadingTeamLeagues = setOf(League.PREMIER_LEAGUE))
+        org.junit.Assert.assertTrue(League.PREMIER_LEAGUE in loading.loadingTeamLeagues)
+        org.junit.Assert.assertFalse(League.LA_LIGA in loading.loadingTeamLeagues)
+    }
 }
 
 

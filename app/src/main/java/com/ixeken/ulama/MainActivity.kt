@@ -71,12 +71,11 @@ import com.ixeken.ulama.data.repository.AppSettingsRepositoryImpl
 import com.ixeken.ulama.service.FavoriteAutoFollowJobService
 import com.ixeken.ulama.service.MatchAlarmScheduler
 import com.ixeken.ulama.service.MatchNotificationHelper
+import com.ixeken.ulama.ui.competitions.CompetitionsScreen
 import com.ixeken.ulama.ui.components.EmptyFavoritesCard
 import com.ixeken.ulama.ui.components.EmptyMatchesCard
 import com.ixeken.ulama.ui.components.EmptyMyLeaguesCard
-import com.ixeken.ulama.ui.components.FavoriteTeamsBottomSheet
 import com.ixeken.ulama.ui.components.MatchesGroupCard
-import com.ixeken.ulama.ui.components.MyLeaguesBottomSheet
 import com.ixeken.ulama.ui.components.PullToRefreshWithLoadingIndicator
 import com.ixeken.ulama.ui.components.RadialKnockoutBracket
 import com.ixeken.ulama.ui.components.StandingsTable
@@ -116,12 +115,17 @@ class MainActivity : ComponentActivity() {
             val settingsRepository = remember { AppSettingsRepositoryImpl.provide(context) }
             val appSettings by settingsRepository.settings.collectAsStateWithLifecycle()
 
-            var isFavoritesSheetOpen by remember { mutableStateOf(false) }
-            var isMyLeaguesSheetOpen by remember { mutableStateOf(false) }
+            var isCompetitionsOpen by rememberSaveable { mutableStateOf(false) }
+            var competitionsInitialTeamsCode by rememberSaveable { mutableStateOf<String?>(null) }
             var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
             var isWhatsNewSheetOpen by remember { mutableStateOf(false) }
             var isOnboardingSheetOpen by remember { mutableStateOf(false) }
             var updateAvailableData by remember { mutableStateOf<UpdateCheckResult.NewVersionAvailable?>(null) }
+
+            val openCompetitions: (League?) -> Unit = { initialLeague ->
+                competitionsInitialTeamsCode = initialLeague?.code
+                isCompetitionsOpen = true
+            }
 
             BackHandler(enabled = isSettingsOpen) {
                 isSettingsOpen = false
@@ -215,8 +219,8 @@ class MainActivity : ComponentActivity() {
                     val targetId = openMatchId
                     if (!targetId.isNullOrBlank()) {
                         isSettingsOpen = false
-                        isFavoritesSheetOpen = false
-                        isMyLeaguesSheetOpen = false
+                        isCompetitionsOpen = false
+                        competitionsInitialTeamsCode = null
                         viewModel.selectMatchById(targetId)
                         pendingNotificationMatchId.value = null
                     }
@@ -245,17 +249,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Precargamos los escudos del selector de favoritos solo cuando el modal se abre
+                // Precargamos los escudos cuando el centro de competiciones tiene clubes resueltos
                 // y exclusivamente para la variante de tema activa (claro u oscuro).
-                LaunchedEffect(isFavoritesSheetOpen, uiState.availableTeamsByLeague, darkTheme) {
-                    if (isFavoritesSheetOpen) {
-                        viewModel.ensureAvailableTeamsLoaded()
-                        if (uiState.availableTeamsByLeague.isNotEmpty()) {
-                            val urls = uiState.availableTeamsByLeague.values.flatten().mapNotNull { entry ->
-                                entry.getLogoUrl(darkTheme)
-                            }
-                            ImagePreloadHelper.preloadImages(context, urls)
+                LaunchedEffect(isCompetitionsOpen, uiState.availableTeamsByLeague, darkTheme) {
+                    if (isCompetitionsOpen && uiState.availableTeamsByLeague.isNotEmpty()) {
+                        val urls = uiState.availableTeamsByLeague.values.flatten().mapNotNull { entry ->
+                            entry.getLogoUrl(darkTheme)
                         }
+                        ImagePreloadHelper.preloadImages(context, urls)
                     }
                 }
 
@@ -307,20 +308,31 @@ class MainActivity : ComponentActivity() {
                         onShowWalkthrough = { isOnboardingSheetOpen = true },
                         onBackClick = { isSettingsOpen = false }
                     )
+                } else if (isCompetitionsOpen) {
+                    CompetitionsScreen(
+                        selectedLeague = uiState.selectedLeague,
+                        favoriteTeamIds = uiState.favoriteTeamIds,
+                        myLeagueCodes = uiState.myLeagueCodes,
+                        availableTeamsByLeague = uiState.availableTeamsByLeague,
+                        loadingTeamLeagues = uiState.loadingTeamLeagues,
+                        initialTeamsLeague = competitionsInitialTeamsCode?.let { League.fromCode(it) },
+                        onSelectLeague = viewModel::selectLeague,
+                        onToggleMyLeague = viewModel::toggleMyLeague,
+                        onToggleFavoriteTeam = viewModel::toggleFavoriteTeam,
+                        onEnsureLeagueTeamsLoaded = viewModel::ensureLeagueTeamsLoaded,
+                        onEnsureAllTeamsLoaded = viewModel::ensureAvailableTeamsLoaded,
+                        onClose = {
+                            isCompetitionsOpen = false
+                            competitionsInitialTeamsCode = null
+                        }
+                    )
                 } else {
                     Scaffold(
                         topBar = {
                             UlamaTopAppBar(
                                 selectedLeague = uiState.selectedLeague,
-                                favoriteCount = uiState.favoriteTeamIds.size,
-                                myLeaguesCount = uiState.myLeagueCodes.size,
-                                onLeagueSelected = viewModel::selectLeague,
-                                onSettingsClick = { isSettingsOpen = true },
-                                onManageFavorites = {
-                                    viewModel.ensureAvailableTeamsLoaded()
-                                    isFavoritesSheetOpen = true
-                                },
-                                onManageMyLeagues = { isMyLeaguesSheetOpen = true }
+                                onLeaguePickerClick = { openCompetitions(null) },
+                                onSettingsClick = { isSettingsOpen = true }
                             )
                         },
                         modifier = Modifier.fillMaxSize()
@@ -396,15 +408,12 @@ class MainActivity : ComponentActivity() {
                                                 when {
                                                     uiState.selectedLeague == League.FAVORITES && uiState.favoriteTeamIds.isEmpty() -> {
                                                         EmptyFavoritesCard(
-                                                            onManageFavorites = {
-                                                                viewModel.ensureAvailableTeamsLoaded()
-                                                                isFavoritesSheetOpen = true
-                                                            }
+                                                            onManageFavorites = { openCompetitions(League.FAVORITES) }
                                                         )
                                                     }
                                                     uiState.selectedLeague == League.MY_LEAGUES && uiState.myLeagueCodes.isEmpty() -> {
                                                         EmptyMyLeaguesCard(
-                                                            onManageMyLeagues = { isMyLeaguesSheetOpen = true }
+                                                            onManageMyLeagues = { openCompetitions(null) }
                                                         )
                                                     }
                                                     else -> {
@@ -569,23 +578,6 @@ class MainActivity : ComponentActivity() {
                             viewModel.toggleFollow(context, selectedMatch, uiState.matchDetail)
                         },
                         onDismissRequest = viewModel::dismissMatchDetail
-                    )
-                }
-
-                if (isFavoritesSheetOpen) {
-                    FavoriteTeamsBottomSheet(
-                        favoriteTeamIds = uiState.favoriteTeamIds,
-                        availableTeamsByLeague = uiState.availableTeamsByLeague,
-                        onToggleFavorite = viewModel::toggleFavoriteTeam,
-                        onDismissRequest = { isFavoritesSheetOpen = false }
-                    )
-                }
-
-                if (isMyLeaguesSheetOpen) {
-                    MyLeaguesBottomSheet(
-                        selectedLeagueCodes = uiState.myLeagueCodes,
-                        onToggleLeague = viewModel::toggleMyLeague,
-                        onDismissRequest = { isMyLeaguesSheetOpen = false }
                     )
                 }
 

@@ -24,6 +24,8 @@ enum class League(
     val lightLogoUrl: String,
     val darkLogoUrl: String,
     val category: LeagueCategory = LeagueCategory.CLUBS,
+    val region: LeagueRegion = LeagueRegion.GLOBAL,
+    @param:StringRes val subRegionRes: Int = R.string.subregion_global_tournaments,
     val isTournament: Boolean = false,
     val tournamentYear: String? = null,
     val knockoutBracketTeams: Int = 0,
@@ -68,6 +70,8 @@ enum class League(
         nameRes = R.string.league_ger_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/10.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/10.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_germany,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 4, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -87,6 +91,8 @@ enum class League(
         nameRes = R.string.league_uefa_champions,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_european_competitions,
         isTournament = true,
         knockoutBracketTeams = 16,
         tableCutoffs = listOf(
@@ -103,6 +109,8 @@ enum class League(
         nameRes = R.string.league_eng_2,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/24.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/24.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_england,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 2, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -119,6 +127,8 @@ enum class League(
         nameRes = R.string.league_ned_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/11.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/11.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_netherlands,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 2, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 4, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -139,6 +149,8 @@ enum class League(
         nameRes = R.string.league_esp_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_spain,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 4, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -155,6 +167,8 @@ enum class League(
         nameRes = R.string.league_mex_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/22.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/22.png",
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_mexico,
         knockoutBracketTeams = 8,
         bracketTitleRes = R.string.legend_liguilla,
         tableCutoffs = listOf(
@@ -169,6 +183,8 @@ enum class League(
         nameRes = R.string.league_fra_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/9.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/9.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_france,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 3, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -188,6 +204,8 @@ enum class League(
         nameRes = R.string.league_eng_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/23.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_england,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 4, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 5, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -205,6 +223,8 @@ enum class League(
         nameRes = R.string.league_ita_1,
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/12.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/12.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_italy,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 4, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
             TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
@@ -223,6 +243,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/4.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.GLOBAL,
+        subRegionRes = R.string.subregion_global_tournaments,
         isTournament = true,
         knockoutBracketTeams = 32,
         hasThirdPlaceMatch = true
@@ -233,6 +255,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2395.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2395.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_european_competitions,
         isTournament = true,
         knockoutBracketTeams = 8,
         hasThirdPlaceMatch = true
@@ -243,6 +267,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2406.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2406.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_concacaf,
         isTournament = true,
         knockoutBracketTeams = 8,
         hasThirdPlaceMatch = true
@@ -253,6 +279,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/53.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/53.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.GLOBAL,
+        subRegionRes = R.string.subregion_global_tournaments,
         hasStandings = false
     ),
     GOLD_CUP(
@@ -261,6 +289,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/59.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/59.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_concacaf,
         isTournament = true,
         tournamentYear = "2027",
         knockoutBracketTeams = 8
@@ -271,6 +301,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/76.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/76.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.AFRICA,
+        subRegionRes = R.string.subregion_africa,
         isTournament = true,
         tournamentYear = "2027",
         knockoutBracketTeams = 16,
@@ -282,6 +314,8 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/combiner/i?img=/i/leaguelogos/soccer/500/2243.png",
         darkLogoUrl = "https://a.espncdn.com/combiner/i?img=/i/leaguelogos/soccer/500-dark/2243.png",
         category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.ASIA,
+        subRegionRes = R.string.subregion_asia,
         isTournament = true,
         tournamentYear = "2027",
         knockoutBracketTeams = 16

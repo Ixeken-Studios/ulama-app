@@ -2,8 +2,6 @@
     <!-- General Identity & Navigation: App name, navigation accessibility, and top app bars -->
     <string name="app_name">Ulama</string>
     <string name="cd_league_selector">Open league picker</string>
-    <string name="select_league_title">Select a league</string>
-    <string name="cd_close_league_selector">Close league picker</string>
     <string name="cd_back_button">Back</string>
 
     <!-- Leagues & Competitions: Names of all supported football competitions -->
@@ -212,27 +210,15 @@
 
     <!-- Virtual Collection - My Teams: Hierarchical picker and favorite clubs management -->
     <string name="league_favorites">My teams</string>
-    <string name="fav_teams_title">My teams</string>
-    <string name="fav_teams_select_league_subtitle">Select a league to explore its clubs</string>
-    <string name="fav_teams_league_clubs_subtitle">Select the clubs you want to add to your favorites</string>
     <string name="fav_teams_empty_description">You don\'t have any favorite clubs yet. Pick your teams to view all their matches in one place.</string>
     <string name="fav_teams_edit_action">Edit favorites</string>
-    <string name="fav_teams_picker_action">My teams</string>
     <string name="fav_teams_global_count_format">%1$d favorites</string>
-    <string name="fav_teams_league_count_format">%1$d selected</string>
-    <string name="fav_teams_league_count_plural_format">%1$d selected</string>
-    <string name="fav_teams_back_to_leagues">More leagues</string>
-    <string name="fav_teams_done_action">Done</string>
 
     <!-- Virtual Collection - My Leagues: Grid and multimodal picker for combined tournaments -->
     <string name="league_my_leagues">My leagues</string>
-    <string name="my_leagues_edit_action">My leagues</string>
-    <string name="my_leagues_title">My leagues</string>
-    <string name="my_leagues_subtitle">Choose the leagues you want to view together</string>
     <string name="my_leagues_empty_title">No leagues selected</string>
     <string name="my_leagues_empty_desc">You have not selected any leagues yet. Choose your competitions to see all their fixtures together.</string>
     <string name="my_leagues_empty_action">Select leagues</string>
-    <string name="my_leagues_done_action">Done</string>
 
     <!-- Settings - Navigation & Root: Main configuration category headings and entry points -->
     <string name="settings_title">Settings</string>
@@ -423,8 +409,6 @@
     <string name="cd_team_crest">%1$s crest</string>
     <string name="cd_league_logo">%1$s logo</string>
     <string name="cd_fav_teams_star">Favorite teams icon</string>
-    <string name="cd_back_to_leagues">Return to league picker</string>
-    <string name="cd_my_leagues_icon">My leagues icon</string>
     <string name="cd_settings_chevron">View options for %1$s</string>
     <string name="cd_settings_palette">Appearance icon</string>
     <string name="cd_settings_colors">Color palette icon</string>
@@ -478,4 +462,48 @@
     <string name="debug_squash_tab_alpha">Alpha Mode</string>
     <string name="debug_squash_tab_beta">Beta Mode</string>
     <string name="debug_squash_tab_gamma">Gamma Mode</string>
+
+    <!-- Competitions Hub: Geographic regions, subregions, and picker actions -->
+    <string name="region_all">All</string>
+    <string name="region_global">Global</string>
+    <string name="region_americas">Americas</string>
+    <string name="region_europe">Europe</string>
+    <string name="region_africa">Africa</string>
+    <string name="region_asia">Asia</string>
+    <string name="region_oceania">Oceania</string>
+    <string name="subregion_european_competitions">European competitions</string>
+    <string name="subregion_england">England</string>
+    <string name="subregion_spain">Spain</string>
+    <string name="subregion_italy">Italy</string>
+    <string name="subregion_germany">Germany</string>
+    <string name="subregion_france">France</string>
+    <string name="subregion_netherlands">Netherlands</string>
+    <string name="subregion_mexico">Mexico</string>
+    <string name="subregion_concacaf">Concacaf</string>
+    <string name="subregion_africa">Africa</string>
+    <string name="subregion_asia">Asia</string>
+    <string name="subregion_global_tournaments">Global tournaments</string>
+    <string name="competitions_title">Competitions</string>
+    <string name="competitions_search_placeholder">Search league, country, or team...</string>
+    <string name="competitions_all_section">All competitions</string>
+    <string name="competitions_view_matches">View matches</string>
+    <string name="competitions_teams_search_placeholder">Search club in %1$s...</string>
+    <string name="competitions_teams_all_search_placeholder">Search your teams...</string>
+    <string name="competitions_add_to_my_leagues">My leagues</string>
+    <string name="competitions_follow_team">Follow</string>
+    <string name="competitions_following_team">Following</string>
+    <string name="competitions_empty_region_title">No competitions in %1$s</string>
+    <string name="competitions_empty_region_desc">No tournaments are available for this region yet. Try another area on the map or show all.</string>
+    <string name="competitions_reset_filter">Show all</string>
+    <string name="competitions_empty_teams">No clubs available to display.</string>
+    <string name="competitions_empty_search">No matches for "%1$s"</string>
+    <string name="competitions_empty_favorites">You do not follow any clubs yet. Explore a league to get started.</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_confirm_selection">Confirm selection</string>
+    <string name="cd_open_teams">Explore %1$s teams</string>
+    <string name="cd_toggle_my_league">Toggle %1$s in My leagues</string>
+    <string name="competitions_team_league_subtitle">Club · %1$s</string>
+    <string name="competitions_teams_count_subtitle">%1$d teams</string>
+    <string name="competitions_search_leagues_header">Leagues and tournaments</string>
+    <string name="competitions_search_teams_header">Teams</string>
 </resources>

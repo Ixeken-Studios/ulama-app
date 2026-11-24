@@ -67,8 +67,10 @@ data class UlamaSpacing(
     val emptyCardPaddingVertical: Dp = SpaceExtraLarge,
     val emptyCardPaddingHorizontal: Dp = SpaceLarge,
 
-    // Separacion entre tarjetas agrupadas conectadas
-    val connectedCardSpacing: Dp = SpaceConnectedGap
+    // Separacion entre tarjetas agrupadas conectadas y cuadriculas
+    val connectedCardSpacing: Dp = SpaceConnectedGap,
+    val gridSpacing: Dp = SpaceSmall,
+    val sectionSpacing: Dp = SpaceLarge
 )
 
 val LocalUlamaSpacing = staticCompositionLocalOf { UlamaSpacing() }

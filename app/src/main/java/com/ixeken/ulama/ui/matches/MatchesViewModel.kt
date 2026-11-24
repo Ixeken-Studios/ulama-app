@@ -66,6 +66,7 @@ class MatchesViewModel(
     private var cachedAllMatches: List<Match> = emptyList()
     private val manuallyUnfollowedMatchIds = mutableSetOf<String>()
     private var isLoadingAvailableTeams = false
+    private var hasLoadedAllAvailableTeams = false
 
     init {
         loadData(initialLeague)
@@ -222,12 +223,55 @@ class MatchesViewModel(
     }
 
     /**
-     * Garantiza que los clubes oficiales por competicion se carguen bajo demanda cuando el usuario
-     * abre el selector de favoritos, evitando disparar 13 peticiones HTTP en cada inicio o reanudacion.
+     * Garantiza que los clubes oficiales de todas las competiciones se carguen bajo demanda
+     * para busquedas globales y la vista de Mis equipos sin repetir llamadas ya resueltas.
      */
     fun ensureAvailableTeamsLoaded() {
-        if (_uiState.value.availableTeamsByLeague.isNotEmpty() || isLoadingAvailableTeams) return
+        if (hasLoadedAllAvailableTeams || isLoadingAvailableTeams) return
         loadAvailableTeamsByLeague(forceRefresh = false)
+    }
+
+    /**
+     * Carga bajo demanda los equipos de una sola competicion evitando disparar 16 consultas
+     * paralelas al explorar clubes de una liga especifica. Reutiliza la tabla ya cargada
+     * en pantalla para respuesta inmediata en cero milisegundos cuando coincide con la activa.
+     */
+    fun ensureLeagueTeamsLoaded(league: League) {
+        if (league.isVirtual || league == League.DEBUG) return
+        val currentState = _uiState.value
+        if (!currentState.availableTeamsByLeague[league].isNullOrEmpty()) return
+        if (league in currentState.loadingTeamLeagues) return
+
+        if (currentState.selectedLeague == league) {
+            val activeTeams = if (currentState.groups.isNotEmpty()) {
+                currentState.groups.flatMap { it.standings }
+            } else {
+                currentState.standings
+            }.distinctBy { it.teamId.ifBlank { it.teamName } }
+
+            if (activeTeams.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(availableTeamsByLeague = it.availableTeamsByLeague + (league to activeTeams))
+                }
+                if (!league.hasKnockoutBracket && league.tournamentYear == null) return
+            }
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingTeamLeagues = it.loadingTeamLeagues + league) }
+            try {
+                val teams = fetchLeagueTeams(league, forceRefresh = false)
+                if (teams.isNotEmpty()) {
+                    _uiState.update { state ->
+                        state.copy(availableTeamsByLeague = state.availableTeamsByLeague + (league to teams))
+                    }
+                }
+            } finally {
+                _uiState.update { state ->
+                    state.copy(loadingTeamLeagues = state.loadingTeamLeagues - league)
+                }
+            }
+        }
     }
 
     /**
@@ -718,68 +762,81 @@ class MatchesViewModel(
     }
 
     /**
-     * Precarga los clubes oficiales por competicion en paralelo para poblar la hoja modal de seleccion de favoritos,
-     * combinando la tabla de posiciones con los equipos clasificados directamente a rondas eliminatorias (como los
-     * preclasificados en Cuartos de Final que no disputan fase de grupos) o competiciones sin tabla.
+     * Precarga en paralelo los clubes de competiciones pendientes para busquedas globales
+     * y la vista agregada de Mis equipos, preservando en cache las ligas ya cargadas.
      */
     private fun loadAvailableTeamsByLeague(forceRefresh: Boolean = false) {
         if (isLoadingAvailableTeams && !forceRefresh) return
         isLoadingAvailableTeams = true
         viewModelScope.launch {
             try {
-                val entries = coroutineScope {
+                val existing = _uiState.value.availableTeamsByLeague
+                val pendingLeagues = if (forceRefresh) {
                     League.standardLeagues
-                        .map { league ->
-                            async {
-                                val standings = if (league.hasStandings) {
-                                    repository.getStandings(league, forceRefresh = forceRefresh).getOrDefault(emptyList())
-                                } else {
-                                    emptyList()
-                                }
-                                val shouldIncludeMatches = (standings.isEmpty() || league.hasKnockoutBracket) &&
-                                    league.tournamentYear == null
-                                val matchTeams = if (shouldIncludeMatches) {
-                                    val matches = repository.getMatches(league, forceRefresh = false).getOrDefault(emptyList())
-                                    val standingTeamIds = standings.map { it.teamId }.toSet()
-                                    matches.flatMap { listOf(it.homeTeam, it.awayTeam) }
-                                        .filter { it.id.isNotBlank() && !it.isPlaceholder && it.id !in standingTeamIds }
-                                        .distinctBy { it.id }
-                                        .sortedBy { it.name }
-                                        .mapIndexed { idx, team ->
-                                            StandingEntry(
-                                                rank = idx + 1,
-                                                teamName = team.name,
-                                                teamShortName = team.shortName,
-                                                teamAbbreviation = team.abbreviation,
-                                                logoUrl = team.logoUrl,
-                                                gamesPlayed = 0,
-                                                wins = 0,
-                                                draws = 0,
-                                                losses = 0,
-                                                goalsFor = 0,
-                                                goalsAgainst = 0,
-                                                goalDifference = 0,
-                                                points = 0,
-                                                teamId = team.id
-                                            )
-                                        }
-                                } else {
-                                    emptyList()
-                                }
-                                val resolvedTeams = (matchTeams + standings)
-                                    .distinctBy { it.teamId.ifBlank { it.teamName } }
-                                league to resolvedTeams
-                            }
+                } else {
+                    League.standardLeagues.filter { existing[it].isNullOrEmpty() }
+                }
+                if (pendingLeagues.isNotEmpty()) {
+                    val entries = coroutineScope {
+                        pendingLeagues.map { league ->
+                            async { league to fetchLeagueTeams(league, forceRefresh = forceRefresh) }
                         }.awaitAll()
+                    }
+                    val map = entries.filter { it.second.isNotEmpty() }.toMap()
+                    if (map.isNotEmpty()) {
+                        _uiState.update {
+                            it.copy(availableTeamsByLeague = it.availableTeamsByLeague + map)
+                        }
+                    }
                 }
-                val map = entries.filter { it.second.isNotEmpty() }.toMap()
-                if (map.isNotEmpty()) {
-                    _uiState.update { it.copy(availableTeamsByLeague = map) }
-                }
+                hasLoadedAllAvailableTeams = true
             } finally {
                 isLoadingAvailableTeams = false
             }
         }
+    }
+
+    /**
+     * Unifica la resolucion de participantes de una liga combinando su tabla de posiciones
+     * con clubes de encuentros directos en torneos eliminatorios o competiciones sin clasificacion.
+     */
+    private suspend fun fetchLeagueTeams(league: League, forceRefresh: Boolean): List<StandingEntry> {
+        val standings = if (league.hasStandings) {
+            repository.getStandings(league, forceRefresh = forceRefresh).getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        val shouldIncludeMatches = (standings.isEmpty() || league.hasKnockoutBracket) &&
+            league.tournamentYear == null
+        val matchTeams = if (shouldIncludeMatches) {
+            val matches = repository.getMatches(league, forceRefresh = false).getOrDefault(emptyList())
+            val standingTeamIds = standings.map { it.teamId }.toSet()
+            matches.flatMap { listOf(it.homeTeam, it.awayTeam) }
+                .filter { it.id.isNotBlank() && !it.isPlaceholder && it.id !in standingTeamIds }
+                .distinctBy { it.id }
+                .sortedBy { it.name }
+                .mapIndexed { idx, team ->
+                    StandingEntry(
+                        rank = idx + 1,
+                        teamName = team.name,
+                        teamShortName = team.shortName,
+                        teamAbbreviation = team.abbreviation,
+                        logoUrl = team.logoUrl,
+                        gamesPlayed = 0,
+                        wins = 0,
+                        draws = 0,
+                        losses = 0,
+                        goalsFor = 0,
+                        goalsAgainst = 0,
+                        goalDifference = 0,
+                        points = 0,
+                        teamId = team.id
+                    )
+                }
+        } else {
+            emptyList()
+        }
+        return (matchTeams + standings).distinctBy { it.teamId.ifBlank { it.teamName } }
     }
 
     /**

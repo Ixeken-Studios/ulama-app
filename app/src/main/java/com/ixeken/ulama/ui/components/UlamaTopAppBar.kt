@@ -18,9 +18,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,29 +33,22 @@ import com.ixeken.ulama.ui.theme.UlamaTheme
 
 /**
  * Barra superior principal de Ulama construida con Material 3 Expressive.
- * Alinea a la izquierda el acceso a configuracion y a la derecha el selector desplegable de ligas activas,
+ * Alinea a la izquierda el acceso a configuracion y a la derecha el selector de competiciones,
  * manteniendo el centro despejado conforme al diseno minimalista.
  * El boton selector implementa la regla Clip Before Click para limitar la onda de choque tactil.
  *
  * @param selectedLeague Liga activa actualmente seleccionada.
- * @param onLeagueSelected Accion disparada al seleccionar una nueva liga en el menu desplegable.
+ * @param onLeaguePickerClick Accion disparada al pulsar el boton del selector de competiciones.
  * @param onSettingsClick Accion disparada al pulsar el boton de ajustes.
- * @param favoriteCount Cantidad global de clubes favoritos seleccionados.
- * @param onManageFavorites Callback para abrir el selector de favoritos.
  * @param modifier Modificador base de Compose para el contenedor superior.
  */
 @Composable
 fun UlamaTopAppBar(
     selectedLeague: League,
-    onLeagueSelected: (League) -> Unit,
+    onLeaguePickerClick: () -> Unit,
     onSettingsClick: () -> Unit = {},
-    favoriteCount: Int = 0,
-    myLeaguesCount: Int = 0,
-    onManageFavorites: () -> Unit = {},
-    onManageMyLeagues: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var isSheetOpen by remember { mutableStateOf(false) }
     val isDark = UlamaTheme.isDark
 
     CenterAlignedTopAppBar(
@@ -104,7 +95,7 @@ fun UlamaTopAppBar(
                 val isPressed by interactionSource.collectIsPressedAsState()
                 val selectorShape = rememberAnimatedShape(
                     isPressed = isPressed,
-                    isSelected = isSheetOpen
+                    isSelected = false
                 )
 
                 Surface(
@@ -117,7 +108,7 @@ fun UlamaTopAppBar(
                         .clickable(
                             interactionSource = interactionSource,
                             indication = ripple(),
-                            onClick = { isSheetOpen = true }
+                            onClick = onLeaguePickerClick
                         )
                 ) {
                     Row(
@@ -165,18 +156,6 @@ fun UlamaTopAppBar(
                     }
                 }
             }
-
-            if (isSheetOpen) {
-                LeaguePickerBottomSheet(
-                    selectedLeague = selectedLeague,
-                    onLeagueSelected = onLeagueSelected,
-                    onDismissRequest = { isSheetOpen = false },
-                    favoriteCount = favoriteCount,
-                    myLeaguesCount = myLeaguesCount,
-                    onManageFavorites = onManageFavorites,
-                    onManageMyLeagues = onManageMyLeagues
-                )
-            }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface,
@@ -194,7 +173,7 @@ private fun UlamaTopAppBarDarkPreview() {
     UlamaTheme(darkTheme = true) {
         UlamaTopAppBar(
             selectedLeague = League.LIGA_MX,
-            onLeagueSelected = {},
+            onLeaguePickerClick = {},
             onSettingsClick = {}
         )
     }
@@ -206,7 +185,7 @@ private fun UlamaTopAppBarLightPreview() {
     UlamaTheme(darkTheme = false) {
         UlamaTopAppBar(
             selectedLeague = League.PREMIER_LEAGUE,
-            onLeagueSelected = {},
+            onLeaguePickerClick = {},
             onSettingsClick = {}
         )
     }
