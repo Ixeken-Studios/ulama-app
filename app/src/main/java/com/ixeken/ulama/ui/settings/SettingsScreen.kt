@@ -65,6 +65,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.ripple
 import com.ixeken.ulama.ui.components.ExpressiveConnectedButtonGroup
+import com.ixeken.ulama.ui.components.changelogFeatureEntries
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
@@ -3147,17 +3148,6 @@ private fun ChangelogBottomSheet(
             bottomEnd = restRadius
         )
     }
-    val entries = remember {
-        listOf(
-            Triple(R.string.settings_about_changelog_feat6_title, R.string.settings_about_changelog_feat6_desc, R.drawable.ic_timeline),
-            Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update),
-            Triple(R.string.settings_about_changelog_feat5_title, R.string.settings_about_changelog_feat5_desc, R.drawable.ic_language),
-            Triple(R.string.settings_about_changelog_feat1_title, R.string.settings_about_changelog_feat1_desc, R.drawable.ic_soccer_ball),
-            Triple(R.string.settings_about_changelog_feat2_title, R.string.settings_about_changelog_feat2_desc, R.drawable.ic_palette),
-            Triple(R.string.settings_about_changelog_feat3_title, R.string.settings_about_changelog_feat3_desc, R.drawable.ic_notifications_active)
-        )
-    }
-
     AboutBaseBottomSheet(
         title = stringResource(R.string.settings_about_changelog_sheet_title),
         subtitle = stringResource(R.string.settings_about_changelog_sheet_subtitle),
@@ -3167,10 +3157,10 @@ private fun ChangelogBottomSheet(
             verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.connectedCardSpacing),
             modifier = Modifier.fillMaxWidth()
         ) {
-            entries.forEachIndexed { index, (titleRes, descRes, iconRes) ->
+            changelogFeatureEntries.forEachIndexed { index, (titleRes, descRes, iconRes) ->
                 val shape = when (index) {
                     0 -> topShape
-                    entries.lastIndex -> bottomShape
+                    changelogFeatureEntries.lastIndex -> bottomShape
                     else -> middleShape
                 }
                 AboutFeatureItemCard(
