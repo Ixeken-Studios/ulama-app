@@ -28,6 +28,7 @@ enum class League(
     val tournamentYear: String? = null,
     val knockoutBracketTeams: Int = 0,
     val hasThirdPlaceMatch: Boolean = false,
+    @param:StringRes val bracketTitleRes: Int = R.string.title_radial_bracket,
     val hasStandings: Boolean = true,
     val tableCutoffs: List<TableCutoff> = emptyList(),
     val tableLegend: List<TableLegendEntry> = emptyList()
@@ -155,6 +156,7 @@ enum class League(
         lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/22.png",
         darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/22.png",
         knockoutBracketTeams = 8,
+        bracketTitleRes = R.string.legend_liguilla,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 8, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID)
         ),

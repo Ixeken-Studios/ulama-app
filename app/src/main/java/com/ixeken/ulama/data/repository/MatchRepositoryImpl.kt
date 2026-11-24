@@ -165,6 +165,65 @@ class MatchRepositoryImpl(
                     .sortedBy { it.dateUtc }
             }
 
+            // En ligas domesticas con fase eliminatoria (!isTournament), una consulta de jornada contigua
+            // puede omitir vueltas separadas por 2+ dias o rondas previas al avanzar a Semifinales/Final.
+            // Solo cuando ya existe un partido eliminatorio activo complementamos con la ventana mensual
+            // filtrando exclusivamente cruces eliminatorios para no contaminar la pestana Pasados.
+            val enrichedMatchesList = if (league.hasKnockoutBracket && !league.isTournament && matchesList.any { it.isKnockout }) {
+                val today = LocalDate.now(ZoneId.systemDefault())
+                val currentYearMonth = today.format(YEAR_MONTH_FORMATTER)
+                val latestRegularDate = matchesList
+                    .asSequence()
+                    .filter { !it.isKnockout }
+                    .mapNotNull { parseCalendarDate(it.dateUtc) }
+                    .maxOrNull()
+                val knockoutMonths = resolveKnockoutMonths(
+                    calendarDates = calendar,
+                    latestRegularDate = latestRegularDate,
+                    today = today
+                )
+                if (knockoutMonths.isEmpty()) {
+                    matchesList
+                } else {
+                    val monthlyKnockoutMatches = coroutineScope {
+                        knockoutMonths.map { ym ->
+                            async {
+                                val monthKey = "${league.code}_ko_$ym"
+                                val cachedMonth = dateMatchesCache[monthKey]
+                                val isPastMonth = ym < currentYearMonth
+                                if (cachedMonth != null &&
+                                    isPastMonth &&
+                                    System.currentTimeMillis() - cachedMonth.second < PAST_DATE_CACHE_TTL_MS &&
+                                    cachedMonth.first.all { it.isFinished }
+                                ) {
+                                    return@async cachedMonth.first
+                                }
+                                val monthCacheControl = if (isPastMonth) null else cacheControlHeader
+                                runCatching {
+                                    val koEvents = apiService.getScoreboard(
+                                        league = league.code,
+                                        dates = ym,
+                                        cacheControl = monthCacheControl
+                                    ).events
+                                        .mapNotNull { it.toMatch(league) }
+                                        .filter { it.isKnockout }
+                                    if (koEvents.isNotEmpty() || isPastMonth) {
+                                        dateMatchesCache[monthKey] = Pair(koEvents, System.currentTimeMillis())
+                                    }
+                                    koEvents
+                                }.getOrElse { cachedMonth?.first.orEmpty() }
+                            }
+                        }.awaitAll()
+                    }.flatten()
+
+                    (matchesList + monthlyKnockoutMatches)
+                        .distinctBy { it.id }
+                        .sortedBy { it.dateUtc }
+                }
+            } else {
+                matchesList
+            }
+
             val activeLeagueSeason = initialResponse.leagues.firstOrNull()?.season
             val activeSeasonStartDate = activeLeagueSeason?.startDate
             val activeSeasonYear = activeLeagueSeason?.year
@@ -172,17 +231,17 @@ class MatchRepositoryImpl(
             val sanitizedList = when {
                 league.tournamentYear != null -> {
                     // Filtramos partidos historicos anteriores al certamen oficial futuro declarado.
-                    matchesList.filter { it.dateUtc >= "${league.tournamentYear}-01-01T00:00:00Z" }
+                    enrichedMatchesList.filter { it.dateUtc >= "${league.tournamentYear}-01-01T00:00:00Z" }
                 }
                 activeSeasonStartDate != null -> {
                     // Descartamos encuentros de fases o ediciones concluidas antes del inicio oficial de la temporada activa.
-                    matchesList.filter { it.dateUtc >= activeSeasonStartDate }
+                    enrichedMatchesList.filter { it.dateUtc >= activeSeasonStartDate }
                 }
                 activeSeasonYear != null -> {
                     // Respaldo de filtrado si la API solo reporta el ano calendario base del certamen.
-                    matchesList.filter { it.dateUtc >= "$activeSeasonYear-01-01T00:00:00Z" }
+                    enrichedMatchesList.filter { it.dateUtc >= "$activeSeasonYear-01-01T00:00:00Z" }
                 }
-                else -> matchesList
+                else -> enrichedMatchesList
             }.filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
             .sanitizeAggregateScores()
 
@@ -1237,15 +1296,16 @@ class MatchRepositoryImpl(
                 !rawSeriesTitle.equals("league-phase", ignoreCase = true) &&
                 !rawSeriesTitle.equals("league phase", ignoreCase = true) -> rawSeriesTitle
             !seasonSlug.isNullOrBlank() -> {
-                when (seasonSlug.lowercase()) {
-                    "final" -> "final"
-                    "3rd-place-match", "third-place-match" -> "3rd-place-match"
-                    "semifinals", "semi-finals", "semifinal", "semi-final" -> "semifinals"
-                    "quarterfinals", "quarter-finals", "quarterfinal", "quarter-final" -> "quarterfinals"
-                    "round-of-16" -> "round-of-16"
-                    "round-of-32" -> "round-of-32"
-                    "torneo-apertura", "apertura" -> "torneo-apertura"
-                    "torneo-clausura", "clausura" -> "torneo-clausura"
+                val slugLower = seasonSlug.lowercase()
+                when {
+                    slugLower.contains("3rd-place") || slugLower.contains("third-place") -> "3rd-place-match"
+                    slugLower.contains("round-of-32") -> "round-of-32"
+                    slugLower.contains("round-of-16") -> "round-of-16"
+                    slugLower.contains("quarter") -> "quarterfinals"
+                    slugLower.contains("semi") -> "semifinals"
+                    slugLower.contains("final") -> "final"
+                    slugLower == "torneo-apertura" || slugLower == "apertura" -> "torneo-apertura"
+                    slugLower == "torneo-clausura" || slugLower == "clausura" -> "torneo-clausura"
                     else -> null
                 }
             }
@@ -1262,6 +1322,8 @@ class MatchRepositoryImpl(
         val aggregateHome = series?.competitors?.find { it.id == homeCompetitor.id }?.aggregateScore?.toInt()
         val aggregateAway = series?.competitors?.find { it.id == awayCompetitor.id }?.aggregateScore?.toInt()
         val seriesSummary = competition.notes.firstOrNull()?.text?.ifBlank { null }
+        val isSeriesCompleted = series?.completed == true
+        val seriesWinnerTeamId = series?.competitors?.firstOrNull { it.winner }?.id?.takeIf { it.isNotBlank() }
         val homeScorers = extractGoalScorers(competition.details, homeTeam.id)
         val awayScorers = extractGoalScorers(competition.details, awayTeam.id)
 
@@ -1289,6 +1351,8 @@ class MatchRepositoryImpl(
             aggregateHomeScore = aggregateHome,
             aggregateAwayScore = aggregateAway,
             seriesSummary = seriesSummary,
+            isSeriesCompleted = isSeriesCompleted,
+            seriesWinnerTeamId = seriesWinnerTeamId,
             homeScorers = homeScorers,
             awayScorers = awayScorers
         )
@@ -1413,6 +1477,31 @@ class MatchRepositoryImpl(
     companion object {
         private const val STANDINGS_DEDUP_WINDOW_MS = 5_000L
         private const val PAST_DATE_CACHE_TTL_MS = 24 * 3600 * 1000L
+        private val YEAR_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMM")
+
+        /**
+         * Determina los meses (YYYYMM) del calendario que pueden contener rondas de una fase eliminatoria
+         * activa en ligas domesticas con liguilla o playoffs, acotando el inicio a la ultima jornada regular
+         * conocida para minimizar peticiones redundantes.
+         */
+        internal fun resolveKnockoutMonths(
+            calendarDates: List<String>,
+            latestRegularDate: LocalDate? = null,
+            today: LocalDate = LocalDate.now(ZoneId.systemDefault())
+        ): List<String> {
+            val baseStart = today.minusDays(35L)
+            val windowStart = if (latestRegularDate != null && latestRegularDate.isAfter(baseStart)) {
+                latestRegularDate
+            } else {
+                baseStart
+            }
+            val windowEnd = today.plusDays(21L)
+            val inWindow = calendarDates
+                .mapNotNull { parseCalendarDate(it) }
+                .filter { it in windowStart..windowEnd }
+            if (inWindow.isEmpty()) return emptyList()
+            return inWindow.map { it.format(YEAR_MONTH_FORMATTER) }.distinct().sorted()
+        }
 
         @Volatile
         private var instance: MatchRepositoryImpl? = null

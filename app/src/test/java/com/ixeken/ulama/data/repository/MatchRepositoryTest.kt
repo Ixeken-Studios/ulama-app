@@ -2388,6 +2388,132 @@ class MatchRepositoryTest {
         assertEquals("Attacking Midfielder Left", finalStarters[0].position)
         assertEquals("Richard Ledezma", finalStarters[1].name)
     }
+
+    @Test
+    fun resolveKnockoutMonths_limitsWindowUsingLatestRegularDateAndCoversMultiMonthPlayoffs() {
+        val calendar = listOf(
+            "2026-10-31T07:00Z",
+            "2026-11-22T08:00Z",
+            "2026-11-25T08:00Z",
+            "2026-11-29T08:00Z",
+            "2026-12-03T08:00Z",
+            "2026-12-13T08:00Z"
+        )
+        // Durante Cuartos con Jornada regular el 22 nov, no debe consultar octubre
+        val duringQf = MatchRepositoryImpl.resolveKnockoutMonths(
+            calendarDates = calendar,
+            latestRegularDate = java.time.LocalDate.of(2026, 11, 22),
+            today = java.time.LocalDate.of(2026, 11, 24)
+        )
+        assertEquals(listOf("202611", "202612"), duringQf)
+
+        // Durante la Final sin partidos regulares en la ventana, debe cubrir nov y dic completos
+        val duringFinal = MatchRepositoryImpl.resolveKnockoutMonths(
+            calendarDates = calendar,
+            latestRegularDate = null,
+            today = java.time.LocalDate.of(2026, 12, 10)
+        )
+        assertEquals(listOf("202611", "202612"), duringFinal)
+    }
+
+    @Test
+    fun getMatches_domesticKnockoutLeague_mergesMonthlyKnockoutLegsWithoutAddingOldRegularMatches() = runBlocking {
+        val today = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
+        val leg1Date = today.plusDays(1)
+        val leg2Date = today.plusDays(4)
+        val oldRegularDate = today.minusDays(10)
+        val leg1Iso = "${leg1Date}T01:00Z"
+        val leg2Iso = "${leg2Date}T01:00Z"
+        val oldRegIso = "${oldRegularDate}T01:00Z"
+
+        fun makeEvent(
+            id: String,
+            dateIso: String,
+            slug: String,
+            seriesTitle: String?,
+            leg: Int? = null,
+            seriesCompleted: Boolean = false,
+            winnerId: String? = null
+        ): EspnEventDto {
+            val comps = listOf(
+                EspnCompetitorDto(
+                    id = "223",
+                    homeAway = "home",
+                    score = "0",
+                    team = EspnTeamDto(id = "223", name = "Toluca", displayName = "Toluca")
+                ),
+                EspnCompetitorDto(
+                    id = "216",
+                    homeAway = "away",
+                    score = "0",
+                    team = EspnTeamDto(id = "216", name = "Atlas", displayName = "Atlas")
+                )
+            )
+            return EspnEventDto(
+                id = id,
+                date = dateIso,
+                name = "Atlas at Toluca",
+                season = EspnSeasonDto(year = today.year, slug = slug),
+                competitions = listOf(
+                    EspnCompetitionDto(
+                        id = id,
+                        date = dateIso,
+                        competitors = comps,
+                        status = EspnStatusDto(type = EspnStatusTypeDto(state = "pre", completed = false)),
+                        leg = leg?.let { com.ixeken.ulama.data.espn.model.EspnLegDto(value = it) },
+                        series = seriesTitle?.let {
+                            com.ixeken.ulama.data.espn.model.EspnSeriesDto(
+                                title = it,
+                                completed = seriesCompleted,
+                                competitors = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnSeriesCompetitorDto(id = "223", winner = winnerId == "223"),
+                                    com.ixeken.ulama.data.espn.model.EspnSeriesCompetitorDto(id = "216", winner = winnerId == "216")
+                                )
+                            )
+                        }
+                    )
+                )
+            )
+        }
+
+        val leg1Event = makeEvent("ko_leg1", leg1Iso, "apertura---quarterfinals", "Apertura - Quarterfinals", leg = 1)
+        val leg2Event = makeEvent("ko_leg2", leg2Iso, "apertura---quarterfinals", "Apertura - Quarterfinals", leg = 2, seriesCompleted = true, winnerId = "223")
+        val oldRegularEvent = makeEvent("old_reg", oldRegIso, "torneo-apertura", null, leg = null)
+
+        val fakeApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse {
+                return when {
+                    dates == null -> EspnScoreboardResponse(
+                        leagues = listOf(
+                            EspnLeagueCalendarDto(
+                                calendar = listOf(
+                                    kotlinx.serialization.json.JsonPrimitive(leg1Iso),
+                                    kotlinx.serialization.json.JsonPrimitive(leg2Iso)
+                                )
+                            )
+                        ),
+                        events = listOf(leg1Event)
+                    )
+                    dates.length == 6 -> EspnScoreboardResponse(events = listOf(oldRegularEvent, leg1Event, leg2Event))
+                    else -> EspnScoreboardResponse(events = listOf(leg1Event))
+                }
+            }
+            override suspend fun getStandings(league: String, cacheControl: String?): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+        val matches = repo.getMatches(League.LIGA_MX, forceRefresh = true).getOrThrow()
+
+        assertEquals(2, matches.size)
+        assertTrue(matches.any { it.id == "ko_leg1" && it.isKnockout })
+        val mappedLeg2 = matches.first { it.id == "ko_leg2" }
+        assertTrue(mappedLeg2.isKnockout)
+        assertTrue(mappedLeg2.isSeriesCompleted)
+        assertEquals("223", mappedLeg2.seriesWinnerTeamId)
+        assertTrue(matches.none { it.id == "old_reg" })
+    }
 }
 
 

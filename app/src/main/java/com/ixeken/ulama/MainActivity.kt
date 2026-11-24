@@ -356,11 +356,7 @@ class MainActivity : ComponentActivity() {
                             else -> {
                                 val isDebug = uiState.selectedLeague == League.DEBUG
                                 val bracket = uiState.radialBracket
-                                val bracketTitle = if (uiState.selectedLeague == League.LIGA_MX) {
-                                    stringResource(R.string.legend_liguilla)
-                                } else {
-                                    stringResource(R.string.title_radial_bracket)
-                                }
+                                val bracketTitle = stringResource(uiState.selectedLeague.bracketTitleRes)
 
                                 val isGroupedFilter = uiState.selectedFilter == TemporalFilter.PAST || uiState.selectedFilter == TemporalFilter.UPCOMING
                                 // Precalculamos tanto la agrupacion por dia como la etiqueta localizada del encabezado
