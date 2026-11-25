@@ -3,16 +3,28 @@ package com.ixeken.ulama.ui.competitions
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,17 +33,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AppBarWithSearch
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExpandedDockedSearchBar
 import androidx.compose.material3.ExpandedFullScreenSearchBar
@@ -42,13 +56,14 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -57,6 +72,7 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,16 +82,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
@@ -83,6 +111,8 @@ import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.LeagueRegion
 import com.ixeken.ulama.core.model.StandingEntry
 import com.ixeken.ulama.ui.components.bounceClick
+import com.ixeken.ulama.ui.components.iconPop
+import com.ixeken.ulama.ui.components.rememberMorphingSegmentShape
 import com.ixeken.ulama.ui.theme.UlamaTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -279,33 +309,65 @@ fun CompetitionsScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            AppBarWithSearch(
-                state = searchBarState,
-                inputField = inputField,
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = navigateBack) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_back),
-                            contentDescription = stringResource(R.string.cd_back_button)
-                        )
-                    }
+            val isTopBarScrolled by remember(scrollBehavior) {
+                derivedStateOf { scrollBehavior.scrollState.contentOffset < -1f }
+            }
+            val topBarColorState = animateColorAsState(
+                targetValue = if (isTopBarScrolled) {
+                    MaterialTheme.colorScheme.surfaceContainer
+                } else {
+                    MaterialTheme.colorScheme.surface
                 },
-                actions = if (activeTeamsLeague != null && initialTeamsLeague == null) {
-                    {
-                        FilledTonalIconButton(onClick = onClose) {
+                animationSpec = UlamaTheme.motion.effectsSpec(),
+                label = "CompetitionsTopBarContainerColor"
+            )
+            // Pintamos el fondo animado antes de windowInsetsPadding para cubrir tambien la barra de estado
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind { drawRect(topBarColorState.value) }
+                    .windowInsetsPadding(SearchBarDefaults.windowInsets)
+            ) {
+                AppBarWithSearch(
+                    state = searchBarState,
+                    inputField = inputField,
+                    scrollBehavior = scrollBehavior,
+                    windowInsets = WindowInsets(0),
+                    navigationIcon = {
+                        val backInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = navigateBack,
+                            interactionSource = backInteractionSource,
+                            modifier = Modifier
+                                .padding(start = UlamaTheme.spacing.small, end = UlamaTheme.spacing.extraSmall)
+                                .size(UlamaTheme.dimensions.minTouchTarget)
+                                .bounceClick(enabled = true, interactionSource = backInteractionSource)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        ) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_check),
-                                contentDescription = stringResource(R.string.cd_confirm_selection)
+                                painter = painterResource(R.drawable.ic_arrow_back),
+                                contentDescription = stringResource(R.string.cd_back_button),
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                    }
-                } else null,
-                colors = SearchBarDefaults.appBarWithSearchColors(
-                    scrolledAppBarContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    appBarContainerColor = MaterialTheme.colorScheme.surface
+                    },
+                    actions = if (activeTeamsLeague != null && initialTeamsLeague == null) {
+                        {
+                            FilledTonalIconButton(onClick = onClose) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_check),
+                                    contentDescription = stringResource(R.string.cd_confirm_selection)
+                                )
+                            }
+                        }
+                    } else null,
+                    colors = SearchBarDefaults.appBarWithSearchColors(
+                        scrolledAppBarContainerColor = Color.Transparent,
+                        appBarContainerColor = Color.Transparent
+                    )
                 )
-            )
+            }
         }
     ) { innerPadding ->
         if (isCompact) {
@@ -420,6 +482,14 @@ private fun CompetitionsMainContent(
         }
     }
 
+    var isMyLeaguesExpanded by rememberSaveable { mutableStateOf(false) }
+    val fontScale = LocalDensity.current.fontScale
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val stackQuickCollections = isCompact && (fontScale >= 1.2f || screenWidthDp < 360)
+    val motion = UlamaTheme.motion
+    val spatialSpec = remember(motion) { motion.spatialSpec<androidx.compose.ui.unit.IntSize>() }
+    val effectsSpec = remember(motion) { motion.effectsSpec<Float>() }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -438,59 +508,89 @@ private fun CompetitionsMainContent(
         }
 
         if (selectedRegion == LeagueRegion.ALL) {
-            item(key = "my_teams_row", contentType = "my_teams_row") {
-                MyTeamsSegmentedCard(
-                    isSelected = selectedLeague == League.FAVORITES,
-                    favoriteCount = favoriteTeamIds.size,
-                    onSelect = { onSelectLeague(League.FAVORITES) },
-                    onOpenTeams = { onOpenTeams(League.FAVORITES) }
+
+            item(key = "quick_collections_row", contentType = "quick_collections") {
+                val favoritesLabel = stringResource(R.string.league_favorites)
+                val myLeaguesLabel = stringResource(R.string.league_my_leagues)
+                val teamsSubtitle = stringResource(R.string.fav_teams_global_count_format, favoriteTeamIds.size)
+                val leaguesSubtitle = if (followedLeagues.isNotEmpty()) {
+                    pluralStringResource(R.plurals.competitions_my_leagues_count, followedLeagues.size, followedLeagues.size)
+                } else {
+                    stringResource(R.string.competitions_my_leagues_empty_short)
+                }
+                val chevronRotation by animateFloatAsState(
+                    targetValue = if (isMyLeaguesExpanded && followedLeagues.isNotEmpty()) -90f else 90f,
+                    animationSpec = effectsSpec,
+                    label = "MyLeaguesSplitChevron"
                 )
+                val renderTeamsSplit: @Composable (Modifier) -> Unit = { itemModifier ->
+                    CollectionSplitButton(
+                        title = favoritesLabel,
+                        subtitle = teamsSubtitle,
+                        leadingIconRes = R.drawable.ic_star,
+                        trailingIconRes = R.drawable.ic_groups,
+                        trailingDescription = stringResource(R.string.cd_open_teams, favoritesLabel),
+                        isSelected = selectedLeague == League.FAVORITES,
+                        isTrailingChecked = false,
+                        trailingEnabled = true,
+                        onLeadingClick = { onSelectLeague(League.FAVORITES) },
+                        onTrailingClick = { onOpenTeams(League.FAVORITES) },
+                        modifier = itemModifier
+                    )
+                }
+                val renderLeaguesSplit: @Composable (Modifier) -> Unit = { itemModifier ->
+                    CollectionSplitButton(
+                        title = myLeaguesLabel,
+                        subtitle = leaguesSubtitle,
+                        leadingIconRes = R.drawable.ic_trophy,
+                        trailingIconRes = R.drawable.ic_chevron_right,
+                        trailingDescription = stringResource(R.string.cd_toggle_my_leagues_list),
+                        isSelected = selectedLeague == League.MY_LEAGUES,
+                        isTrailingChecked = isMyLeaguesExpanded && followedLeagues.isNotEmpty(),
+                        trailingEnabled = followedLeagues.isNotEmpty(),
+                        trailingIconRotation = chevronRotation,
+                        onLeadingClick = { onSelectLeague(League.MY_LEAGUES) },
+                        onTrailingClick = { isMyLeaguesExpanded = !isMyLeaguesExpanded },
+                        modifier = itemModifier
+                    )
+                }
+
+                if (stackQuickCollections) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.small),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        renderTeamsSplit(Modifier.fillMaxWidth())
+                        renderLeaguesSplit(Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.small),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min)
+                    ) {
+                        renderTeamsSplit(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                        renderLeaguesSplit(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
+                }
             }
 
             if (followedLeagues.isNotEmpty()) {
                 item(key = "my_leagues_section", contentType = "segmented_group") {
-                    Column(verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.small)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = stringResource(R.string.league_my_leagues),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            val isMyLeaguesActive = selectedLeague == League.MY_LEAGUES
-                            if (isMyLeaguesActive) {
-                                Button(
-                                    onClick = { onSelectLeague(League.MY_LEAGUES) },
-                                    contentPadding = PaddingValues(
-                                        horizontal = UlamaTheme.spacing.medium,
-                                        vertical = UlamaTheme.spacing.extraSmall
-                                    )
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.competitions_view_matches),
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                            } else {
-                                FilledTonalButton(
-                                    onClick = { onSelectLeague(League.MY_LEAGUES) },
-                                    contentPadding = PaddingValues(
-                                        horizontal = UlamaTheme.spacing.medium,
-                                        vertical = UlamaTheme.spacing.extraSmall
-                                    )
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.competitions_view_matches),
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                            }
-                        }
-
+                    AnimatedVisibility(
+                        visible = isMyLeaguesExpanded,
+                        enter = expandVertically(animationSpec = spatialSpec) + fadeIn(animationSpec = effectsSpec),
+                        exit = shrinkVertically(animationSpec = spatialSpec) + fadeOut(animationSpec = effectsSpec)
+                    ) {
                         SegmentedLeagueGroup(
                             leagues = followedLeagues,
                             selectedLeague = selectedLeague,
@@ -654,56 +754,119 @@ private fun SubRegionSection(
     }
 }
 
+/**
+ * Boton dividido de Material 3 Expressive para colecciones rapidas (Mis equipos y Mis ligas).
+ * Separa la seleccion de vista de partidos en el boton principal de la accion secundaria
+ * en el boton lateral conservando altura uniforme y fisica reactiva bounceClick.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun MyTeamsSegmentedCard(
+private fun CollectionSplitButton(
+    title: String,
+    subtitle: String,
+    leadingIconRes: Int,
+    trailingIconRes: Int,
+    trailingDescription: String,
     isSelected: Boolean,
-    favoriteCount: Int,
-    onSelect: () -> Unit,
-    onOpenTeams: () -> Unit
+    isTrailingChecked: Boolean,
+    trailingEnabled: Boolean,
+    onLeadingClick: () -> Unit,
+    onTrailingClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingIconRotation: Float = 0f
 ) {
-    SegmentedListItem(
-        selected = isSelected,
-        onClick = onSelect,
-        shapes = ListItemDefaults.segmentedShapes(index = 0, count = 1),
-        colors = segmentedItemColors(),
-        leadingContent = {
-            Icon(
-                painter = painterResource(R.drawable.ic_star),
-                contentDescription = stringResource(R.string.cd_fav_teams_star),
-                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(UlamaTheme.dimensions.iconNormal)
-            )
-        },
-        supportingContent = if (favoriteCount > 0) {
-            {
-                Text(
-                    text = stringResource(R.string.fav_teams_global_count_format, favoriteCount),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+    val colorScheme = MaterialTheme.colorScheme
+    val containerHeight = SplitButtonDefaults.MediumContainerHeight
+    val buttonColors = if (isSelected) {
+        ButtonDefaults.buttonColors(
+            containerColor = colorScheme.primary,
+            contentColor = colorScheme.onPrimary
+        )
+    } else {
+        ButtonDefaults.buttonColors(
+            containerColor = colorScheme.secondaryContainer,
+            contentColor = colorScheme.onSecondaryContainer
+        )
+    }
+    val leadingInteractionSource = remember { MutableInteractionSource() }
+    val trailingInteractionSource = remember { MutableInteractionSource() }
+
+    SplitButtonLayout(
+        modifier = modifier,
+        leadingButton = {
+            SplitButtonDefaults.LeadingButton(
+                onClick = onLeadingClick,
+                shapes = SplitButtonDefaults.leadingButtonShapesFor(containerHeight),
+                colors = buttonColors,
+                contentPadding = PaddingValues(
+                    start = UlamaTheme.spacing.medium,
+                    end = UlamaTheme.spacing.small,
+                    top = UlamaTheme.spacing.extraSmall,
+                    bottom = UlamaTheme.spacing.extraSmall
+                ),
+                interactionSource = leadingInteractionSource,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .heightIn(min = containerHeight)
+                    .bounceClick(enabled = true, interactionSource = leadingInteractionSource)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        painter = painterResource(leadingIconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(UlamaTheme.dimensions.iconMedium)
+                    )
+                    Spacer(modifier = Modifier.width(UlamaTheme.spacing.extraSmall))
+                    Column(verticalArrangement = Arrangement.Center) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
-        } else null,
-        trailingContent = {
-            IconButton(onClick = onOpenTeams) {
+        },
+        trailingButton = {
+            SplitButtonDefaults.TrailingButton(
+                checked = isTrailingChecked,
+                onCheckedChange = { onTrailingClick() },
+                enabled = trailingEnabled,
+                shapes = SplitButtonDefaults.trailingButtonShapesFor(containerHeight),
+                colors = buttonColors,
+                contentPadding = PaddingValues(0.dp),
+                interactionSource = trailingInteractionSource,
+                modifier = Modifier
+                    .width(UlamaTheme.dimensions.minTouchTarget)
+                    .fillMaxHeight()
+                    .heightIn(min = containerHeight)
+                    .bounceClick(enabled = trailingEnabled, interactionSource = trailingInteractionSource)
+            ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_chevron_right),
-                    contentDescription = stringResource(R.string.cd_open_teams, stringResource(R.string.league_favorites))
+                    painter = painterResource(trailingIconRes),
+                    contentDescription = trailingDescription,
+                    modifier = Modifier
+                        .size(UlamaTheme.dimensions.iconMedium)
+                        .graphicsLayer { rotationZ = trailingIconRotation }
                 )
             }
-        },
-        content = {
-            Text(
-                text = stringResource(R.string.league_favorites),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     )
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SegmentedLeagueGroup(
     leagues: List<League>,
@@ -716,65 +879,261 @@ private fun SegmentedLeagueGroup(
     modifier: Modifier = Modifier
 ) {
     val count = leagues.size
-    val itemColors = segmentedItemColors()
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+        verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.matrixGap)
     ) {
         leagues.forEachIndexed { index, league ->
             val isActive = selectedLeague == league
             val isInMyLeagues = league.code in myLeagueCodes
             val leagueName = stringResource(league.nameRes)
 
-            SegmentedListItem(
-                selected = isActive,
-                onClick = { onSelectLeague(league) },
-                shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
-                colors = itemColors,
+            SegmentedLeagueRow(
+                index = index,
+                count = count,
+                title = leagueName,
+                isSelected = isActive,
+                isInMyLeagues = isInMyLeagues,
+                onSelect = { onSelectLeague(league) },
+                onOpenTeams = { onOpenTeams(league) },
+                openTeamsDescription = stringResource(R.string.cd_open_teams, leagueName),
+                onToggleMyLeague = { onToggleMyLeague(league.code) },
+                toggleMyLeagueDescription = stringResource(R.string.cd_toggle_my_league, leagueName),
                 leadingContent = {
                     AsyncImage(
                         model = league.getLogoUrl(isDark),
                         contentDescription = stringResource(R.string.cd_league_logo, leagueName),
                         modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
                     )
-                },
-                trailingContent = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.extraSmall)
-                    ) {
-                        FilledIconToggleButton(
-                            checked = isInMyLeagues,
-                            onCheckedChange = { onToggleMyLeague(league.code) },
-                            shapes = IconButtonDefaults.toggleableShapes()
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    if (isInMyLeagues) R.drawable.ic_star else R.drawable.ic_star_outline
-                                ),
-                                contentDescription = stringResource(R.string.cd_toggle_my_league, leagueName),
-                                modifier = Modifier.size(UlamaTheme.dimensions.iconMedium)
-                            )
-                        }
-                        IconButton(onClick = { onOpenTeams(league) }) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_chevron_right),
-                                contentDescription = stringResource(R.string.cd_open_teams, leagueName)
-                            )
-                        }
-                    }
-                },
-                content = {
-                    Text(
-                        text = leagueName,
-                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
             )
         }
+    }
+}
+
+/**
+ * Fila segmentada en matriz 2D para competiciones con acciones independientes por columna.
+ * Se separa en bloques horizontales con brecha de 2dp y altura intrinseca compartida para
+ * que los nombres largos en dos lineas nunca desalineen las columnas adyacentes.
+ */
+@Composable
+private fun SegmentedLeagueRow(
+    index: Int,
+    count: Int,
+    title: String,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    onOpenTeams: () -> Unit,
+    openTeamsDescription: String,
+    leadingContent: @Composable (contentColor: () -> Color) -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    isInMyLeagues: Boolean = false,
+    onToggleMyLeague: (() -> Unit)? = null,
+    toggleMyLeagueDescription: String? = null
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val shapes = UlamaTheme.shapes
+    val spacing = UlamaTheme.spacing
+    val dimensions = UlamaTheme.dimensions
+
+    val outerTop = if (index == 0) shapes.listSegmentOuterRadius else shapes.cardConnectedInnerRadius
+    val outerBottom = if (index == count - 1) shapes.listSegmentOuterRadius else shapes.cardConnectedInnerRadius
+    val inner = shapes.cardConnectedInnerRadius
+    val hasStarColumn = onToggleMyLeague != null
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(spacing.matrixGap)
+    ) {
+        SegmentedMatrixCell(
+            isActive = isSelected,
+            topStartRest = outerTop,
+            topEndRest = inner,
+            bottomEndRest = inner,
+            bottomStartRest = outerBottom,
+            morphedRadius = shapes.listSegmentActiveRadius,
+            containerColor = if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceContainer,
+            contentColor = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+            semanticRole = Role.RadioButton,
+            onClick = onSelect,
+            contentAlignment = Alignment.CenterStart,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) { contentColor ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.medium),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spacing.medium, vertical = spacing.small)
+            ) {
+                leadingContent(contentColor)
+                Column(verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = title,
+                        color = contentColor,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            color = { contentColor().copy(alpha = 0.78f) },
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+
+        SegmentedMatrixCell(
+            isActive = false,
+            topStartRest = inner,
+            topEndRest = if (hasStarColumn) inner else outerTop,
+            bottomEndRest = if (hasStarColumn) inner else outerBottom,
+            bottomStartRest = inner,
+            morphedRadius = shapes.listSegmentActiveRadius,
+            containerColor = colorScheme.secondaryContainer,
+            contentColor = colorScheme.onSecondaryContainer,
+            semanticRole = Role.Button,
+            onClick = onOpenTeams,
+            modifier = Modifier
+                .widthIn(min = dimensions.leagueActionMinWidth)
+                .fillMaxHeight()
+        ) { contentColor ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall),
+                modifier = Modifier.padding(horizontal = spacing.medium, vertical = spacing.small)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_groups),
+                    contentDescription = openTeamsDescription,
+                    tint = contentColor,
+                    modifier = Modifier.size(dimensions.iconSmall)
+                )
+                Text(
+                    text = stringResource(R.string.competitions_clubs_action),
+                    color = contentColor,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (onToggleMyLeague != null) {
+            SegmentedMatrixCell(
+                isActive = isInMyLeagues,
+                isShapeLockedAtRest = true,
+                topStartRest = inner,
+                topEndRest = outerTop,
+                bottomEndRest = outerBottom,
+                bottomStartRest = inner,
+                morphedRadius = shapes.listSegmentActiveRadius,
+                containerColor = colorScheme.surfaceContainer,
+                contentColor = if (isInMyLeagues) colorScheme.primary else colorScheme.onSurfaceVariant,
+                semanticRole = Role.Checkbox,
+                onClick = onToggleMyLeague,
+                modifier = Modifier
+                    .width(dimensions.minTouchTarget)
+                    .fillMaxHeight()
+            ) { contentColor ->
+                Icon(
+                    painter = painterResource(
+                        if (isInMyLeagues) R.drawable.ic_star else R.drawable.ic_star_outline
+                    ),
+                    contentDescription = toggleMyLeagueDescription,
+                    tint = contentColor,
+                    modifier = Modifier
+                        .size(dimensions.iconMedium)
+                        .iconPop(trigger = isInMyLeagues)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SegmentedMatrixCell(
+    isActive: Boolean,
+    topStartRest: Dp,
+    topEndRest: Dp,
+    bottomEndRest: Dp,
+    bottomStartRest: Dp,
+    morphedRadius: Dp,
+    containerColor: Color,
+    contentColor: Color,
+    semanticRole: Role,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isShapeLockedAtRest: Boolean = false,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable (contentColor: () -> Color) -> Unit
+) {
+    val motion = UlamaTheme.motion
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val effectsSpec = remember(motion) { motion.effectsSpec<Color>() }
+
+    val animatedContainerColor = animateColorAsState(
+        targetValue = containerColor,
+        animationSpec = effectsSpec,
+        label = "MatrixCellContainerColor"
+    )
+    val animatedContentColor = animateColorAsState(
+        targetValue = contentColor,
+        animationSpec = effectsSpec,
+        label = "MatrixCellContentColor"
+    )
+    val cellShape = rememberMorphingSegmentShape(
+        isMorphed = if (isShapeLockedAtRest) isPressed else (isActive || isPressed),
+        topStartRest = topStartRest,
+        topEndRest = topEndRest,
+        bottomEndRest = bottomEndRest,
+        bottomStartRest = bottomStartRest,
+        topStartMorphed = morphedRadius,
+        motion = motion
+    )
+
+    Box(
+        contentAlignment = contentAlignment,
+        modifier = modifier
+            .defaultMinSize(minHeight = UlamaTheme.dimensions.leagueRowMinHeight)
+            .semantics {
+                role = semanticRole
+                when (semanticRole) {
+                    Role.RadioButton -> selected = isActive
+                    Role.Checkbox -> toggleableState = ToggleableState(isActive)
+                    else -> Unit
+                }
+            }
+            .bounceClick(
+                enabled = true,
+                interactionSource = interactionSource,
+                motion = motion
+            )
+            // Delimitacion Clip Before Click estricta antes de pintar fondo y ondulacion tactil
+            .clip(cellShape)
+            .drawBehind { drawRect(animatedContainerColor.value) }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(),
+                onClick = onClick
+            )
+    ) {
+        content { animatedContentColor.value }
     }
 }
 
@@ -1221,45 +1580,23 @@ private fun SearchOverlayResults(
                 val league = matchingLeagues[index]
                 val isInMyLeagues = league.code in myLeagueCodes
                 val leagueName = stringResource(league.nameRes)
-                SegmentedListItem(
-                    selected = selectedLeague == league,
-                    onClick = { onSelectLeague(league) },
-                    shapes = ListItemDefaults.segmentedShapes(index = index, count = matchingLeagues.size),
-                    colors = segmentedItemColors(),
-                    supportingContent = { Text(text = stringResource(league.subRegionRes)) },
+                SegmentedLeagueRow(
+                    index = index,
+                    count = matchingLeagues.size,
+                    title = leagueName,
+                    subtitle = stringResource(league.subRegionRes),
+                    isSelected = selectedLeague == league,
+                    isInMyLeagues = isInMyLeagues,
+                    onSelect = { onSelectLeague(league) },
+                    onOpenTeams = { onOpenTeams(league) },
+                    openTeamsDescription = stringResource(R.string.cd_open_teams, leagueName),
+                    onToggleMyLeague = { onToggleMyLeague(league.code) },
+                    toggleMyLeagueDescription = stringResource(R.string.cd_toggle_my_league, leagueName),
                     leadingContent = {
                         AsyncImage(
                             model = league.getLogoUrl(isDark),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_league_logo, leagueName),
                             modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
-                        )
-                    },
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            FilledIconToggleButton(
-                                checked = isInMyLeagues,
-                                onCheckedChange = { onToggleMyLeague(league.code) }
-                            ) {
-                                Icon(
-                                    painter = painterResource(
-                                        if (isInMyLeagues) R.drawable.ic_star else R.drawable.ic_star_outline
-                                    ),
-                                    contentDescription = stringResource(R.string.cd_toggle_my_league, leagueName),
-                                    modifier = Modifier.size(UlamaTheme.dimensions.iconMedium)
-                                )
-                            }
-                            IconButton(onClick = { onOpenTeams(league) }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_chevron_right),
-                                    contentDescription = stringResource(R.string.cd_open_teams, leagueName)
-                                )
-                            }
-                        }
-                    },
-                    content = {
-                        Text(
-                            text = leagueName,
-                            fontWeight = if (selectedLeague == league) FontWeight.Bold else FontWeight.Medium
                         )
                     }
                 )

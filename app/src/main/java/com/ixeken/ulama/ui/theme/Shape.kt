@@ -61,6 +61,8 @@ data class UlamaShapes(
     val buttonRestRadius: Dp = RadiusMediumSmall,
     val buttonSelectedRadius: Dp = RadiusSuperLarge,
     val cardConnectedInnerRadius: Dp = RadiusExtraSmall,
+    val listSegmentOuterRadius: Dp = RadiusMedium,
+    val listSegmentActiveRadius: Dp = RadiusLarge,
     val teamCardRestRadius: Dp = RadiusMedium,
     val teamCardSelectedRadius: Dp = RadiusExtraLarge
 )

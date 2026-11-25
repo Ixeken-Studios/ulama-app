@@ -486,7 +486,9 @@
     <string name="competitions_title">Competitions</string>
     <string name="competitions_search_placeholder">Search league, country, or team...</string>
     <string name="competitions_all_section">All competitions</string>
-    <string name="competitions_view_matches">View matches</string>
+    <string name="competitions_clubs_action">Clubs</string>
+    <string name="competitions_my_leagues_empty_short">No leagues</string>
+    <string name="cd_toggle_my_leagues_list">Show or hide My leagues</string>
     <string name="competitions_teams_search_placeholder">Search club in %1$s...</string>
     <string name="competitions_teams_all_search_placeholder">Search your teams...</string>
     <string name="competitions_add_to_my_leagues">My leagues</string>
@@ -506,4 +508,8 @@
     <string name="competitions_teams_count_subtitle">%1$d teams</string>
     <string name="competitions_search_leagues_header">Leagues and tournaments</string>
     <string name="competitions_search_teams_header">Teams</string>
+    <plurals name="competitions_my_leagues_count">
+        <item quantity="one">%1$d league</item>
+        <item quantity="other">%1$d leagues</item>
+    </plurals>
 </resources>

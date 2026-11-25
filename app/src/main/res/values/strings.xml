@@ -486,7 +486,9 @@
     <string name="competitions_title">Competiciones</string>
     <string name="competitions_search_placeholder">Buscar liga, país o equipo...</string>
     <string name="competitions_all_section">Todas</string>
-    <string name="competitions_view_matches">Ver partidos</string>
+    <string name="competitions_clubs_action">Clubes</string>
+    <string name="competitions_my_leagues_empty_short">Sin ligas</string>
+    <string name="cd_toggle_my_leagues_list">Mostrar u ocultar Mis ligas</string>
     <string name="competitions_teams_search_placeholder">Buscar club en %1$s...</string>
     <string name="competitions_teams_all_search_placeholder">Buscar entre tus equipos...</string>
     <string name="competitions_add_to_my_leagues">Mis ligas</string>
@@ -506,4 +508,8 @@
     <string name="competitions_teams_count_subtitle">%1$d equipos</string>
     <string name="competitions_search_leagues_header">Ligas y torneos</string>
     <string name="competitions_search_teams_header">Equipos</string>
+    <plurals name="competitions_my_leagues_count">
+        <item quantity="one">%1$d liga</item>
+        <item quantity="other">%1$d ligas</item>
+    </plurals>
 </resources>

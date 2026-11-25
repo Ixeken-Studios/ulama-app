@@ -30,6 +30,8 @@ val DimDisciplineCardHeight: Dp = 11.dp
 val DimDisciplineCardBorder: Dp = 1.5.dp
 val DimWorldMapHeight: Dp = 172.dp
 val DimLeagueLogoList: Dp = 28.dp
+val DimLeagueRowMinHeight: Dp = 56.dp
+val DimLeagueActionMinWidth: Dp = 88.dp
 val DimTeamGridCrest: Dp = 44.dp
 val DimTeamGridCellMin: Dp = 152.dp
 
@@ -59,6 +61,8 @@ data class UlamaDimensions(
     val disciplineCardBorder: Dp = DimDisciplineCardBorder,
     val worldMapHeight: Dp = DimWorldMapHeight,
     val leagueLogoList: Dp = DimLeagueLogoList,
+    val leagueRowMinHeight: Dp = DimLeagueRowMinHeight,
+    val leagueActionMinWidth: Dp = DimLeagueActionMinWidth,
     val teamGridCrest: Dp = DimTeamGridCrest,
     val teamGridCellMin: Dp = DimTeamGridCellMin
 )
