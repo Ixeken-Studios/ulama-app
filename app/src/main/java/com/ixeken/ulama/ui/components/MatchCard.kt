@@ -569,23 +569,32 @@ private fun MatchCardDarkPreview() {
 fun Match.localizedSeriesTitle(): String? {
     val title = seriesTitle?.trim() ?: return null
     val lower = title.lowercase()
+    val isExcludedKnockout = lower.contains("prelim") ||
+        lower.contains("play-in") ||
+        lower.contains("play in") ||
+        lower.contains("relegation") ||
+        lower.contains("playoff")
+    if (!isExcludedKnockout) {
+        when {
+            lower.contains("3rd") || lower.contains("third") || lower.contains("tercer") || lower.contains("3er") ->
+                return stringResource(R.string.round_third_place)
+            lower.contains("round-of-32") || lower.contains("round of 32") || lower.contains("dieciseis") ->
+                return stringResource(R.string.round_round_of_32)
+            lower.contains("round-of-16") || lower.contains("round of 16") || lower.contains("octav") ->
+                return stringResource(R.string.round_round_of_16)
+            lower.contains("quarter") || lower.contains("cuart") ->
+                return stringResource(R.string.round_quarterfinals)
+            lower.contains("semi") ->
+                return stringResource(R.string.round_semifinals)
+            lower.contains("final") ->
+                return stringResource(R.string.round_final)
+        }
+    }
     return when {
         lower == "torneo-apertura" || lower == "apertura" || lower == "torneo apertura" ->
             stringResource(R.string.tournament_apertura)
         lower == "torneo-clausura" || lower == "clausura" || lower == "torneo clausura" ->
             stringResource(R.string.tournament_clausura)
-        lower == "round-of-32" || lower == "round of 32" || lower == "dieciseisavos" || lower == "dieciseisavos de final" ->
-            stringResource(R.string.round_round_of_32)
-        lower == "round-of-16" || lower == "round of 16" || lower == "octavos" || lower == "octavos de final" ->
-            stringResource(R.string.round_round_of_16)
-        lower == "quarterfinals" || lower == "quarter-finals" || lower == "quarterfinal" || lower == "quarter-final" || lower == "cuartos" || lower == "cuartos de final" ->
-            stringResource(R.string.round_quarterfinals)
-        lower == "semifinals" || lower == "semi-finals" || lower == "semifinal" || lower == "semi-final" || lower == "semifinales" ->
-            stringResource(R.string.round_semifinals)
-        lower == "final" || lower == "gran final" ->
-            stringResource(R.string.round_final)
-        lower == "3rd-place-match" || lower == "third-place-match" || lower == "tercer lugar" || lower == "tercer puesto" || lower == "3rd place match" || lower == "3rd place" || lower == "third place" ->
-            stringResource(R.string.round_third_place)
         else -> title
     }
 }

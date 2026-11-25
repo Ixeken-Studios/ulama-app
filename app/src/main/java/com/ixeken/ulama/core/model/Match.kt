@@ -21,17 +21,38 @@ data class Match(
     val aggregateHomeScore: Int? = null,
     val aggregateAwayScore: Int? = null,
     val seriesSummary: String? = null,
+    val isSeriesCompleted: Boolean = false,
+    val seriesWinnerTeamId: String? = null,
     val homeScorers: List<GoalScorer> = emptyList(),
     val awayScorers: List<GoalScorer> = emptyList()
 ) {
     /**
      * Determina si el encuentro corresponde a una serie eliminatoria directa o fase de liguilla.
-     * Excluye etiquetas de fase de grupos o jornadas regulares para prevenir clasificaciones erroneas.
+     * Evalua primero indicadores explicitos de ronda eliminatoria para no descartar titulos con
+     * prefijos de torneo estacional (ej. "Apertura - Quarterfinals" o "Clausura - Finals").
      */
     val isKnockout: Boolean
         get() {
             val title = seriesTitle?.trim()
             if (!title.isNullOrBlank()) {
+                val hasKnockoutKeyword = title.contains("Quarter", ignoreCase = true) ||
+                    title.contains("Cuart", ignoreCase = true) ||
+                    title.contains("Semi", ignoreCase = true) ||
+                    title.contains("Final", ignoreCase = true) ||
+                    title.contains("Octav", ignoreCase = true) ||
+                    title.contains("Dieciseis", ignoreCase = true) ||
+                    title.contains("Round of ", ignoreCase = true) ||
+                    title.contains("Round-of-", ignoreCase = true) ||
+                    title.contains("3rd", ignoreCase = true) ||
+                    title.contains("Third", ignoreCase = true) ||
+                    title.contains("Tercer", ignoreCase = true) ||
+                    title.contains("Playoff", ignoreCase = true) ||
+                    title.contains("Play-In", ignoreCase = true) ||
+                    title.contains("Play In", ignoreCase = true) ||
+                    title.contains("Prelim", ignoreCase = true) ||
+                    title.contains("Liguilla", ignoreCase = true)
+                if (hasKnockoutKeyword) return true
+
                 val isGroupOrRegular = title.contains("Grupo", ignoreCase = true) ||
                     title.contains("Group", ignoreCase = true) ||
                     title.contains("Jornada", ignoreCase = true) ||

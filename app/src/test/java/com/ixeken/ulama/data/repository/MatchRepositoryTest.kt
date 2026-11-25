@@ -2174,6 +2174,346 @@ class MatchRepositoryTest {
         assertTrue(bench[1].hasRedCard)
         assertTrue(bench[1].isSentOff)
     }
+
+    @Test
+    fun getMatchDetail_mapsTimelineEventsFilteringDelaysAndPromotingSecondYellow() = runBlocking {
+        val timelineApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String, cacheControl: String?) = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                    header = com.ixeken.ulama.data.espn.model.EspnSummaryHeaderDto(
+                        competitions = listOf(
+                            com.ixeken.ulama.data.espn.model.EspnSummaryCompetitionDto(
+                                competitors = listOf(
+                                    EspnCompetitorDto(id = "219", homeAway = "home", team = EspnTeamDto(id = "219", name = "Guadalajara")),
+                                    EspnCompetitorDto(id = "218", homeAway = "away", team = EspnTeamDto(id = "218", name = "Cruz Azul"))
+                                )
+                            )
+                        )
+                    ),
+                    keyEvents = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                            id = "delay_1",
+                            type = com.ixeken.ulama.data.espn.model.EspnPlayTypeDto(text = "Start Delay", type = "start-delay"),
+                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(value = 600.0, displayValue = "10'"),
+                            team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "219")
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                            id = "goal_1",
+                            scoringPlay = true,
+                            type = com.ixeken.ulama.data.espn.model.EspnPlayTypeDto(text = "Goal - Volley", type = "goal---volley"),
+                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(value = 1234.0, displayValue = "21'"),
+                            team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "219"),
+                            participants = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "a1", displayName = "Efraín Álvarez")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "a2", displayName = "Richard Ledezma")
+                                )
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                            id = "yc_1",
+                            type = com.ixeken.ulama.data.espn.model.EspnPlayTypeDto(text = "Yellow Card", type = "yellow-card"),
+                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(value = 2100.0, displayValue = "35'"),
+                            team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "218"),
+                            participants = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "b1", displayName = "Carlos Rodríguez")
+                                )
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                            id = "sub_1",
+                            type = com.ixeken.ulama.data.espn.model.EspnPlayTypeDto(text = "Substitution", type = "substitution"),
+                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(value = 3491.0, displayValue = "59'"),
+                            team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "219"),
+                            participants = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "a3", displayName = "Luis Gabriel Rey")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "a4", displayName = "José Castillo")
+                                )
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                            id = "yc_2",
+                            type = com.ixeken.ulama.data.espn.model.EspnPlayTypeDto(text = "Yellow Card", type = "yellow-card"),
+                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(value = 4500.0, displayValue = "75'"),
+                            team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "218"),
+                            participants = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "b1", displayName = "Carlos Rodríguez")
+                                )
+                            )
+                        )
+                    )
+                )
+        }
+
+        val repo = MatchRepositoryImpl(timelineApi, Dispatchers.Unconfined)
+        val detail = repo.getMatchDetail(League.LIGA_MX, "timeline_match", forceRefresh = true).getOrThrow()
+        val events = detail.timelineEvents
+
+        // Start Delay debe descartarse y quedar 4 eventos ordenados del mas reciente al primero
+        assertEquals(4, events.size)
+        assertEquals("75'", events[0].minute)
+        assertEquals(com.ixeken.ulama.core.model.TimelineEventType.SECOND_YELLOW, events[0].type)
+        assertEquals(false, events[0].isHomeTeam)
+
+        assertEquals("59'", events[1].minute)
+        assertEquals(com.ixeken.ulama.core.model.TimelineEventType.SUBSTITUTION, events[1].type)
+        assertEquals("Luis Gabriel Rey", events[1].primaryPlayerName)
+        assertEquals("José Castillo", events[1].secondaryPlayerName)
+
+        assertEquals("35'", events[2].minute)
+        assertEquals(com.ixeken.ulama.core.model.TimelineEventType.YELLOW_CARD, events[2].type)
+
+        assertEquals("21'", events[3].minute)
+        assertEquals(com.ixeken.ulama.core.model.TimelineEventType.GOAL, events[3].type)
+        assertEquals("Efraín Álvarez", events[3].primaryPlayerName)
+        assertEquals("Richard Ledezma", events[3].secondaryPlayerName)
+        assertEquals(true, events[3].isHomeTeam)
+    }
+
+    @Test
+    fun getMatchDetail_mapsGoalCountAndResolvesFinalLineupSubstitutions() = runBlocking {
+        val lineupApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) = EspnScoreboardResponse()
+            override suspend fun getStandings(league: String, cacheControl: String?) = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse(
+                    keyEvents = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnSummaryScoringPlayDto(
+                            id = "g1",
+                            scoringPlay = true,
+                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(value = 1260.0, displayValue = "21'"),
+                            team = com.ixeken.ulama.data.espn.model.EspnSummaryTeamRefDto(id = "10"),
+                            participants = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_star", displayName = "Efraín Álvarez")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnScoringParticipantDto(
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_assist", displayName = "Richard Ledezma")
+                                )
+                            )
+                        )
+                    ),
+                    rosters = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnRosterTeamDto(
+                            homeAway = "home",
+                            team = EspnTeamDto(id = "10", name = "Local", displayName = "Local"),
+                            formation = "4-2-3-1",
+                            roster = listOf(
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = true,
+                                    jersey = "11",
+                                    formationPlace = 11,
+                                    position = com.ixeken.ulama.data.espn.model.EspnPlayerPositionDto(
+                                        name = "Attacking Midfielder Left",
+                                        abbreviation = "AM-L"
+                                    ),
+                                    subbedOut = true,
+                                    subbedOutFor = com.ixeken.ulama.data.espn.model.EspnSubbedInForDto(
+                                        jersey = "14",
+                                        athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_sub", displayName = "Ricardo Marín")
+                                    ),
+                                    plays = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(
+                                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "67'"),
+                                            substitution = true
+                                        )
+                                    ),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_star", displayName = "Efraín Álvarez")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = true,
+                                    jersey = "7",
+                                    formationPlace = 7,
+                                    plays = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(
+                                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "21'"),
+                                            scoringPlay = true,
+                                            didAssist = true
+                                        )
+                                    ),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_assist", displayName = "Richard Ledezma")
+                                ),
+                                com.ixeken.ulama.data.espn.model.EspnRosterPlayerItemDto(
+                                    starter = false,
+                                    jersey = "14",
+                                    position = com.ixeken.ulama.data.espn.model.EspnPlayerPositionDto(
+                                        name = "Substitute",
+                                        abbreviation = "SUB"
+                                    ),
+                                    subbedIn = true,
+                                    subbedInFor = com.ixeken.ulama.data.espn.model.EspnSubbedInForDto(
+                                        jersey = "11",
+                                        athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_star", displayName = "Efraín Álvarez")
+                                    ),
+                                    plays = listOf(
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(
+                                            clock = com.ixeken.ulama.data.espn.model.EspnClockDisplayDto(displayValue = "67'"),
+                                            substitution = true
+                                        ),
+                                        com.ixeken.ulama.data.espn.model.EspnPlayerPlayDto(scoringPlay = true, didScore = true)
+                                    ),
+                                    athlete = com.ixeken.ulama.data.espn.model.EspnAthleteDto(id = "p_sub", displayName = "Ricardo Marín")
+                                )
+                            )
+                        )
+                    )
+                )
+        }
+
+        val repo = MatchRepositoryImpl(lineupApi, Dispatchers.Unconfined)
+        val detail = repo.getMatchDetail(League.LIGA_MX, "lineup_sub_match", forceRefresh = true).getOrThrow()
+        val homeLineup = detail.homeLineup!!
+
+        assertEquals(1, homeLineup.starters[0].goalsCount)
+        assertEquals(0, homeLineup.starters[0].assistsCount)
+        // Quien solo dio asistencia con scoringPlay=true y didAssist=true no debe contar como gol
+        assertEquals(0, homeLineup.starters[1].goalsCount)
+        assertEquals(1, homeLineup.starters[1].assistsCount)
+        assertEquals(1, homeLineup.bench.first().goalsCount)
+        assertTrue(homeLineup.hasSubstitutions)
+
+        val finalStarters = homeLineup.resolveFinalStarters()
+        assertEquals(2, finalStarters.size)
+        assertEquals("Ricardo Marín", finalStarters[0].name)
+        assertEquals(11, finalStarters[0].formationPlace)
+        assertEquals("Attacking Midfielder Left", finalStarters[0].position)
+        assertEquals("Richard Ledezma", finalStarters[1].name)
+    }
+
+    @Test
+    fun resolveKnockoutMonths_limitsWindowUsingLatestRegularDateAndCoversMultiMonthPlayoffs() {
+        val calendar = listOf(
+            "2026-10-31T07:00Z",
+            "2026-11-22T08:00Z",
+            "2026-11-25T08:00Z",
+            "2026-11-29T08:00Z",
+            "2026-12-03T08:00Z",
+            "2026-12-13T08:00Z"
+        )
+        // Durante Cuartos con Jornada regular el 22 nov, no debe consultar octubre
+        val duringQf = MatchRepositoryImpl.resolveKnockoutMonths(
+            calendarDates = calendar,
+            latestRegularDate = java.time.LocalDate.of(2026, 11, 22),
+            today = java.time.LocalDate.of(2026, 11, 24)
+        )
+        assertEquals(listOf("202611", "202612"), duringQf)
+
+        // Durante la Final sin partidos regulares en la ventana, debe cubrir nov y dic completos
+        val duringFinal = MatchRepositoryImpl.resolveKnockoutMonths(
+            calendarDates = calendar,
+            latestRegularDate = null,
+            today = java.time.LocalDate.of(2026, 12, 10)
+        )
+        assertEquals(listOf("202611", "202612"), duringFinal)
+    }
+
+    @Test
+    fun getMatches_domesticKnockoutLeague_mergesMonthlyKnockoutLegsWithoutAddingOldRegularMatches() = runBlocking {
+        val today = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
+        val leg1Date = today.plusDays(1)
+        val leg2Date = today.plusDays(4)
+        val oldRegularDate = today.minusDays(10)
+        val leg1Iso = "${leg1Date}T01:00Z"
+        val leg2Iso = "${leg2Date}T01:00Z"
+        val oldRegIso = "${oldRegularDate}T01:00Z"
+
+        fun makeEvent(
+            id: String,
+            dateIso: String,
+            slug: String,
+            seriesTitle: String?,
+            leg: Int? = null,
+            seriesCompleted: Boolean = false,
+            winnerId: String? = null
+        ): EspnEventDto {
+            val comps = listOf(
+                EspnCompetitorDto(
+                    id = "223",
+                    homeAway = "home",
+                    score = "0",
+                    team = EspnTeamDto(id = "223", name = "Toluca", displayName = "Toluca")
+                ),
+                EspnCompetitorDto(
+                    id = "216",
+                    homeAway = "away",
+                    score = "0",
+                    team = EspnTeamDto(id = "216", name = "Atlas", displayName = "Atlas")
+                )
+            )
+            return EspnEventDto(
+                id = id,
+                date = dateIso,
+                name = "Atlas at Toluca",
+                season = EspnSeasonDto(year = today.year, slug = slug),
+                competitions = listOf(
+                    EspnCompetitionDto(
+                        id = id,
+                        date = dateIso,
+                        competitors = comps,
+                        status = EspnStatusDto(type = EspnStatusTypeDto(state = "pre", completed = false)),
+                        leg = leg?.let { com.ixeken.ulama.data.espn.model.EspnLegDto(value = it) },
+                        series = seriesTitle?.let {
+                            com.ixeken.ulama.data.espn.model.EspnSeriesDto(
+                                title = it,
+                                completed = seriesCompleted,
+                                competitors = listOf(
+                                    com.ixeken.ulama.data.espn.model.EspnSeriesCompetitorDto(id = "223", winner = winnerId == "223"),
+                                    com.ixeken.ulama.data.espn.model.EspnSeriesCompetitorDto(id = "216", winner = winnerId == "216")
+                                )
+                            )
+                        }
+                    )
+                )
+            )
+        }
+
+        val leg1Event = makeEvent("ko_leg1", leg1Iso, "apertura---quarterfinals", "Apertura - Quarterfinals", leg = 1)
+        val leg2Event = makeEvent("ko_leg2", leg2Iso, "apertura---quarterfinals", "Apertura - Quarterfinals", leg = 2, seriesCompleted = true, winnerId = "223")
+        val oldRegularEvent = makeEvent("old_reg", oldRegIso, "torneo-apertura", null, leg = null)
+
+        val fakeApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?): EspnScoreboardResponse {
+                return when {
+                    dates == null -> EspnScoreboardResponse(
+                        leagues = listOf(
+                            EspnLeagueCalendarDto(
+                                calendar = listOf(
+                                    kotlinx.serialization.json.JsonPrimitive(leg1Iso),
+                                    kotlinx.serialization.json.JsonPrimitive(leg2Iso)
+                                )
+                            )
+                        ),
+                        events = listOf(leg1Event)
+                    )
+                    dates.length == 6 -> EspnScoreboardResponse(events = listOf(oldRegularEvent, leg1Event, leg2Event))
+                    else -> EspnScoreboardResponse(events = listOf(leg1Event))
+                }
+            }
+            override suspend fun getStandings(league: String, cacheControl: String?): EspnStandingsResponse = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?): com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+        val matches = repo.getMatches(League.LIGA_MX, forceRefresh = true).getOrThrow()
+
+        assertEquals(2, matches.size)
+        assertTrue(matches.any { it.id == "ko_leg1" && it.isKnockout })
+        val mappedLeg2 = matches.first { it.id == "ko_leg2" }
+        assertTrue(mappedLeg2.isKnockout)
+        assertTrue(mappedLeg2.isSeriesCompleted)
+        assertEquals("223", mappedLeg2.seriesWinnerTeamId)
+        assertTrue(matches.none { it.id == "old_reg" })
+    }
 }
 
 

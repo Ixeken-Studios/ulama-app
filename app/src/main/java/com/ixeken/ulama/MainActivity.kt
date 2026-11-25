@@ -14,6 +14,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +35,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -37,11 +49,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -49,36 +66,44 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ixeken.ulama.core.model.ColorPalette
 import com.ixeken.ulama.core.util.LocaleHelper
 import com.ixeken.ulama.core.model.League
+import com.ixeken.ulama.core.model.Match
+import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.MotionStyle
 import com.ixeken.ulama.core.model.TemporalFilter
 import com.ixeken.ulama.core.model.ThemeMode
+import kotlinx.coroutines.delay
 import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.core.util.ImagePreloadHelper
 import com.ixeken.ulama.data.repository.AppSettingsRepositoryImpl
 import com.ixeken.ulama.service.FavoriteAutoFollowJobService
 import com.ixeken.ulama.service.MatchAlarmScheduler
 import com.ixeken.ulama.service.MatchNotificationHelper
+import com.ixeken.ulama.ui.competitions.CompetitionsScreen
 import com.ixeken.ulama.ui.components.EmptyFavoritesCard
 import com.ixeken.ulama.ui.components.EmptyMatchesCard
 import com.ixeken.ulama.ui.components.EmptyMyLeaguesCard
-import com.ixeken.ulama.ui.components.FavoriteTeamsBottomSheet
 import com.ixeken.ulama.ui.components.MatchesGroupCard
-import com.ixeken.ulama.ui.components.MyLeaguesBottomSheet
 import com.ixeken.ulama.ui.components.PullToRefreshWithLoadingIndicator
 import com.ixeken.ulama.ui.components.RadialKnockoutBracket
 import com.ixeken.ulama.ui.components.StandingsTable
 import com.ixeken.ulama.ui.components.TemporalFilterTabs
 import com.ixeken.ulama.ui.components.UlamaTopAppBar
 import com.ixeken.ulama.ui.components.detail.MatchDetailBottomSheet
+import com.ixeken.ulama.ui.matches.MatchesUiState
 import com.ixeken.ulama.ui.matches.MatchesViewModel
+import com.ixeken.ulama.ui.matches.resolveQuickSwitchLeagues
 import com.ixeken.ulama.ui.settings.SettingsScreen
 import com.ixeken.ulama.ui.theme.UlamaTheme
 import com.ixeken.ulama.data.update.GithubUpdateChecker
@@ -86,6 +111,9 @@ import com.ixeken.ulama.data.update.UpdateCheckResult
 import com.ixeken.ulama.ui.components.OnboardingBottomSheet
 import com.ixeken.ulama.ui.components.UpdateAvailableBottomSheet
 import com.ixeken.ulama.ui.components.WhatsNewBottomSheet
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -111,12 +139,17 @@ class MainActivity : ComponentActivity() {
             val settingsRepository = remember { AppSettingsRepositoryImpl.provide(context) }
             val appSettings by settingsRepository.settings.collectAsStateWithLifecycle()
 
-            var isFavoritesSheetOpen by remember { mutableStateOf(false) }
-            var isMyLeaguesSheetOpen by remember { mutableStateOf(false) }
+            var isCompetitionsOpen by rememberSaveable { mutableStateOf(false) }
+            var competitionsInitialTeamsCode by rememberSaveable { mutableStateOf<String?>(null) }
             var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
             var isWhatsNewSheetOpen by remember { mutableStateOf(false) }
             var isOnboardingSheetOpen by remember { mutableStateOf(false) }
             var updateAvailableData by remember { mutableStateOf<UpdateCheckResult.NewVersionAvailable?>(null) }
+
+            val openCompetitions: (League?) -> Unit = { initialLeague ->
+                competitionsInitialTeamsCode = initialLeague?.code
+                isCompetitionsOpen = true
+            }
 
             BackHandler(enabled = isSettingsOpen) {
                 isSettingsOpen = false
@@ -180,9 +213,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val currentVersion = try {
-                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "2.1.0"
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "2.2.0"
                     } catch (_: Exception) {
-                        "2.1.0"
+                        "2.2.0"
                     }
 
                     val savedVersion = settingsRepository.settings.value.lastKnownVersion
@@ -210,8 +243,8 @@ class MainActivity : ComponentActivity() {
                     val targetId = openMatchId
                     if (!targetId.isNullOrBlank()) {
                         isSettingsOpen = false
-                        isFavoritesSheetOpen = false
-                        isMyLeaguesSheetOpen = false
+                        isCompetitionsOpen = false
+                        competitionsInitialTeamsCode = null
                         viewModel.selectMatchById(targetId)
                         pendingNotificationMatchId.value = null
                     }
@@ -224,17 +257,30 @@ class MainActivity : ComponentActivity() {
                     onPauseOrDispose {}
                 }
 
-                // Precargamos los escudos del selector de favoritos solo cuando el modal se abre
-                // y exclusivamente para la variante de tema activa (claro u oscuro).
-                LaunchedEffect(isFavoritesSheetOpen, uiState.availableTeamsByLeague, darkTheme) {
-                    if (isFavoritesSheetOpen) {
-                        viewModel.ensureAvailableTeamsLoaded()
-                        if (uiState.availableTeamsByLeague.isNotEmpty()) {
-                            val urls = uiState.availableTeamsByLeague.values.flatten().mapNotNull { entry ->
-                                entry.getLogoUrl(darkTheme)
-                            }
-                            ImagePreloadHelper.preloadImages(context, urls)
+                // Sondeo automatico cada 30s exclusivamente en primer plano (RESUMED) y con partidos en vivo
+                val hasLiveMatches = remember(uiState.matches, uiState.selectedMatch) {
+                    uiState.matches.any { it.status.state == MatchState.LIVE } ||
+                        uiState.selectedMatch?.status?.state == MatchState.LIVE
+                }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                LaunchedEffect(lifecycleOwner, hasLiveMatches) {
+                    if (!hasLiveMatches) return@LaunchedEffect
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        while (true) {
+                            delay(30_000L)
+                            viewModel.silentRefresh()
                         }
+                    }
+                }
+
+                // Precargamos los escudos cuando el centro de competiciones tiene clubes resueltos
+                // y exclusivamente para la variante de tema activa (claro u oscuro).
+                LaunchedEffect(isCompetitionsOpen, uiState.availableTeamsByLeague, darkTheme) {
+                    if (isCompetitionsOpen && uiState.availableTeamsByLeague.isNotEmpty()) {
+                        val urls = uiState.availableTeamsByLeague.values.flatten().mapNotNull { entry ->
+                            entry.getLogoUrl(darkTheme)
+                        }
+                        ImagePreloadHelper.preloadImages(context, urls)
                     }
                 }
 
@@ -265,6 +311,28 @@ class MainActivity : ComponentActivity() {
                 } else {
                     UlamaTheme.spacing.screenHorizontalCompact
                 }
+                val standardLeagueNames = League.standardLeagues.associateWith { stringResource(it.nameRes) }
+                val quickLeagues = remember(uiState.myLeagueCodes, standardLeagueNames) {
+                    resolveQuickSwitchLeagues(uiState.myLeagueCodes) { league ->
+                        standardLeagueNames[league].orEmpty()
+                    }
+                }
+                var leagueTransitionDirection by remember { mutableIntStateOf(0) }
+                // Muestra el mini paginado al entrar a la app y al interactuar con la pildora, ocultandolo tras una pausa breve
+                var showLeaguePagerIndicator by rememberSaveable { mutableStateOf(true) }
+                var isLeaguePillDragging by remember { mutableStateOf(false) }
+                LaunchedEffect(
+                    showLeaguePagerIndicator,
+                    isLeaguePillDragging,
+                    uiState.selectedLeague,
+                    isOnboardingSheetOpen,
+                    quickLeagues.size
+                ) {
+                    if (showLeaguePagerIndicator && !isLeaguePillDragging && !isOnboardingSheetOpen && quickLeagues.size > 1) {
+                        delay(2_500L)
+                        showLeaguePagerIndicator = false
+                    }
+                }
 
                 if (isSettingsOpen) {
                     SettingsScreen(
@@ -286,236 +354,183 @@ class MainActivity : ComponentActivity() {
                         onShowWalkthrough = { isOnboardingSheetOpen = true },
                         onBackClick = { isSettingsOpen = false }
                     )
+                } else if (isCompetitionsOpen) {
+                    CompetitionsScreen(
+                        selectedLeague = uiState.selectedLeague,
+                        favoriteTeamIds = uiState.favoriteTeamIds,
+                        myLeagueCodes = uiState.myLeagueCodes,
+                        availableTeamsByLeague = uiState.availableTeamsByLeague,
+                        loadingTeamLeagues = uiState.loadingTeamLeagues,
+                        initialTeamsLeague = competitionsInitialTeamsCode?.let { League.fromCode(it) },
+                        onSelectLeague = { league ->
+                            leagueTransitionDirection = 0
+                            viewModel.selectLeague(league)
+                        },
+                        onToggleMyLeague = viewModel::toggleMyLeague,
+                        onToggleFavoriteTeam = viewModel::toggleFavoriteTeam,
+                        onEnsureLeagueTeamsLoaded = viewModel::ensureLeagueTeamsLoaded,
+                        onEnsureAllTeamsLoaded = viewModel::ensureAvailableTeamsLoaded,
+                        onClose = {
+                            isCompetitionsOpen = false
+                            competitionsInitialTeamsCode = null
+                        }
+                    )
                 } else {
+                    val motion = UlamaTheme.motion
+                    val coroutineScope = rememberCoroutineScope()
+                    val pagerState = rememberPagerState(
+                        initialPage = uiState.selectedFilter.ordinal,
+                        pageCount = { TemporalFilter.entries.size }
+                    )
+                    // Sin rebote lateral para evitar dejar bordes vecinos visibles al detenerse
+                    val pagerSnapSpec = remember(motion.mode) {
+                        spring<Float>(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = if (motion.isExpressive) Spring.StiffnessMediumLow else Spring.StiffnessMedium
+                        )
+                    }
+                    val activeTabFilter by remember(pagerState) {
+                        derivedStateOf {
+                            TemporalFilter.entries.getOrElse(pagerState.targetPage) { TemporalFilter.TODAY }
+                        }
+                    }
+                    val currentSelectedFilter by rememberUpdatedState(uiState.selectedFilter)
+
+                    LaunchedEffect(pagerState) {
+                        snapshotFlow { pagerState.settledPage }
+                            .distinctUntilChanged()
+                            .collect { settled ->
+                                val settledFilter = TemporalFilter.entries.getOrElse(settled) { TemporalFilter.TODAY }
+                                if (currentSelectedFilter != settledFilter) {
+                                    viewModel.selectFilter(settledFilter)
+                                }
+                            }
+                    }
+
+                    LaunchedEffect(uiState.selectedFilter) {
+                        val targetPage = uiState.selectedFilter.ordinal
+                        if (pagerState.currentPage != targetPage && !pagerState.isScrollInProgress) {
+                            pagerState.animateScrollToPage(
+                                page = targetPage,
+                                animationSpec = pagerSnapSpec
+                            )
+                        }
+                    }
+
+                    LaunchedEffect(uiState.selectedLeague) {
+                        if (leagueTransitionDirection != 0) {
+                            leagueTransitionDirection = 0
+                        }
+                    }
+
                     Scaffold(
                         topBar = {
                             UlamaTopAppBar(
                                 selectedLeague = uiState.selectedLeague,
-                                favoriteCount = uiState.favoriteTeamIds.size,
-                                myLeaguesCount = uiState.myLeagueCodes.size,
-                                onLeagueSelected = viewModel::selectLeague,
+                                onLeaguePickerClick = { openCompetitions(null) },
                                 onSettingsClick = { isSettingsOpen = true },
-                                onManageFavorites = {
-                                    viewModel.ensureAvailableTeamsLoaded()
-                                    isFavoritesSheetOpen = true
+                                quickLeagues = quickLeagues,
+                                onQuickLeagueSelected = { targetLeague, direction ->
+                                    leagueTransitionDirection = direction
+                                    showLeaguePagerIndicator = true
+                                    viewModel.selectLeague(targetLeague)
                                 },
-                                onManageMyLeagues = { isMyLeaguesSheetOpen = true }
+                                showPagerIndicator = showLeaguePagerIndicator,
+                                onLeaguePillDragChange = { dragging ->
+                                    isLeaguePillDragging = dragging
+                                    if (dragging) {
+                                        showLeaguePagerIndicator = true
+                                    }
+                                }
                             )
                         },
                         modifier = Modifier.fillMaxSize()
                     ) { innerPadding ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = innerPadding.calculateTopPadding())
-                            .padding(horizontal = horizontalMargin)
-                            .padding(top = UlamaTheme.spacing.screenVertical)
-                    ) {
-                        TemporalFilterTabs(
-                            selectedFilter = uiState.selectedFilter,
-                            onFilterSelected = viewModel::selectFilter,
-                            modifier = Modifier.widthIn(max = UlamaTheme.dimensions.maxContentWidth)
-                        )
-
-                        Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
-
-                        when {
-                            uiState.isLoading -> {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    ContainedLoadingIndicator(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                        indicatorColor = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            else -> {
-                                val isDebug = uiState.selectedLeague == League.DEBUG
-                                val bracket = uiState.radialBracket
-                                val bracketTitle = if (uiState.selectedLeague == League.LIGA_MX) {
-                                    stringResource(R.string.legend_liguilla)
-                                } else {
-                                    stringResource(R.string.title_radial_bracket)
-                                }
-
-                                val isGroupedFilter = uiState.selectedFilter == TemporalFilter.PAST || uiState.selectedFilter == TemporalFilter.UPCOMING
-                                // Precalculamos tanto la agrupacion por dia como la etiqueta localizada del encabezado
-                                // para evitar formatear fechas dentro del bloque DSL de LazyColumn en cada scroll.
-                                val groupedMatchesWithHeaders = remember(uiState.matches, isGroupedFilter) {
-                                    if (isGroupedFilter) {
-                                        uiState.matches
-                                            .groupBy { match -> DateTimeUtils.getLocalDateKey(match.dateUtc) }
-                                            .map { (dateKey, dayMatches) ->
-                                                val dateLabel = DateTimeUtils.formatDateHeader(
-                                                    dayMatches.firstOrNull()?.dateUtc ?: dateKey
-                                                )
-                                                Triple(dateKey, dateLabel, dayMatches)
-                                            }
-                                    } else {
-                                        emptyList()
-                                    }
-                                }
-
-                                PullToRefreshWithLoadingIndicator(
-                                    isRefreshing = uiState.isRefreshing,
-                                    onRefresh = viewModel::refresh,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .widthIn(max = UlamaTheme.dimensions.maxContentWidth)
-                                ) {
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.listSpacing),
-                                        contentPadding = PaddingValues(
-                                            top = UlamaTheme.spacing.listTopPadding,
-                                            bottom = UlamaTheme.spacing.listBottomPadding + innerPadding.calculateBottomPadding()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = innerPadding.calculateTopPadding())
+                                .padding(horizontal = horizontalMargin)
+                                .padding(top = UlamaTheme.spacing.screenVertical)
+                        ) {
+                            TemporalFilterTabs(
+                                selectedFilter = activeTabFilter,
+                                onFilterSelected = { filter ->
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(
+                                            page = filter.ordinal,
+                                            animationSpec = pagerSnapSpec
                                         )
+                                    }
+                                    viewModel.selectFilter(filter)
+                                },
+                                modifier = Modifier.widthIn(max = UlamaTheme.dimensions.maxContentWidth)
+                            )
+
+                            Spacer(modifier = Modifier.height(UlamaTheme.spacing.contentSpacing))
+
+                            AnimatedContent(
+                                targetState = uiState.selectedLeague,
+                                transitionSpec = {
+                                    val dir = leagueTransitionDirection
+                                    if (dir != 0) {
+                                        (slideInHorizontally(animationSpec = motion.spatialSpec()) { fullWidth ->
+                                            dir * (fullWidth / 4)
+                                        } + fadeIn(animationSpec = motion.effectsSpec())) togetherWith
+                                            (slideOutHorizontally(animationSpec = motion.spatialSpec()) { fullWidth ->
+                                                -dir * (fullWidth / 4)
+                                            } + fadeOut(animationSpec = motion.effectsSpec()))
+                                    } else {
+                                        fadeIn(animationSpec = motion.effectsSpec()) togetherWith
+                                            fadeOut(animationSpec = motion.effectsSpec())
+                                    }
+                                },
+                                label = "MainLeagueContentTransition",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .widthIn(max = UlamaTheme.dimensions.maxContentWidth)
+                            ) { currentLeague ->
+                                if (uiState.isLoading || currentLeague != uiState.selectedLeague) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        if (uiState.matches.isEmpty()) {
-                                            item(key = "empty_matches_card", contentType = "empty_matches_card") {
-                                                when {
-                                                    uiState.selectedLeague == League.FAVORITES && uiState.favoriteTeamIds.isEmpty() -> {
-                                                        EmptyFavoritesCard(
-                                                            onManageFavorites = {
-                                                                viewModel.ensureAvailableTeamsLoaded()
-                                                                isFavoritesSheetOpen = true
-                                                            }
-                                                        )
-                                                    }
-                                                    uiState.selectedLeague == League.MY_LEAGUES && uiState.myLeagueCodes.isEmpty() -> {
-                                                        EmptyMyLeaguesCard(
-                                                            onManageMyLeagues = { isMyLeaguesSheetOpen = true }
-                                                        )
-                                                    }
-                                                    else -> {
-                                                        EmptyMatchesCard(filter = uiState.selectedFilter)
-                                                    }
-                                                }
-                                            }
-                                        } else if (isGroupedFilter) {
-                                            groupedMatchesWithHeaders.forEach { (dateKey, dateLabel, dayMatches) ->
-                                                item(key = "date_header_$dateKey", contentType = "date_header") {
-                                                    Text(
-                                                        text = dateLabel,
-                                                        style = MaterialTheme.typography.labelLarge,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .padding(
-                                                                start = UlamaTheme.spacing.medium,
-                                                                top = UlamaTheme.spacing.small,
-                                                                bottom = UlamaTheme.spacing.extraSmall
-                                                            )
-                                                    )
-                                                }
-                                                item(key = "matches_group_$dateKey", contentType = "matches_group_card") {
-                                                    MatchesGroupCard(
-                                                        matches = dayMatches,
-                                                        onMatchClick = viewModel::selectMatch,
-                                                        showLeagueBadge = uiState.selectedLeague.isVirtual
-                                                    )
-                                                }
-                                            }
-                                        } else {
-                                            item(key = "matches_group_card", contentType = "matches_group_card") {
-                                                MatchesGroupCard(
-                                                    matches = uiState.matches,
-                                                    onMatchClick = viewModel::selectMatch,
-                                                    showLeagueBadge = uiState.selectedLeague.isVirtual
-                                                )
-                                            }
-                                        }
+                                        ContainedLoadingIndicator(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                            indicatorColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                } else {
+                                    PullToRefreshWithLoadingIndicator(
+                                        isRefreshing = uiState.isRefreshing,
+                                        onRefresh = viewModel::refresh,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            beyondViewportPageCount = 1,
+                                            key = { TemporalFilter.entries[it].name },
+                                            flingBehavior = PagerDefaults.flingBehavior(
+                                                state = pagerState,
+                                                snapAnimationSpec = pagerSnapSpec
+                                            ),
+                                            modifier = Modifier.fillMaxSize()
+                                        ) { page ->
+                                            val pageFilter = TemporalFilter.entries[page]
+                                            val pageMatches = uiState.matchesByFilter[pageFilter]
+                                                ?: if (pageFilter == uiState.selectedFilter) uiState.matches else emptyList()
 
-                                        // Si la competicion real tiene cruces programados en ESPN, el cuadro de eliminatorias
-                                        // se posiciona prioritariamente arriba de la tabla general y los grupos.
-                                        if (!isDebug && bracket != null && bracket.hasAnyScheduledMatch) {
-                                            item(key = "radial_bracket_active", contentType = "radial_bracket") {
-                                                RadialKnockoutBracket(
-                                                    tree = bracket,
-                                                    title = bracketTitle
-                                                )
-                                            }
-                                        }
-
-                                        if (uiState.standings.isNotEmpty()) {
-                                            item(key = "standings_table", contentType = "standings_table") {
-                                                StandingsTable(
-                                                    standings = uiState.standings,
-                                                    cutoffs = uiState.selectedLeague.tableCutoffs,
-                                                    legend = uiState.selectedLeague.tableLegend
-                                                )
-                                            }
-                                        }
-
-                                        if (uiState.groups.isNotEmpty()) {
-                                            items(
-                                                items = uiState.groups,
-                                                key = { group -> "group_${group.name}" },
-                                                contentType = { "group_standings" }
-                                            ) { group ->
-                                                val groupTitle = if (group.name.length <= 4) {
-                                                    stringResource(R.string.group_table_title_format, group.name)
-                                                } else {
-                                                    group.name
-                                                }
-                                                StandingsTable(
-                                                    standings = group.standings,
-                                                    title = groupTitle,
-                                                    cutoffs = group.cutoffs,
-                                                    legend = group.legend
-                                                )
-                                            }
-                                        }
-
-                                        // Si la competicion real no tiene cruces programados aun, el cuadro vacio
-                                        // se despliega al pie de la tabla y los grupos en espera de clasificados oficiales.
-                                        if (!isDebug && bracket != null && !bracket.hasAnyScheduledMatch) {
-                                            item(key = "radial_bracket_empty_wait", contentType = "radial_bracket") {
-                                                RadialKnockoutBracket(
-                                                    tree = bracket,
-                                                    title = bracketTitle
-                                                )
-                                            }
-                                        }
-
-                                        // En modo DEBUG se exponen los cuadros de desarrollo secuenciales
-                                        if (isDebug) {
-                                            uiState.radialBracket32?.let { bracket32 ->
-                                                item(key = "radial_bracket_32", contentType = "radial_bracket") {
-                                                    RadialKnockoutBracket(
-                                                        tree = bracket32,
-                                                        title = stringResource(R.string.title_radial_bracket_32)
-                                                    )
-                                                }
-                                            }
-                                            bracket?.let { b ->
-                                                item(key = "radial_bracket_completed", contentType = "radial_bracket") {
-                                                    RadialKnockoutBracket(
-                                                        tree = b,
-                                                        title = stringResource(R.string.title_radial_bracket_completed)
-                                                    )
-                                                }
-                                            }
-                                            uiState.radialBracketSemis?.let { bracketSemis ->
-                                                item(key = "radial_bracket_semis", contentType = "radial_bracket") {
-                                                    RadialKnockoutBracket(
-                                                        tree = bracketSemis,
-                                                        title = stringResource(R.string.title_radial_bracket_semis)
-                                                    )
-                                                }
-                                            }
-                                            uiState.radialBracketEmpty?.let { bracketEmpty ->
-                                                item(key = "radial_bracket_empty", contentType = "radial_bracket") {
-                                                    RadialKnockoutBracket(
-                                                        tree = bracketEmpty,
-                                                        title = stringResource(R.string.title_radial_bracket_empty)
-                                                    )
-                                                }
-                                            }
+                                            MatchesLeaguePageContent(
+                                                league = currentLeague,
+                                                pageFilter = pageFilter,
+                                                matches = pageMatches,
+                                                uiState = uiState,
+                                                bottomContentPadding = innerPadding.calculateBottomPadding(),
+                                                onMatchClick = viewModel::selectMatch,
+                                                onManageFavorites = { openCompetitions(League.FAVORITES) },
+                                                onManageMyLeagues = { openCompetitions(null) }
+                                            )
                                         }
                                     }
                                 }
@@ -523,7 +538,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
 
             val selectedMatch = uiState.selectedMatch
             if (selectedMatch != null) {
@@ -555,23 +569,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                if (isFavoritesSheetOpen) {
-                    FavoriteTeamsBottomSheet(
-                        favoriteTeamIds = uiState.favoriteTeamIds,
-                        availableTeamsByLeague = uiState.availableTeamsByLeague,
-                        onToggleFavorite = viewModel::toggleFavoriteTeam,
-                        onDismissRequest = { isFavoritesSheetOpen = false }
-                    )
-                }
-
-                if (isMyLeaguesSheetOpen) {
-                    MyLeaguesBottomSheet(
-                        selectedLeagueCodes = uiState.myLeagueCodes,
-                        onToggleLeague = viewModel::toggleMyLeague,
-                        onDismissRequest = { isMyLeaguesSheetOpen = false }
-                    )
-                }
-
                 if (isWhatsNewSheetOpen) {
                     WhatsNewBottomSheet(
                         onDismissRequest = { isWhatsNewSheetOpen = false }
@@ -593,7 +590,10 @@ class MainActivity : ComponentActivity() {
                         selectedLeague = uiState.selectedLeague,
                         onThemeModeChanged = settingsRepository::setThemeMode,
                         onColorPaletteChanged = settingsRepository::setColorPalette,
-                        onLeagueSelected = viewModel::selectLeague,
+                        onLeagueSelected = { league ->
+                            leagueTransitionDirection = 0
+                            viewModel.selectLeague(league)
+                        },
                         onNotificationLeadMinutesChanged = { minutes ->
                             settingsRepository.setNotificationLeadMinutes(minutes)
                             MatchAlarmScheduler.rescheduleAllFollowed(context, minutes)
@@ -608,6 +608,190 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Contenido desplazable verticalmente para una pestana temporal dentro del HorizontalPager principal.
+ * Aisla su propio LazyListState por pestana y precalcula los encabezados diarios para scroll fluido.
+ */
+@Composable
+private fun MatchesLeaguePageContent(
+    league: League,
+    pageFilter: TemporalFilter,
+    matches: List<Match>,
+    uiState: MatchesUiState,
+    bottomContentPadding: Dp,
+    onMatchClick: (Match) -> Unit,
+    onManageFavorites: () -> Unit,
+    onManageMyLeagues: () -> Unit
+) {
+    val isDebug = league == League.DEBUG
+    val bracket = uiState.radialBracket
+    val bracketTitle = stringResource(league.bracketTitleRes)
+    val isGroupedFilter = pageFilter == TemporalFilter.PAST || pageFilter == TemporalFilter.UPCOMING
+
+    // Precalculamos la agrupacion diaria y etiquetas para evitar formatear fechas durante el scroll
+    val groupedMatchesWithHeaders = remember(matches, isGroupedFilter) {
+        if (isGroupedFilter) {
+            matches
+                .groupBy { match -> DateTimeUtils.getLocalDateKey(match.dateUtc) }
+                .map { (dateKey, dayMatches) ->
+                    val dateLabel = DateTimeUtils.formatDateHeader(
+                        dayMatches.firstOrNull()?.dateUtc ?: dateKey
+                    )
+                    Triple(dateKey, dateLabel, dayMatches)
+                }
+        } else {
+            emptyList()
+        }
+    }
+
+    LazyColumn(
+        state = rememberLazyListState(),
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.listSpacing),
+        contentPadding = PaddingValues(
+            top = UlamaTheme.spacing.listTopPadding,
+            bottom = UlamaTheme.spacing.listBottomPadding + bottomContentPadding
+        )
+    ) {
+        if (matches.isEmpty()) {
+            item(key = "empty_matches_card", contentType = "empty_matches_card") {
+                when {
+                    league == League.FAVORITES && uiState.favoriteTeamIds.isEmpty() -> {
+                        EmptyFavoritesCard(onManageFavorites = onManageFavorites)
+                    }
+                    league == League.MY_LEAGUES && uiState.myLeagueCodes.isEmpty() -> {
+                        EmptyMyLeaguesCard(onManageMyLeagues = onManageMyLeagues)
+                    }
+                    else -> {
+                        EmptyMatchesCard(filter = pageFilter)
+                    }
+                }
+            }
+        } else if (isGroupedFilter) {
+            groupedMatchesWithHeaders.forEach { (dateKey, dateLabel, dayMatches) ->
+                item(key = "date_header_$dateKey", contentType = "date_header") {
+                    Text(
+                        text = dateLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = UlamaTheme.spacing.medium,
+                                top = UlamaTheme.spacing.small,
+                                bottom = UlamaTheme.spacing.extraSmall
+                            )
+                    )
+                }
+                item(key = "matches_group_$dateKey", contentType = "matches_group_card") {
+                    MatchesGroupCard(
+                        matches = dayMatches,
+                        onMatchClick = onMatchClick,
+                        showLeagueBadge = league.isVirtual
+                    )
+                }
+            }
+        } else {
+            item(key = "matches_group_card", contentType = "matches_group_card") {
+                MatchesGroupCard(
+                    matches = matches,
+                    onMatchClick = onMatchClick,
+                    showLeagueBadge = league.isVirtual
+                )
+            }
+        }
+
+        // Si la competicion real tiene cruces programados en ESPN, el cuadro de eliminatorias
+        // se posiciona prioritariamente arriba de la tabla general y los grupos.
+        if (!isDebug && bracket != null && bracket.hasAnyScheduledMatch) {
+            item(key = "radial_bracket_active", contentType = "radial_bracket") {
+                RadialKnockoutBracket(
+                    tree = bracket,
+                    title = bracketTitle
+                )
+            }
+        }
+
+        if (uiState.standings.isNotEmpty()) {
+            item(key = "standings_table", contentType = "standings_table") {
+                StandingsTable(
+                    standings = uiState.standings,
+                    cutoffs = league.tableCutoffs,
+                    legend = league.tableLegend
+                )
+            }
+        }
+
+        if (uiState.groups.isNotEmpty()) {
+            items(
+                items = uiState.groups,
+                key = { group -> "group_${group.name}" },
+                contentType = { "group_standings" }
+            ) { group ->
+                val groupTitle = if (group.name.length <= 4) {
+                    stringResource(R.string.group_table_title_format, group.name)
+                } else {
+                    group.name
+                }
+                StandingsTable(
+                    standings = group.standings,
+                    title = groupTitle,
+                    cutoffs = group.cutoffs,
+                    legend = group.legend
+                )
+            }
+        }
+
+        // Si la competicion real no tiene cruces programados aun, el cuadro vacio
+        // se despliega al pie de la tabla y los grupos en espera de clasificados oficiales.
+        if (!isDebug && bracket != null && !bracket.hasAnyScheduledMatch) {
+            item(key = "radial_bracket_empty_wait", contentType = "radial_bracket") {
+                RadialKnockoutBracket(
+                    tree = bracket,
+                    title = bracketTitle
+                )
+            }
+        }
+
+        // En modo DEBUG se exponen los cuadros de desarrollo secuenciales
+        if (isDebug) {
+            uiState.radialBracket32?.let { bracket32 ->
+                item(key = "radial_bracket_32", contentType = "radial_bracket") {
+                    RadialKnockoutBracket(
+                        tree = bracket32,
+                        title = stringResource(R.string.title_radial_bracket_32)
+                    )
+                }
+            }
+            bracket?.let { b ->
+                item(key = "radial_bracket_completed", contentType = "radial_bracket") {
+                    RadialKnockoutBracket(
+                        tree = b,
+                        title = stringResource(R.string.title_radial_bracket_completed)
+                    )
+                }
+            }
+            uiState.radialBracketSemis?.let { bracketSemis ->
+                item(key = "radial_bracket_semis", contentType = "radial_bracket") {
+                    RadialKnockoutBracket(
+                        tree = bracketSemis,
+                        title = stringResource(R.string.title_radial_bracket_semis)
+                    )
+                }
+            }
+            uiState.radialBracketEmpty?.let { bracketEmpty ->
+                item(key = "radial_bracket_empty", contentType = "radial_bracket") {
+                    RadialKnockoutBracket(
+                        tree = bracketEmpty,
+                        title = stringResource(R.string.title_radial_bracket_empty)
+                    )
                 }
             }
         }

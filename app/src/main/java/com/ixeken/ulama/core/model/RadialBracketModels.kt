@@ -20,7 +20,15 @@ data class RadialTeam(
     val crestUrl: String,
     val score: String? = null,
     val isWinner: Boolean = false
-)
+) {
+    /**
+     * Resuelve la URL del escudo adaptada al modo oscuro sustituyendo /500/ por /500-dark/ en ESPN.
+     */
+    fun getCrestUrl(isDark: Boolean): String {
+        if (crestUrl.isBlank()) return crestUrl
+        return if (isDark) crestUrl.replace("/500/", "/500-dark/") else crestUrl
+    }
+}
 
 /**
  * Representa un enfrentamiento o partido individual dentro de una ronda eliminatoria.
@@ -417,42 +425,68 @@ object RadialBracketBuilder {
         val teamBInfo = firstMatch.awayTeam
 
         val latestMatch = matches.maxByOrNull { it.dateUtc } ?: firstMatch
+        val startedMatches = matches.filter { it.status.state != MatchState.SCHEDULED }
         val hasAggregate = matches.any { it.isAggregateActive }
+        val isMultiLegSeries = matches.any { it.legNumber != null } || matches.size >= 2
 
+        val numericScoreA: Int?
+        val numericScoreB: Int?
         val scoreA: String?
         val scoreB: String?
-        val winnerTeamId: String?
 
-        if (hasAggregate) {
-            val aggMatch = matches.firstOrNull { it.isAggregateActive } ?: latestMatch
-            val isHomeA = aggMatch.homeTeam.id == teamAInfo.id
-            val rawScoreA = if (isHomeA) aggMatch.aggregateHomeScore else aggMatch.aggregateAwayScore
-            val rawScoreB = if (isHomeA) aggMatch.aggregateAwayScore else aggMatch.aggregateHomeScore
-            scoreA = rawScoreA?.toString()
-            scoreB = rawScoreB?.toString()
-
-            val isCompleted = matches.any { it.isFinished } && matches.size >= 2 || aggMatch.isFinished
-            winnerTeamId = when {
-                !isCompleted -> null
-                rawScoreA != null && rawScoreB != null && rawScoreA > rawScoreB -> teamAInfo.id
-                rawScoreA != null && rawScoreB != null && rawScoreB > rawScoreA -> teamBInfo.id
-                latestMatch.homeTeam.isWinner -> latestMatch.homeTeam.id
-                latestMatch.awayTeam.isWinner -> latestMatch.awayTeam.id
-                else -> null
+        when {
+            startedMatches.isEmpty() -> {
+                numericScoreA = null
+                numericScoreB = null
+                scoreA = null
+                scoreB = null
             }
-        } else {
-            val isHomeA = latestMatch.homeTeam.id == teamAInfo.id
-            scoreA = (if (isHomeA) latestMatch.homeTeam.score else latestMatch.awayTeam.score)?.toString()
-            scoreB = (if (isHomeA) latestMatch.awayTeam.score else latestMatch.homeTeam.score)?.toString()
-
-            winnerTeamId = when {
-                !latestMatch.isFinished -> null
-                latestMatch.homeTeam.isWinner -> latestMatch.homeTeam.id
-                latestMatch.awayTeam.isWinner -> latestMatch.awayTeam.id
-                (latestMatch.homeTeam.score ?: 0) > (latestMatch.awayTeam.score ?: 0) -> latestMatch.homeTeam.id
-                (latestMatch.awayTeam.score ?: 0) > (latestMatch.homeTeam.score ?: 0) -> latestMatch.awayTeam.id
-                else -> null
+            hasAggregate -> {
+                val aggMatch = matches.lastOrNull { it.isAggregateActive } ?: latestMatch
+                val isHomeA = aggMatch.homeTeam.id == teamAInfo.id
+                numericScoreA = if (isHomeA) aggMatch.aggregateHomeScore else aggMatch.aggregateAwayScore
+                numericScoreB = if (isHomeA) aggMatch.aggregateAwayScore else aggMatch.aggregateHomeScore
+                scoreA = numericScoreA?.toString()
+                scoreB = numericScoreB?.toString()
             }
+            else -> {
+                var sumA = 0
+                var sumB = 0
+                var hasAnyScore = false
+                startedMatches.forEach { m ->
+                    val isHomeA = m.homeTeam.id == teamAInfo.id
+                    val sA = if (isHomeA) m.homeTeam.score else m.awayTeam.score
+                    val sB = if (isHomeA) m.awayTeam.score else m.homeTeam.score
+                    if (sA != null && sB != null) {
+                        sumA += sA
+                        sumB += sB
+                        hasAnyScore = true
+                    }
+                }
+                numericScoreA = if (hasAnyScore) sumA else null
+                numericScoreB = if (hasAnyScore) sumB else null
+                scoreA = numericScoreA?.toString()
+                scoreB = numericScoreB?.toString()
+            }
+        }
+
+        // En series a dos vueltas nunca se declara vencedor tras concluir unicamente el partido de ida.
+        val isSeriesFinished = when {
+            matches.any { it.isSeriesCompleted } -> true
+            isMultiLegSeries -> (matches.size >= 2 && matches.all { it.isFinished }) ||
+                matches.any { (it.legNumber ?: 0) >= 2 && it.isFinished }
+            else -> latestMatch.isFinished
+        }
+
+        val explicitSeriesWinner = matches.lastOrNull { !it.seriesWinnerTeamId.isNullOrBlank() }?.seriesWinnerTeamId
+        val winnerTeamId: String? = when {
+            !isSeriesFinished -> null
+            explicitSeriesWinner != null -> explicitSeriesWinner
+            numericScoreA != null && numericScoreB != null && numericScoreA > numericScoreB -> teamAInfo.id
+            numericScoreA != null && numericScoreB != null && numericScoreB > numericScoreA -> teamBInfo.id
+            latestMatch.homeTeam.isWinner -> latestMatch.homeTeam.id
+            latestMatch.awayTeam.isWinner -> latestMatch.awayTeam.id
+            else -> null
         }
 
         val shortA = teamAInfo.shortName.ifBlank { teamAInfo.abbreviation }

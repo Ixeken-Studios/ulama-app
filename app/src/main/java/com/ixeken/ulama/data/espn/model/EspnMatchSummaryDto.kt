@@ -59,6 +59,8 @@ data class EspnRosterPlayerItemDto(
     val athlete: EspnAthleteDto? = null,
     val subbedIn: Boolean = false,
     val subbedInFor: EspnSubbedInForDto? = null,
+    val subbedOut: Boolean = false,
+    val subbedOutFor: EspnSubbedInForDto? = null,
     val plays: List<EspnPlayerPlayDto> = emptyList()
 )
 
@@ -73,6 +75,9 @@ data class EspnPlayerPlayDto(
     val clock: EspnClockDisplayDto? = null,
     val substitution: Boolean = false,
     val scoringPlay: Boolean = false,
+    val didScore: Boolean = false,
+    val didAssist: Boolean = false,
+    val ownGoal: Boolean = false,
     val redCard: Boolean = false,
     val yellowCard: Boolean = false
 )
@@ -129,14 +134,17 @@ data class EspnSummaryCompetitionDto(
 @Serializable
 data class EspnPlayTypeDto(
     val id: String? = null,
-    val text: String? = null
+    val text: String? = null,
+    val type: String? = null
 )
 
 @Serializable
 data class EspnSummaryScoringPlayDto(
+    val id: String? = null,
     val scoringPlay: Boolean = false,
     val penaltyKick: Boolean = false,
     val ownGoal: Boolean = false,
+    val shootout: Boolean = false,
     val text: String? = null,
     val shortText: String? = null,
     val type: EspnPlayTypeDto? = null,
@@ -148,6 +156,7 @@ data class EspnSummaryScoringPlayDto(
 
 @Serializable
 data class EspnClockDisplayDto(
+    val value: Double? = null,
     val displayValue: String = ""
 )
 

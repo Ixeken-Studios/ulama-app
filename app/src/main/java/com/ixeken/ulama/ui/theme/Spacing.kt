@@ -18,6 +18,7 @@ val SpaceLarge: Dp = 20.dp
 val SpaceExtraLarge: Dp = 24.dp
 val SpaceHuge: Dp = 32.dp
 val SpaceConnectedGap: Dp = 3.dp
+val SpaceMatrixGap: Dp = 2.dp
 
 /**
  * Nivel 2: Tokens semanticos de espaciado para componentes y vistas.
@@ -64,11 +65,16 @@ data class UlamaSpacing(
     val tabContentPaddingHorizontal: Dp = SpaceNormal,
     val selectorPaddingHorizontal: Dp = SpaceNormal,
     val selectorPaddingVertical: Dp = SpaceSmall,
+    val pagerDotGap: Dp = SpaceConnectedGap,
+    val pillIndicatorTopSpacing: Dp = SpaceMatrixGap,
     val emptyCardPaddingVertical: Dp = SpaceExtraLarge,
     val emptyCardPaddingHorizontal: Dp = SpaceLarge,
 
-    // Separacion entre tarjetas agrupadas conectadas
-    val connectedCardSpacing: Dp = SpaceConnectedGap
+    // Separacion entre tarjetas agrupadas conectadas y cuadriculas
+    val connectedCardSpacing: Dp = SpaceConnectedGap,
+    val matrixGap: Dp = SpaceMatrixGap,
+    val gridSpacing: Dp = SpaceSmall,
+    val sectionSpacing: Dp = SpaceLarge
 )
 
 val LocalUlamaSpacing = staticCompositionLocalOf { UlamaSpacing() }

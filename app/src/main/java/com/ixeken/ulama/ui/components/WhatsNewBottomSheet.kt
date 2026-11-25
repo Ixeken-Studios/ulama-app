@@ -27,7 +27,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +38,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ixeken.ulama.R
 import com.ixeken.ulama.ui.theme.UlamaTheme
+
+/**
+ * Lista unica de hitos del historial de cambios compartida entre Novedades y Acerca de
+ * para evitar desincronizaciones al actualizar versiones.
+ */
+internal val changelogFeatureEntries: List<Triple<Int, Int, Int>> = listOf(
+    Triple(R.string.settings_about_changelog_feat8_title, R.string.settings_about_changelog_feat8_desc, R.drawable.ic_public),
+    Triple(R.string.settings_about_changelog_feat7_title, R.string.settings_about_changelog_feat7_desc, R.drawable.ic_swap_horiz),
+    Triple(R.string.settings_about_changelog_feat6_title, R.string.settings_about_changelog_feat6_desc, R.drawable.ic_groups),
+    Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update)
+)
 
 /**
  * Hoja modal inferior de bienvenida post-actualizacion inspirada en Material 3 Expressive.
@@ -138,24 +148,15 @@ fun WhatsNewBottomSheet(
 
                 Spacer(modifier = Modifier.height(UlamaTheme.spacing.large))
 
-                // Lista segmentada conectada con las novedades de la version 2.1.0
-                val entries = remember {
-                    listOf(
-                        Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update),
-                        Triple(R.string.settings_about_changelog_feat5_title, R.string.settings_about_changelog_feat5_desc, R.drawable.ic_language),
-                        Triple(R.string.settings_about_changelog_feat1_title, R.string.settings_about_changelog_feat1_desc, R.drawable.ic_soccer_ball),
-                        Triple(R.string.settings_about_changelog_feat2_title, R.string.settings_about_changelog_feat2_desc, R.drawable.ic_palette),
-                        Triple(R.string.settings_about_changelog_feat3_title, R.string.settings_about_changelog_feat3_desc, R.drawable.ic_notifications_active)
-                    )
-                }
+                // Lista segmentada conectada con las novedades de la version 2.2.0
                 Column(
                     verticalArrangement = Arrangement.spacedBy(UlamaTheme.spacing.connectedCardSpacing),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    entries.forEachIndexed { index, (titleRes, descRes, iconRes) ->
+                    changelogFeatureEntries.forEachIndexed { index, (titleRes, descRes, iconRes) ->
                         val shape = when (index) {
                             0 -> topConnectedShape
-                            entries.lastIndex -> bottomConnectedShape
+                            changelogFeatureEntries.lastIndex -> bottomConnectedShape
                             else -> middleConnectedShape
                         }
                         WhatsNewFeatureCard(

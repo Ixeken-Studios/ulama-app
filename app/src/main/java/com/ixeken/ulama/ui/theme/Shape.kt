@@ -60,7 +60,11 @@ data class UlamaShapes(
     val tabMorphedRadius: Dp = RadiusSuperLarge,
     val buttonRestRadius: Dp = RadiusMediumSmall,
     val buttonSelectedRadius: Dp = RadiusSuperLarge,
-    val cardConnectedInnerRadius: Dp = RadiusExtraSmall
+    val cardConnectedInnerRadius: Dp = RadiusExtraSmall,
+    val listSegmentOuterRadius: Dp = RadiusMedium,
+    val listSegmentActiveRadius: Dp = RadiusLarge,
+    val teamCardRestRadius: Dp = RadiusMedium,
+    val teamCardSelectedRadius: Dp = RadiusExtraLarge
 )
 
 val LocalUlamaShapes = staticCompositionLocalOf { UlamaShapes() }

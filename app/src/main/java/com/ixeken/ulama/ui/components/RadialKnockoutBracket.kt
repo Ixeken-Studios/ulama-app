@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -189,6 +188,8 @@ private fun MacroTwoSidedBracket(
         )
     }
 
+    val isDark = UlamaTheme.isDark
+
     Box(
         modifier = Modifier.size(width = widthDp, height = heightDp),
         contentAlignment = Alignment.Center
@@ -222,6 +223,7 @@ private fun MacroTwoSidedBracket(
             ) {
                 TwoSidedTeamPill(
                     team = node.team,
+                    isDark = isDark,
                     isWinner = node.isWinner,
                     isLoser = node.isLoser,
                     width = nodeWidthDp,
@@ -242,6 +244,7 @@ private fun MacroTwoSidedBracket(
         ) {
             CenterChampionCrest(
                 champion = tree.champion,
+                isDark = isDark,
                 size = champSizeDp,
                 onClick = onTeamClick
             )
@@ -259,6 +262,7 @@ private fun MacroTwoSidedBracket(
             ) {
                 ThirdPlaceMacroBadge(
                     match = thirdData.match,
+                    isDark = isDark,
                     modifier = Modifier.height(thirdData.height),
                     onClick = onTeamClick
                 )
@@ -277,13 +281,14 @@ private fun MacroTwoSidedBracket(
 @Composable
 private fun TwoSidedTeamPill(
     team: RadialTeam?,
+    isDark: Boolean,
     isWinner: Boolean,
     isLoser: Boolean,
     width: Dp,
     height: Dp,
     onClick: ((RadialTeam) -> Unit)?
 ) {
-    val pillShape = RoundedCornerShape(height / 2)
+    val pillShape = CircleShape
 
     if (team == null) {
         Surface(
@@ -330,7 +335,7 @@ private fun TwoSidedTeamPill(
                 else -> if (team.score != null) 11.dp else 12.dp
             }
             AsyncImage(
-                model = team.crestUrl,
+                model = team.getCrestUrl(isDark),
                 contentDescription = team.name,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(crestSize)
@@ -358,6 +363,7 @@ private fun TwoSidedTeamPill(
 @Composable
 private fun CenterChampionCrest(
     champion: RadialTeam?,
+    isDark: Boolean,
     size: Dp,
     onClick: ((RadialTeam) -> Unit)?
 ) {
@@ -401,7 +407,7 @@ private fun CenterChampionCrest(
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
-                model = champion.crestUrl,
+                model = champion.getCrestUrl(isDark),
                 contentDescription = champion.name,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(size - 10.dp)
@@ -416,10 +422,11 @@ private fun CenterChampionCrest(
 @Composable
 private fun ThirdPlaceMacroBadge(
     match: RadialMatch,
+    isDark: Boolean,
     modifier: Modifier = Modifier,
     onClick: ((RadialTeam) -> Unit)?
 ) {
-    val badgeShape = RoundedCornerShape(12.dp)
+    val badgeShape = MaterialTheme.shapes.medium
 
     Surface(
         modifier = modifier,
@@ -444,7 +451,7 @@ private fun ThirdPlaceMacroBadge(
                 val isWA = hasWinner && match.winnerTeamId == teamA.id
                 val isLA = hasWinner && match.winnerTeamId != teamA.id
                 AsyncImage(
-                    model = teamA.crestUrl,
+                    model = teamA.getCrestUrl(isDark),
                     contentDescription = teamA.name,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
@@ -494,7 +501,7 @@ private fun ThirdPlaceMacroBadge(
                     )
                 }
                 AsyncImage(
-                    model = teamB.crestUrl,
+                    model = teamB.getCrestUrl(isDark),
                     contentDescription = teamB.name,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
@@ -517,6 +524,7 @@ private fun ThirdPlaceMacroBadge(
 // Motor Matematico Universal Adaptativo de Dos Alas Simetricas
 // -----------------------------------------------------------------------------------------
 
+@Immutable
 private data class PointDp(val x: Dp, val y: Dp)
 
 @Immutable

@@ -1,23 +1,28 @@
 package com.ixeken.ulama.core.model
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import com.ixeken.ulama.R
 
 /**
  * Pestañas disponibles en el modal de detalle de partido.
- * Cada una expone su identificador de recurso de cadena para garantizar cero cadenas hardcodeadas.
+ * Cada una expone su recurso de cadena y su vector nativo Material Symbols Rounded Fill 1.
  */
-enum class MatchDetailTab(@field:StringRes val titleRes: Int) {
-    STATS(R.string.tab_stats),
-    LINEUPS(R.string.tab_lineups),
-    TABLE(R.string.tab_table)
+enum class MatchDetailTab(
+    @field:StringRes val titleRes: Int,
+    @field:DrawableRes val iconRes: Int
+) {
+    STATS(R.string.tab_stats, R.drawable.ic_bar_chart),
+    LINEUPS(R.string.tab_lineups, R.drawable.ic_groups),
+    EVENTS(R.string.tab_events, R.drawable.ic_timeline),
+    TABLE(R.string.tab_table, R.drawable.ic_leaderboard)
 }
 
 /**
  * Modelo de dominio inmutable que representa el desglose completo de un partido.
- * Contiene anotadores simetricos para el encabezado de Apple Sports, comparativas estadisticas
- * y alineaciones tacticas mapeadas por lineas de campo.
+ * Contiene anotadores simetricos para el encabezado de Apple Sports, comparativas estadisticas,
+ * cronologia de eventos clave y alineaciones tacticas mapeadas por lineas de campo.
  */
 @Immutable
 data class MatchDetail(
@@ -39,6 +44,7 @@ data class MatchDetail(
     val awayRecentForm: List<TeamFormMatch> = emptyList(),
     val headToHead: HeadToHeadSummary? = null,
     val leaders: List<MatchLeaderCategory> = emptyList(),
+    val timelineEvents: List<MatchTimelineEvent> = emptyList(),
     val isCompleted: Boolean = false
 )
 
@@ -88,10 +94,47 @@ data class TeamLineup(
     val teamAlternateColor: String? = null,
     val starters: List<LineupPlayer> = emptyList(),
     val bench: List<LineupPlayer> = emptyList()
-)
+) {
+    /** Indica si existen sustituciones ejecutadas para habilitar la vista de alineacion final. */
+    val hasSubstitutions: Boolean
+        get() = bench.any { it.subbedIn } || starters.any { it.subbedOut }
+
+    /**
+     * Proyecta el once final en cancha intercambiando cada titular sustituido por su reemplazo
+     * directo o en cadena y preservando el orden tactico original asignado al inicio.
+     */
+    fun resolveFinalStarters(): List<LineupPlayer> {
+        if (!hasSubstitutions) return starters
+
+        val subbedInPlayers = bench.filter { it.subbedIn }
+        val replacementByOutId = mutableMapOf<String, LineupPlayer>()
+        val replacementByOutName = mutableMapOf<String, LineupPlayer>()
+        subbedInPlayers.forEach { sub ->
+            sub.subbedInForId?.takeIf { it.isNotBlank() }?.let { replacementByOutId[it] = sub }
+            sub.subbedInForName?.takeIf { it.isNotBlank() }?.let { replacementByOutName[it.lowercase()] = sub }
+        }
+
+        return starters.map { starter ->
+            var current = starter
+            val visitedIds = mutableSetOf<String>()
+            while (current.subbedOut) {
+                if (current.id.isNotBlank() && !visitedIds.add(current.id)) break
+                val next = replacementByOutId[current.id]
+                    ?: replacementByOutName[current.name.lowercase()]
+                    ?: break
+                current = next.copy(
+                    formationPlace = starter.formationPlace,
+                    line = starter.line,
+                    position = starter.position
+                )
+            }
+            current
+        }
+    }
+}
 
 /**
- * Jugador dentro de la plantilla con su dorsal, rol posicional y clasificacion por linea tactica.
+ * Jugador dentro de la plantilla con su dorsal, rol posicional, tarjetas, goles y cambios.
  */
 @Immutable
 data class LineupPlayer(
@@ -103,8 +146,15 @@ data class LineupPlayer(
     val line: TacticalLine,
     val subbedIn: Boolean = false,
     val subInMinute: String? = null,
+    val subbedInForId: String? = null,
     val subbedInForName: String? = null,
     val subbedInForJersey: String? = null,
+    val subbedOut: Boolean = false,
+    val subOutMinute: String? = null,
+    val subbedOutForId: String? = null,
+    val subbedOutForName: String? = null,
+    val goalsCount: Int = 0,
+    val assistsCount: Int = 0,
     val yellowCards: Int = 0,
     val hasRedCard: Boolean = false
 ) {
@@ -187,4 +237,32 @@ data class MatchLeaderCategory(
     val displayNameFallback: String = "",
     val homeLeader: MatchPlayerLeader? = null,
     val awayLeader: MatchPlayerLeader? = null
+)
+
+/**
+ * Tipo de evento disciplinario, anotacion o sustitucion mostrado en la cronologia del encuentro.
+ */
+@Immutable
+enum class TimelineEventType {
+    GOAL,
+    OWN_GOAL,
+    PENALTY_GOAL,
+    YELLOW_CARD,
+    SECOND_YELLOW,
+    RED_CARD,
+    SUBSTITUTION
+}
+
+/**
+ * Evento cronologico individual del partido para la pestana Eventos.
+ */
+@Immutable
+data class MatchTimelineEvent(
+    val id: String,
+    val minute: String,
+    val sortMinute: Int,
+    val type: TimelineEventType,
+    val isHomeTeam: Boolean,
+    val primaryPlayerName: String,
+    val secondaryPlayerName: String? = null
 )

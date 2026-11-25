@@ -2,8 +2,6 @@
     <!-- Identidad y Navegación General: Nombre de la app, accesibilidad de navegación y barras superiores -->
     <string name="app_name">Ulama</string>
     <string name="cd_league_selector">Abrir selector de ligas</string>
-    <string name="select_league_title">Selecciona una liga</string>
-    <string name="cd_close_league_selector">Cerrar selector de ligas</string>
     <string name="cd_back_button">Volver</string>
 
     <!-- Ligas y Competiciones: Nombres de los torneos soportados en la aplicación -->
@@ -104,14 +102,34 @@
     <!-- Visor de Detalle de Partido: Pestañas de estadísticas, alineaciones y seguimiento de encuentro -->
     <string name="tab_stats">Estadísticas</string>
     <string name="tab_lineups">Alineaciones</string>
+    <string name="tab_events">Eventos</string>
     <string name="tab_table">Tabla</string>
     <string name="match_follow">Seguir partido</string>
     <string name="match_following">Siguiendo</string>
     <string name="cd_follow_match">Seguir notificaciones del partido</string>
     <string name="cd_goal_icon">Gol anotado</string>
+    <string name="cd_player_scored">Jugador con gol anotado</string>
+    <string name="cd_player_assisted">Jugador con asistencia de gol</string>
+    <string name="cd_event_goal">Gol en cronología</string>
+    <string name="cd_event_own_goal">Autogol en cronología</string>
+    <string name="cd_event_substitution">Sustitución en cronología</string>
     <string name="lineup_starters">Titulares</string>
     <string name="lineup_bench">Suplentes</string>
     <string name="lineup_subbed_in_for">por %1$s</string>
+    <string name="lineup_phase_label">Alineación en cancha</string>
+    <string name="lineup_phase_initial">Inicial</string>
+    <string name="lineup_phase_final">Final</string>
+    <string name="lineup_disclaimer">Las posiciones y esquemas son referenciales y pueden variar durante el partido.</string>
+    <string name="events_not_available">Eventos no disponibles</string>
+    <string name="event_title_goal">Gol</string>
+    <string name="event_title_penalty_goal">Gol de penal</string>
+    <string name="event_title_own_goal">Autogol</string>
+    <string name="event_title_yellow_card">Tarjeta amarilla</string>
+    <string name="event_title_second_yellow">Doble amarilla</string>
+    <string name="event_title_red_card">Tarjeta roja</string>
+    <string name="event_title_substitution">Sustitución</string>
+    <string name="event_assist_format">Asist. %1$s</string>
+    <string name="event_sub_in_out_format">Entra %1$s · Sale %2$s</string>
     <string name="cd_yellow_card">Tarjeta amarilla</string>
     <string name="cd_second_yellow_card">Doble amarilla y expulsión</string>
     <string name="cd_red_card">Tarjeta roja</string>
@@ -192,27 +210,15 @@
 
     <!-- Colección Virtual - Mis Equipos: Selección jerárquica y gestión de clubes favoritos -->
     <string name="league_favorites">Mis equipos</string>
-    <string name="fav_teams_title">Mis equipos</string>
-    <string name="fav_teams_select_league_subtitle">Selecciona una liga para explorar sus clubes</string>
-    <string name="fav_teams_league_clubs_subtitle">Marca los clubes que deseas agregar a tus favoritos</string>
     <string name="fav_teams_empty_description">Aún no tienes clubes favoritos seleccionados. Elige tus equipos para ver todos sus partidos en un solo lugar.</string>
     <string name="fav_teams_edit_action">Editar favoritos</string>
-    <string name="fav_teams_picker_action">Mis equipos</string>
     <string name="fav_teams_global_count_format">%1$d favoritos</string>
-    <string name="fav_teams_league_count_format">%1$d elegido</string>
-    <string name="fav_teams_league_count_plural_format">%1$d elegidos</string>
-    <string name="fav_teams_back_to_leagues">Más ligas</string>
-    <string name="fav_teams_done_action">Listo</string>
 
     <!-- Colección Virtual - Mis Ligas: Cuadrícula y selector multimodal de torneos agregados -->
     <string name="league_my_leagues">Mis ligas</string>
-    <string name="my_leagues_edit_action">Mis ligas</string>
-    <string name="my_leagues_title">Mis ligas</string>
-    <string name="my_leagues_subtitle">Elige las ligas que quieres consultar en una sola vista</string>
     <string name="my_leagues_empty_title">Sin ligas seleccionadas</string>
     <string name="my_leagues_empty_desc">Aún no tienes ligas seleccionadas. Elige tus competiciones para ver todos sus encuentros juntos.</string>
     <string name="my_leagues_empty_action">Elegir ligas</string>
-    <string name="my_leagues_done_action">Listo</string>
 
     <!-- Ajustes - Navegación y Raíz: Títulos y accesos de las categorías principales de configuración -->
     <string name="settings_title">Ajustes</string>
@@ -227,7 +233,7 @@
     <string name="settings_section_privacy">Privacidad</string>
     <string name="settings_section_privacy_desc">Cero telemetría y uso de red on-device</string>
     <string name="settings_section_about">Información de la app</string>
-    <string name="settings_section_about_desc">Versión 2.0 · Licencia MIT</string>
+    <string name="settings_section_about_desc">Versión 2.2.0 · Licencia MIT</string>
 
     <!-- Ajustes - Apariencia: Opciones de tema claro/oscuro, paletas de colores y estilos de física/movimiento -->
     <string name="settings_section_colors_style">Colores y tema</string>
@@ -314,7 +320,7 @@
     <string name="settings_about_privacy_espn_desc">Las consultas viajan directamente desde tu teléfono a las APIs públicas de ESPN. Solo se transmiten los datos técnicos estándares del protocolo HTTP requeridos para establecer la conexión, sin vincular ninguna identidad personal ni ubicación.</string>
 
     <!-- Ajustes - Información de la App y Legal: Versión, marca mesoamericana, créditos de autor y licencia MIT -->
-    <string name="settings_about_version_label">v2.1.0</string>
+    <string name="settings_about_version_label">v2.2.0</string>
     <string name="settings_about_brand_description">El nombre evoca al ulama, el antiguo juego de pelota mesoamericano</string>
     <string name="settings_about_creator_label">Creado por</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -340,17 +346,15 @@
     <string name="settings_about_check_on_start_desc">Buscar actualizaciones automáticamente al abrir la app</string>
     <string name="settings_about_changelog_title">Historial de cambios</string>
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
-    <string name="settings_about_changelog_sheet_subtitle">Versión 2.1.0 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_sheet_subtitle">Versión 2.2.0 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_feat8_title">Nuevo centro de competiciones</string>
+    <string name="settings_about_changelog_feat8_desc">Rediseño completo para elegir ligas, explorar regiones en el mapa mundial y seguir equipos favoritos en un solo lugar.</string>
+    <string name="settings_about_changelog_feat6_title">Alineaciones, eventos e iconos</string>
+    <string name="settings_about_changelog_feat6_desc">Iconos de tarjetas, goles y asistencias en la alineación, vista al iniciar y al terminar el partido, nueva pestaña Eventos e iconos en todas las pestañas.</string>
+    <string name="settings_about_changelog_feat7_title">Más gestos y corrección de bugs</string>
+    <string name="settings_about_changelog_feat7_desc">Gestos de deslizamiento en la página principal para cambiar de liga y fechas, y en los detalles del partido entre pestañas, además de actualización automática en vivo y corrección de llaves eliminatorias, marcadores y series.</string>
     <string name="settings_about_changelog_feat4_title">Tarjetas en alineaciones y estabilidad</string>
     <string name="settings_about_changelog_feat4_desc">Tarjetas amarillas, dobles amarillas y rojas en la cancha y banca, además de mejoras en calendarios, llaves y seguimiento automático.</string>
-    <string name="settings_about_changelog_feat5_title">Información y localización</string>
-    <string name="settings_about_changelog_feat5_desc">Mejoras en los datos mostrados por partido junto con localización completa de autogoles, tiempos extras y etiquetas.</string>
-    <string name="settings_about_changelog_feat1_title">Más allá del mundial</string>
-    <string name="settings_about_changelog_feat1_desc">Soporte completo para ligas internacionales, torneos de clubes, tablas de posiciones y calendarios.</string>
-    <string name="settings_about_changelog_feat2_title">Reimaginación estética</string>
-    <string name="settings_about_changelog_feat2_desc">Diseño renovado con Material 3 Expressive, listas conectadas, temas dinámicos y movimiento orgánico.</string>
-    <string name="settings_about_changelog_feat3_title">Notificaciones en vivo</string>
-    <string name="settings_about_changelog_feat3_desc">Seguimiento on-device en tiempo real y Now Bar para seguir los partidos al instante sin servidores externos.</string>
     <string name="dialog_update_confirm_manual_title">¿Buscar actualizaciones?</string>
     <string name="dialog_update_confirm_manual_desc">Se consultará el repositorio oficial de GitHub para comprobar si existe una versión más reciente de Ulama. ¿Deseas continuar?</string>
     <string name="dialog_update_confirm_on_start_title">¿Buscar al iniciar?</string>
@@ -378,7 +382,7 @@
     <string name="sheet_update_available_notes_label">Notas de la versión</string>
     <string name="sheet_update_available_download">Descargar actualización</string>
     <string name="sheet_update_available_later">Más tarde</string>
-    <string name="sheet_whats_new_title">Novedades de Ulama 2.1.0</string>
+    <string name="sheet_whats_new_title">Novedades de Ulama 2.2.0</string>
     <string name="sheet_whats_new_subtitle">Tu aplicación deportiva se ha renovado por completo</string>
     <string name="sheet_whats_new_action_explore">Comenzar a explorar</string>
 
@@ -403,12 +407,11 @@
 
     <!-- Accesibilidad: Descripciones para lectores de pantalla TalkBack -->
     <string name="cd_settings_button">Abrir ajustes</string>
+    <string name="cd_league_pager_position">%1$s, vista %2$d de %3$d</string>
     <string name="cd_venue_icon">Ubicación del estadio</string>
     <string name="cd_team_crest">Escudo de %1$s</string>
     <string name="cd_league_logo">Logotipo de %1$s</string>
     <string name="cd_fav_teams_star">Icono de equipos favoritos</string>
-    <string name="cd_back_to_leagues">Volver al selector de ligas</string>
-    <string name="cd_my_leagues_icon">Icono de mis ligas</string>
     <string name="cd_settings_chevron">Ver opciones de %1$s</string>
     <string name="cd_settings_palette">Icono de apariencia</string>
     <string name="cd_settings_colors">Icono de paleta de colores</string>
@@ -462,4 +465,54 @@
     <string name="debug_squash_tab_alpha">Modo Alfa</string>
     <string name="debug_squash_tab_beta">Modo Beta</string>
     <string name="debug_squash_tab_gamma">Modo Gamma</string>
+
+    <!-- Centro de Competiciones: Regiones geográficas, subregiones y acciones del selector -->
+    <string name="region_all">Todas</string>
+    <string name="region_global">Global</string>
+    <string name="region_americas">América</string>
+    <string name="region_europe">Europa</string>
+    <string name="region_africa">África</string>
+    <string name="region_asia">Asia</string>
+    <string name="region_oceania">Oceanía</string>
+    <string name="subregion_european_competitions">Competiciones europeas</string>
+    <string name="subregion_england">Inglaterra</string>
+    <string name="subregion_spain">España</string>
+    <string name="subregion_italy">Italia</string>
+    <string name="subregion_germany">Alemania</string>
+    <string name="subregion_france">Francia</string>
+    <string name="subregion_netherlands">Países Bajos</string>
+    <string name="subregion_mexico">México</string>
+    <string name="subregion_concacaf">Concacaf</string>
+    <string name="subregion_africa">África</string>
+    <string name="subregion_asia">Asia</string>
+    <string name="subregion_global_tournaments">Torneos globales</string>
+    <string name="competitions_title">Competiciones</string>
+    <string name="competitions_search_placeholder">Buscar liga, país o equipo...</string>
+    <string name="competitions_all_section">Todas</string>
+    <string name="competitions_clubs_action">Clubes</string>
+    <string name="competitions_my_leagues_empty_short">Sin ligas</string>
+    <string name="cd_toggle_my_leagues_list">Mostrar u ocultar Mis ligas</string>
+    <string name="competitions_teams_search_placeholder">Buscar club en %1$s...</string>
+    <string name="competitions_teams_all_search_placeholder">Buscar entre tus equipos...</string>
+    <string name="competitions_add_to_my_leagues">Mis ligas</string>
+    <string name="competitions_follow_team">Seguir</string>
+    <string name="competitions_following_team">Siguiendo</string>
+    <string name="competitions_empty_region_title">Sin competiciones en %1$s</string>
+    <string name="competitions_empty_region_desc">Aún no hay torneos disponibles para esta región. Prueba otra área en el mapa o vuelve a todas.</string>
+    <string name="competitions_reset_filter">Ver todas</string>
+    <string name="competitions_empty_teams">No hay clubes disponibles para mostrar.</string>
+    <string name="competitions_empty_search">Sin coincidencias para "%1$s"</string>
+    <string name="competitions_empty_favorites">Aún no sigues ningún club. Explora una liga para comenzar.</string>
+    <string name="cd_clear_search">Limpiar búsqueda</string>
+    <string name="cd_confirm_selection">Confirmar selección</string>
+    <string name="cd_open_teams">Explorar equipos de %1$s</string>
+    <string name="cd_toggle_my_league">Alternar %1$s en Mis ligas</string>
+    <string name="competitions_team_league_subtitle">Club · %1$s</string>
+    <string name="competitions_teams_count_subtitle">%1$d equipos</string>
+    <string name="competitions_search_leagues_header">Ligas y torneos</string>
+    <string name="competitions_search_teams_header">Equipos</string>
+    <plurals name="competitions_my_leagues_count">
+        <item quantity="one">%1$d liga</item>
+        <item quantity="other">%1$d ligas</item>
+    </plurals>
 </resources>

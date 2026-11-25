@@ -106,4 +106,23 @@ class LeagueTest {
         assertEquals("2026", League.CHAMPIONS_LEAGUE.defaultTournamentYear(2026))
         assertEquals("2026", League.WORLD_CUP.defaultTournamentYear(2026))
     }
+
+    @Test
+    fun regionsAndSubRegions_coverAllStandardLeaguesDeclaratively() {
+        League.standardLeagues.forEach { league ->
+            org.junit.Assert.assertNotEquals(LeagueRegion.ALL, league.region)
+            org.junit.Assert.assertNotEquals(LeagueRegion.OCEANIA, league.region)
+            assertTrue(league.subRegionRes != 0)
+        }
+
+        val european = League.standardLeagues.filter { it.region == LeagueRegion.EUROPE }
+        val england = european.filter { it.subRegionRes == com.ixeken.ulama.R.string.subregion_england }
+        val europeanComps = european.filter {
+            it.subRegionRes == com.ixeken.ulama.R.string.subregion_european_competitions
+        }
+
+        assertEquals(setOf(League.PREMIER_LEAGUE, League.CHAMPIONSHIP), england.toSet())
+        assertEquals(setOf(League.CHAMPIONS_LEAGUE, League.UEFA_NATIONS_LEAGUE), europeanComps.toSet())
+        assertEquals(5, LeagueRegion.continents.size)
+    }
 }

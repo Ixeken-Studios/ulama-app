@@ -66,6 +66,7 @@ class MatchesViewModel(
     private var cachedAllMatches: List<Match> = emptyList()
     private val manuallyUnfollowedMatchIds = mutableSetOf<String>()
     private var isLoadingAvailableTeams = false
+    private var hasLoadedAllAvailableTeams = false
 
     init {
         loadData(initialLeague)
@@ -91,8 +92,13 @@ class MatchesViewModel(
                     if (favIds.isNotEmpty() && (cachedAllMatches.isEmpty() || !hasAllFavoritesCached)) {
                         loadFavoriteLeagueData(forceRefresh = false, isSilent = cachedAllMatches.isNotEmpty())
                     } else {
-                        val filtered = filterFavoriteMatches(cachedAllMatches, favIds, _uiState.value.selectedFilter)
-                        _uiState.update { it.copy(matches = filtered) }
+                        val byFilter = buildMatchesByFilter(cachedAllMatches, League.FAVORITES, favIds)
+                        _uiState.update { state ->
+                            state.copy(
+                                matches = byFilter[state.selectedFilter].orEmpty(),
+                                matchesByFilter = byFilter
+                            )
+                        }
                     }
                 }
                 if (appSettingsRepository?.settings?.value?.autoFollowFavorites == true) {
@@ -143,6 +149,7 @@ class MatchesViewModel(
                     selectedLeague = league,
                     isLoading = true,
                     matches = emptyList(),
+                    matchesByFilter = emptyMap(),
                     standings = emptyList(),
                     radialBracket = initialBracket,
                     errorMessage = null
@@ -154,13 +161,14 @@ class MatchesViewModel(
     }
 
     /**
-     * Aplica el filtro temporal sobre los partidos cacheados para cambio instantaneo de pestana
-     * y dispara un refresco remoto en segundo plano para sincronizar marcadores y estados en vivo.
+     * Aplica el filtro temporal sobre los partidos prefiltrados para cambio instantaneo de pestana
+     * y dispara un refresco remoto silencioso en segundo plano para evitar animaciones de carga o haptica intrusiva.
      */
     fun selectFilter(filter: TemporalFilter) {
         if (_uiState.value.selectedFilter == filter) return
-        val currentMatches = when (_uiState.value.selectedLeague) {
-            League.FAVORITES -> filterFavoriteMatches(cachedAllMatches, _uiState.value.favoriteTeamIds, filter)
+        val state = _uiState.value
+        val currentMatches = state.matchesByFilter[filter] ?: when (state.selectedLeague) {
+            League.FAVORITES -> filterFavoriteMatches(cachedAllMatches, state.favoriteTeamIds, filter)
             else -> filterMatches(cachedAllMatches, filter)
         }
         _uiState.update {
@@ -169,9 +177,9 @@ class MatchesViewModel(
                 matches = currentMatches
             )
         }
-        if (_uiState.value.selectedLeague != League.DEBUG) {
+        if (state.selectedLeague != League.DEBUG) {
             lastRefreshTimeMillis = System.currentTimeMillis()
-            loadData(_uiState.value.selectedLeague, forceRefresh = true, isSilent = false)
+            loadData(state.selectedLeague, forceRefresh = true, isSilent = true)
         }
     }
 
@@ -196,16 +204,81 @@ class MatchesViewModel(
         if (now - lastRefreshTimeMillis < 10_000L) return
         if (_uiState.value.isLoading || _uiState.value.isRefreshing) return
         lastRefreshTimeMillis = now
-        loadData(_uiState.value.selectedLeague, forceRefresh = true, isSilent = true)
+        val state = _uiState.value
+        loadData(state.selectedLeague, forceRefresh = true, isSilent = true)
+
+        // Si el visor de detalle esta abierto en un partido en vivo, refrescamos tambien sus eventos y estadisticas
+        val activeMatch = state.selectedMatch
+        if (activeMatch != null &&
+            activeMatch.status.state == MatchState.LIVE &&
+            !com.ixeken.ulama.data.debug.DebugLeagueData.isDebugMatch(activeMatch.id)
+        ) {
+            val targetLeague = if (!activeMatch.league.isVirtual) activeMatch.league else state.selectedLeague
+            viewModelScope.launch {
+                val detailResult = repository.getMatchDetail(
+                    league = targetLeague,
+                    matchId = activeMatch.id,
+                    forceRefresh = true
+                )
+                if (_uiState.value.selectedMatch?.id == activeMatch.id) {
+                    _uiState.update {
+                        it.copy(matchDetail = detailResult.getOrNull() ?: it.matchDetail)
+                    }
+                }
+            }
+        }
     }
 
     /**
-     * Garantiza que los clubes oficiales por competicion se carguen bajo demanda cuando el usuario
-     * abre el selector de favoritos, evitando disparar 13 peticiones HTTP en cada inicio o reanudacion.
+     * Garantiza que los clubes oficiales de todas las competiciones se carguen bajo demanda
+     * para busquedas globales y la vista de Mis equipos sin repetir llamadas ya resueltas.
      */
     fun ensureAvailableTeamsLoaded() {
-        if (_uiState.value.availableTeamsByLeague.isNotEmpty() || isLoadingAvailableTeams) return
+        if (hasLoadedAllAvailableTeams || isLoadingAvailableTeams) return
         loadAvailableTeamsByLeague(forceRefresh = false)
+    }
+
+    /**
+     * Carga bajo demanda los equipos de una sola competicion evitando disparar 16 consultas
+     * paralelas al explorar clubes de una liga especifica. Reutiliza la tabla ya cargada
+     * en pantalla para respuesta inmediata en cero milisegundos cuando coincide con la activa.
+     */
+    fun ensureLeagueTeamsLoaded(league: League) {
+        if (league.isVirtual || league == League.DEBUG) return
+        val currentState = _uiState.value
+        if (!currentState.availableTeamsByLeague[league].isNullOrEmpty()) return
+        if (league in currentState.loadingTeamLeagues) return
+
+        if (currentState.selectedLeague == league) {
+            val activeTeams = if (currentState.groups.isNotEmpty()) {
+                currentState.groups.flatMap { it.standings }
+            } else {
+                currentState.standings
+            }.distinctBy { it.teamId.ifBlank { it.teamName } }
+
+            if (activeTeams.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(availableTeamsByLeague = it.availableTeamsByLeague + (league to activeTeams))
+                }
+                if (!league.hasKnockoutBracket && league.tournamentYear == null) return
+            }
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingTeamLeagues = it.loadingTeamLeagues + league) }
+            try {
+                val teams = fetchLeagueTeams(league, forceRefresh = false)
+                if (teams.isNotEmpty()) {
+                    _uiState.update { state ->
+                        state.copy(availableTeamsByLeague = state.availableTeamsByLeague + (league to teams))
+                    }
+                }
+            } finally {
+                _uiState.update { state ->
+                    state.copy(loadingTeamLeagues = state.loadingTeamLeagues - league)
+                }
+            }
+        }
     }
 
     /**
@@ -410,7 +483,7 @@ class MatchesViewModel(
                 onSuccess = { allMatches ->
                     cachedAllMatches = allMatches
                     syncFavoriteMatchesFollowing(allMatches)
-                    val filteredMatches = filterMatches(allMatches, _uiState.value.selectedFilter)
+                    val byFilter = buildMatchesByFilter(allMatches, league, _uiState.value.favoriteTeamIds)
                     val groups = groupsResult.getOrDefault(emptyList())
                     val standings = if (groups.isNotEmpty()) emptyList() else standingsResult.getOrDefault(emptyList())
                     val radialBracket = if (league.hasKnockoutBracket) {
@@ -426,7 +499,8 @@ class MatchesViewModel(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            matches = filteredMatches,
+                            matches = byFilter[it.selectedFilter].orEmpty(),
+                            matchesByFilter = byFilter,
                             standings = standings,
                             groups = groups,
                             radialBracket = radialBracket,
@@ -479,6 +553,7 @@ class MatchesViewModel(
                         isLoading = false,
                         isRefreshing = false,
                         matches = emptyList(),
+                        matchesByFilter = emptyMap(),
                         standings = emptyList(),
                         groups = emptyList(),
                         radialBracket = null,
@@ -513,7 +588,7 @@ class MatchesViewModel(
             if (_uiState.value.selectedLeague != League.FAVORITES) return@launch
                     cachedAllMatches = allAggregated
                     syncFavoriteMatchesFollowing(allAggregated)
-                    val filtered = filterFavoriteMatches(allAggregated, favIds, _uiState.value.selectedFilter)
+                    val byFilter = buildMatchesByFilter(allAggregated, League.FAVORITES, favIds)
                     val currentSelectedMatch = _uiState.value.selectedMatch
                     val updatedSelectedMatch = if (currentSelectedMatch != null) {
                         allAggregated.firstOrNull { it.id == currentSelectedMatch.id } ?: currentSelectedMatch
@@ -522,7 +597,8 @@ class MatchesViewModel(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            matches = filtered,
+                            matches = byFilter[it.selectedFilter].orEmpty(),
+                            matchesByFilter = byFilter,
                             standings = emptyList(),
                             groups = emptyList(),
                             radialBracket = null,
@@ -567,6 +643,7 @@ class MatchesViewModel(
                         isLoading = false,
                         isRefreshing = false,
                         matches = emptyList(),
+                        matchesByFilter = emptyMap(),
                         standings = emptyList(),
                         groups = emptyList(),
                         radialBracket = null,
@@ -592,7 +669,7 @@ class MatchesViewModel(
 
             cachedAllMatches = allAggregated
                     syncFavoriteMatchesFollowing(allAggregated)
-                    val filtered = filterMatches(allAggregated, _uiState.value.selectedFilter)
+                    val byFilter = buildMatchesByFilter(allAggregated, League.MY_LEAGUES, _uiState.value.favoriteTeamIds)
                     val currentSelectedMatch = _uiState.value.selectedMatch
                     val updatedSelectedMatch = if (currentSelectedMatch != null) {
                         allAggregated.firstOrNull { it.id == currentSelectedMatch.id } ?: currentSelectedMatch
@@ -601,7 +678,8 @@ class MatchesViewModel(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            matches = filtered,
+                            matches = byFilter[it.selectedFilter].orEmpty(),
+                            matchesByFilter = byFilter,
                             standings = emptyList(),
                             groups = emptyList(),
                             radialBracket = null,
@@ -628,7 +706,7 @@ class MatchesViewModel(
     private fun loadDebugLeagueData() {
         val allMatches = com.ixeken.ulama.data.debug.DebugLeagueData.getMatches()
         cachedAllMatches = allMatches
-        val filtered = filterMatches(allMatches, _uiState.value.selectedFilter)
+        val byFilter = buildMatchesByFilter(allMatches, League.DEBUG, _uiState.value.favoriteTeamIds)
         val standings = com.ixeken.ulama.data.debug.DebugLeagueData.getStandings()
         val groups = com.ixeken.ulama.data.debug.DebugLeagueData.getGroups()
         val radialBracket = com.ixeken.ulama.data.debug.DebugLeagueData.getRadialBracketTree(16)
@@ -639,7 +717,8 @@ class MatchesViewModel(
             it.copy(
                 isLoading = false,
                 isRefreshing = false,
-                matches = filtered,
+                matches = byFilter[it.selectedFilter].orEmpty(),
+                matchesByFilter = byFilter,
                 standings = standings,
                 groups = groups,
                 radialBracket = radialBracket,
@@ -696,64 +775,34 @@ class MatchesViewModel(
     }
 
     /**
-     * Precarga los clubes oficiales por competicion en paralelo para poblar la hoja modal de seleccion de favoritos,
-     * combinando la tabla de posiciones con los equipos clasificados directamente a rondas eliminatorias (como los
-     * preclasificados en Cuartos de Final que no disputan fase de grupos) o competiciones sin tabla.
+     * Precarga en paralelo los clubes de competiciones pendientes para busquedas globales
+     * y la vista agregada de Mis equipos, preservando en cache las ligas ya cargadas.
      */
     private fun loadAvailableTeamsByLeague(forceRefresh: Boolean = false) {
         if (isLoadingAvailableTeams && !forceRefresh) return
         isLoadingAvailableTeams = true
         viewModelScope.launch {
             try {
-                val entries = coroutineScope {
+                val existing = _uiState.value.availableTeamsByLeague
+                val pendingLeagues = if (forceRefresh) {
                     League.standardLeagues
-                        .map { league ->
-                            async {
-                                val standings = if (league.hasStandings) {
-                                    repository.getStandings(league, forceRefresh = forceRefresh).getOrDefault(emptyList())
-                                } else {
-                                    emptyList()
-                                }
-                                val shouldIncludeMatches = (standings.isEmpty() || league.hasKnockoutBracket) &&
-                                    league.tournamentYear == null
-                                val matchTeams = if (shouldIncludeMatches) {
-                                    val matches = repository.getMatches(league, forceRefresh = false).getOrDefault(emptyList())
-                                    val standingTeamIds = standings.map { it.teamId }.toSet()
-                                    matches.flatMap { listOf(it.homeTeam, it.awayTeam) }
-                                        .filter { it.id.isNotBlank() && !it.isPlaceholder && it.id !in standingTeamIds }
-                                        .distinctBy { it.id }
-                                        .sortedBy { it.name }
-                                        .mapIndexed { idx, team ->
-                                            StandingEntry(
-                                                rank = idx + 1,
-                                                teamName = team.name,
-                                                teamShortName = team.shortName,
-                                                teamAbbreviation = team.abbreviation,
-                                                logoUrl = team.logoUrl,
-                                                gamesPlayed = 0,
-                                                wins = 0,
-                                                draws = 0,
-                                                losses = 0,
-                                                goalsFor = 0,
-                                                goalsAgainst = 0,
-                                                goalDifference = 0,
-                                                points = 0,
-                                                teamId = team.id
-                                            )
-                                        }
-                                } else {
-                                    emptyList()
-                                }
-                                val resolvedTeams = (matchTeams + standings)
-                                    .distinctBy { it.teamId.ifBlank { it.teamName } }
-                                league to resolvedTeams
-                            }
+                } else {
+                    League.standardLeagues.filter { existing[it].isNullOrEmpty() }
+                }
+                if (pendingLeagues.isNotEmpty()) {
+                    val entries = coroutineScope {
+                        pendingLeagues.map { league ->
+                            async { league to fetchLeagueTeams(league, forceRefresh = forceRefresh) }
                         }.awaitAll()
+                    }
+                    val map = entries.filter { it.second.isNotEmpty() }.toMap()
+                    if (map.isNotEmpty()) {
+                        _uiState.update {
+                            it.copy(availableTeamsByLeague = it.availableTeamsByLeague + map)
+                        }
+                    }
                 }
-                val map = entries.filter { it.second.isNotEmpty() }.toMap()
-                if (map.isNotEmpty()) {
-                    _uiState.update { it.copy(availableTeamsByLeague = map) }
-                }
+                hasLoadedAllAvailableTeams = true
             } finally {
                 isLoadingAvailableTeams = false
             }
@@ -761,38 +810,69 @@ class MatchesViewModel(
     }
 
     /**
+     * Unifica la resolucion de participantes de una liga combinando su tabla de posiciones
+     * con clubes de encuentros directos en torneos eliminatorios o competiciones sin clasificacion.
+     */
+    private suspend fun fetchLeagueTeams(league: League, forceRefresh: Boolean): List<StandingEntry> {
+        val standings = if (league.hasStandings) {
+            repository.getStandings(league, forceRefresh = forceRefresh).getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        val shouldIncludeMatches = (standings.isEmpty() || league.hasKnockoutBracket) &&
+            league.tournamentYear == null
+        val matchTeams = if (shouldIncludeMatches) {
+            val matches = repository.getMatches(league, forceRefresh = false).getOrDefault(emptyList())
+            val standingTeamIds = standings.map { it.teamId }.toSet()
+            matches.flatMap { listOf(it.homeTeam, it.awayTeam) }
+                .filter { it.id.isNotBlank() && !it.isPlaceholder && it.id !in standingTeamIds }
+                .distinctBy { it.id }
+                .sortedBy { it.name }
+                .mapIndexed { idx, team ->
+                    StandingEntry(
+                        rank = idx + 1,
+                        teamName = team.name,
+                        teamShortName = team.shortName,
+                        teamAbbreviation = team.abbreviation,
+                        logoUrl = team.logoUrl,
+                        gamesPlayed = 0,
+                        wins = 0,
+                        draws = 0,
+                        losses = 0,
+                        goalsFor = 0,
+                        goalsAgainst = 0,
+                        goalDifference = 0,
+                        points = 0,
+                        teamId = team.id
+                    )
+                }
+        } else {
+            emptyList()
+        }
+        return (matchTeams + standings).distinctBy { it.teamId.ifBlank { it.teamName } }
+    }
+
+    /**
+     * Genera en memoria la particion simultanea de los tres filtros temporales
+     * para habilitar transiciones fluidas de HorizontalPager sin parpadeos.
+     */
+    private fun buildMatchesByFilter(
+        matches: List<Match>,
+        league: League,
+        favoriteIds: Set<String>
+    ): Map<TemporalFilter, List<Match>> = partitionMatchesByFilter(
+        matches = matches,
+        isFavoritesLeague = league == League.FAVORITES,
+        favoriteIds = favoriteIds
+    )
+
+    /**
      * Realiza la particion de partidos segun el filtro temporal y el estado del encuentro.
      * En partidos concluidos (PAST), los ordena descendentemente para mostrar primero los mas recientes,
      * excluyendo los partidos del dia de hoy para que permanezcan exclusivamente en TODAY hasta el dia siguiente.
      */
-    private fun filterMatches(matches: List<Match>, filter: TemporalFilter): List<Match> {
-        return when (filter) {
-            TemporalFilter.PAST -> matches
-                .filter { it.status.state == MatchState.FINISHED && !isMatchToday(it) && !isMatchAfterToday(it) }
-                .sortedByDescending { it.dateUtc }
-            TemporalFilter.TODAY -> matches
-                .filter { isMatchToday(it) || it.status.state == MatchState.LIVE }
-                .sortedBy { it.dateUtc }
-            TemporalFilter.UPCOMING -> matches
-                .filter { it.status.state == MatchState.SCHEDULED && isMatchAfterToday(it) }
-                .sortedBy { it.dateUtc }
-        }
-    }
-
-    /**
-     * Determina si la fecha UTC del encuentro corresponde a la fecha actual del sistema.
-     * Utiliza DateTimeUtils.isToday para evaluar zonas horarias locales y normalizar cadenas sin segundos.
-     */
-    private fun isMatchToday(match: Match): Boolean {
-        return DateTimeUtils.isToday(match.dateUtc)
-    }
-
-    /**
-     * Determina si la fecha UTC del encuentro corresponde a un dia posterior al actual.
-     */
-    private fun isMatchAfterToday(match: Match): Boolean {
-        return DateTimeUtils.isAfterToday(match.dateUtc)
-    }
+    private fun filterMatches(matches: List<Match>, filter: TemporalFilter): List<Match> =
+        filterMatchesByTemporalFilter(matches, filter)
 
     /**
      * Alterna el seguimiento de un partido para notificaciones en vivo y Samsung Now Bar.
@@ -890,4 +970,42 @@ class MatchesViewModel(
                 }
             }
     }
+}
+
+/**
+ * Particiona una coleccion de partidos en las tres pestanas temporales de forma determinista y pura.
+ */
+internal fun partitionMatchesByFilter(
+    matches: List<Match>,
+    isFavoritesLeague: Boolean,
+    favoriteIds: Set<String>
+): Map<TemporalFilter, List<Match>> {
+    val relevantMatches = if (isFavoritesLeague) {
+        if (favoriteIds.isEmpty()) emptyList()
+        else matches.filter { it.homeTeam.id in favoriteIds || it.awayTeam.id in favoriteIds }
+    } else {
+        matches
+    }
+    return TemporalFilter.entries.associateWith { filter ->
+        filterMatchesByTemporalFilter(relevantMatches, filter)
+    }
+}
+
+private fun filterMatchesByTemporalFilter(
+    matches: List<Match>,
+    filter: TemporalFilter
+): List<Match> = when (filter) {
+    TemporalFilter.PAST -> matches
+        .filter {
+            it.status.state == MatchState.FINISHED &&
+                !DateTimeUtils.isToday(it.dateUtc) &&
+                !DateTimeUtils.isAfterToday(it.dateUtc)
+        }
+        .sortedByDescending { it.dateUtc }
+    TemporalFilter.TODAY -> matches
+        .filter { DateTimeUtils.isToday(it.dateUtc) || it.status.state == MatchState.LIVE }
+        .sortedBy { it.dateUtc }
+    TemporalFilter.UPCOMING -> matches
+        .filter { it.status.state == MatchState.SCHEDULED && DateTimeUtils.isAfterToday(it.dateUtc) }
+        .sortedBy { it.dateUtc }
 }

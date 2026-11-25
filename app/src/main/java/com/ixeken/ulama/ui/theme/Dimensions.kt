@@ -28,6 +28,16 @@ val DimPullToRefreshThreshold: Dp = 80.dp
 val DimDisciplineCardWidth: Dp = 8.dp
 val DimDisciplineCardHeight: Dp = 11.dp
 val DimDisciplineCardBorder: Dp = 1.5.dp
+val DimWorldMapHeight: Dp = 172.dp
+val DimLeagueLogoList: Dp = 28.dp
+val DimLeagueRowMinHeight: Dp = 56.dp
+val DimLeagueActionMinWidth: Dp = 88.dp
+val DimTeamGridCrest: Dp = 44.dp
+val DimTeamGridCellMin: Dp = 152.dp
+val DimPagerDotSize: Dp = 4.dp
+val DimPagerActiveDotWidth: Dp = 12.dp
+val DimPillSwipeThreshold: Dp = 28.dp
+val DimPillMaxDragOffset: Dp = 36.dp
 
 /**
  * Nivel 2: Tokens semanticos de dimensiones para componentes de UI.
@@ -52,7 +62,17 @@ data class UlamaDimensions(
     val pullToRefreshThreshold: Dp = DimPullToRefreshThreshold,
     val disciplineCardWidth: Dp = DimDisciplineCardWidth,
     val disciplineCardHeight: Dp = DimDisciplineCardHeight,
-    val disciplineCardBorder: Dp = DimDisciplineCardBorder
+    val disciplineCardBorder: Dp = DimDisciplineCardBorder,
+    val worldMapHeight: Dp = DimWorldMapHeight,
+    val leagueLogoList: Dp = DimLeagueLogoList,
+    val leagueRowMinHeight: Dp = DimLeagueRowMinHeight,
+    val leagueActionMinWidth: Dp = DimLeagueActionMinWidth,
+    val teamGridCrest: Dp = DimTeamGridCrest,
+    val teamGridCellMin: Dp = DimTeamGridCellMin,
+    val pagerDotSize: Dp = DimPagerDotSize,
+    val pagerActiveDotWidth: Dp = DimPagerActiveDotWidth,
+    val pillSwipeThreshold: Dp = DimPillSwipeThreshold,
+    val pillMaxDragOffset: Dp = DimPillMaxDragOffset
 )
 
 val LocalUlamaDimensions = staticCompositionLocalOf { UlamaDimensions() }

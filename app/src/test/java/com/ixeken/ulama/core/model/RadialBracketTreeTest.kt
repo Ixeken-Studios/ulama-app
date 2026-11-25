@@ -783,6 +783,129 @@ class RadialBracketTreeTest {
         }
     }
 
+    @Test
+    fun match_isKnockout_recognizesPrefixedSeasonalKnockoutTitles_whileExcludingRegularSeason() {
+        val home = Team("223", "Toluca", "Toluca", "TOL", "https://a.espncdn.com/i/teamlogos/soccer/500/223.png", true, 0, false)
+        val away = Team("216", "Atlas", "Atlas", "ATS", "https://a.espncdn.com/i/teamlogos/soccer/500/216.png", false, 0, false)
+        val scheduled = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false)
+
+        val aperturaQf = Match("qf1", "2026-11-26T01:00Z", home, away, scheduled, null, League.LIGA_MX, seriesTitle = "Apertura - Quarterfinals", legNumber = 1)
+        val clausuraSemi = Match("sf1", "2026-05-14T01:00Z", home, away, scheduled, null, League.LIGA_MX, seriesTitle = "Clausura - Semifinals", legNumber = 1)
+        val clausuraFinal = Match("f1", "2026-05-24T01:00Z", home, away, scheduled, null, League.LIGA_MX, seriesTitle = "Clausura - Finals", legNumber = 2)
+        val regularApertura = Match("r1", "2026-11-21T01:00Z", home, away, scheduled, null, League.LIGA_MX, seriesTitle = "torneo-apertura")
+        val regularClausura = Match("r2", "2026-04-21T01:00Z", home, away, scheduled, null, League.LIGA_MX, seriesTitle = "Clausura")
+
+        assertTrue(aperturaQf.isKnockout)
+        assertTrue(clausuraSemi.isKnockout)
+        assertTrue(clausuraFinal.isKnockout)
+        org.junit.Assert.assertFalse(regularApertura.isKnockout)
+        org.junit.Assert.assertFalse(regularClausura.isKnockout)
+    }
+
+    @Test
+    fun radialBracketBuilder_scheduledMatchesWithEspnZeroScores_populateCrestsWithoutZeroScoresOrWinner() {
+        fun team(id: String, name: String) = Team(id, name, name, name.take(3).uppercase(), "https://a.espncdn.com/i/teamlogos/soccer/500/$id.png", false, score = 0, isWinner = false)
+        val scheduled = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false)
+
+        val qf1 = Match("qf1", "2026-11-26T01:00Z", team("223", "Toluca"), team("216", "Atlas"), scheduled, null, League.LIGA_MX, seriesTitle = "Apertura - Quarterfinals", legNumber = 1)
+        val qf2 = Match("qf2", "2026-11-26T03:10Z", team("220", "Monterrey"), team("227", "América"), scheduled, null, League.LIGA_MX, seriesTitle = "Apertura - Quarterfinals", legNumber = 1)
+        val qf3 = Match("qf3", "2026-11-27T01:00Z", team("234", "Pachuca"), team("219", "Guadalajara"), scheduled, null, League.LIGA_MX, seriesTitle = "Apertura - Quarterfinals", legNumber = 1)
+        val qf4 = Match("qf4", "2026-11-27T03:10Z", team("228", "León"), team("218", "Cruz Azul"), scheduled, null, League.LIGA_MX, seriesTitle = "Apertura - Quarterfinals", legNumber = 1)
+
+        val tree = RadialBracketBuilder.build(listOf(qf1, qf2, qf3, qf4), League.LIGA_MX)
+        assertNotNull(tree)
+        assertTrue(tree!!.hasAnyScheduledMatch)
+        assertNull(tree.champion)
+
+        val qfRound = tree.rounds[0].matches
+        assertEquals(4, qfRound.size)
+        qfRound.forEach { slot ->
+            assertNotNull(slot.teamA)
+            assertNotNull(slot.teamB)
+            assertNull(slot.teamA?.score)
+            assertNull(slot.teamB?.score)
+            assertNull(slot.winnerTeamId)
+            assertTrue(slot.teamA!!.getCrestUrl(isDark = true).contains("/500-dark/"))
+        }
+    }
+
+    @Test
+    fun radialBracketBuilder_firstLegFinishedAndSecondLegScheduled_doesNotDeclareWinnerYet() {
+        val tolucaLeg1 = Team("223", "Toluca", "Toluca", "TOL", null, true, score = 2, isWinner = true)
+        val atlasLeg1 = Team("216", "Atlas", "Atlas", "ATS", null, false, score = 1, isWinner = false)
+        val atlasLeg2 = Team("216", "Atlas", "Atlas", "ATS", null, true, score = 0, isWinner = false)
+        val tolucaLeg2 = Team("223", "Toluca", "Toluca", "TOL", null, false, score = 0, isWinner = false)
+
+        val leg1Finished = Match(
+            id = "f_leg1",
+            dateUtc = "2026-12-10T02:00Z",
+            homeTeam = tolucaLeg1,
+            awayTeam = atlasLeg1,
+            status = MatchStatus(MatchState.FINISHED, "FT", "FT", isCompleted = true),
+            venueName = null,
+            league = League.LIGA_MX,
+            seriesTitle = "Apertura - Finals",
+            legNumber = 1,
+            isSeriesCompleted = false
+        )
+        val leg2Scheduled = Match(
+            id = "f_leg2",
+            dateUtc = "2026-12-13T02:00Z",
+            homeTeam = atlasLeg2,
+            awayTeam = tolucaLeg2,
+            status = MatchStatus(MatchState.SCHEDULED, "0'", "Scheduled", isCompleted = false),
+            venueName = null,
+            league = League.LIGA_MX,
+            seriesTitle = "Apertura - Finals",
+            legNumber = 2,
+            aggregateHomeScore = 1,
+            aggregateAwayScore = 2,
+            isSeriesCompleted = false
+        )
+
+        val tree = RadialBracketBuilder.build(listOf(leg1Finished, leg2Scheduled), League.LIGA_MX)
+        assertNotNull(tree)
+        val finalSlot = tree!!.rounds.last().matches.first()
+        assertEquals("2", finalSlot.teamA?.score)
+        assertEquals("1", finalSlot.teamB?.score)
+        assertNull(finalSlot.winnerTeamId)
+        assertNull(tree.champion)
+    }
+
+    @Test
+    fun radialBracketBuilder_tiedAggregate_usesExplicitSeriesWinnerTeamId() {
+        val mexicoLeg1 = Team("203", "Mexico", "MEX", "MEX", null, false, score = 2, isWinner = false)
+        val jamaicaLeg1 = Team("1038", "Jamaica", "JAM", "JAM", null, true, score = 3, isWinner = true)
+        val mexicoLeg2 = Team("203", "Mexico", "MEX", "MEX", null, true, score = 1, isWinner = true)
+        val jamaicaLeg2 = Team("1038", "Jamaica", "JAM", "JAM", null, false, score = 0, isWinner = false)
+        val finished = MatchStatus(MatchState.FINISHED, "FT", "FT", isCompleted = true)
+
+        val leg1 = Match("l1", "2026-11-15T01:00Z", jamaicaLeg1, mexicoLeg1, finished, null, League.CONCACAF_NATIONS_LEAGUE, seriesTitle = "Quarterfinals", legNumber = 1)
+        val leg2 = Match(
+            id = "l2",
+            dateUtc = "2026-11-18T02:30Z",
+            homeTeam = mexicoLeg2,
+            awayTeam = jamaicaLeg2,
+            status = finished,
+            venueName = null,
+            league = League.CONCACAF_NATIONS_LEAGUE,
+            seriesTitle = "Quarterfinals",
+            legNumber = 2,
+            aggregateHomeScore = 3,
+            aggregateAwayScore = 3,
+            isSeriesCompleted = true,
+            seriesWinnerTeamId = "203"
+        )
+
+        val tree = RadialBracketBuilder.build(listOf(leg1, leg2), League.CONCACAF_NATIONS_LEAGUE)
+        val qfSlot = tree!!.rounds[0].matches.first()
+        assertEquals("3", qfSlot.teamA?.score)
+        assertEquals("3", qfSlot.teamB?.score)
+        assertEquals("203", qfSlot.winnerTeamId)
+        assertTrue(qfSlot.teamB?.isWinner == true)
+        org.junit.Assert.assertFalse(qfSlot.teamA?.isWinner == true)
+    }
+
     private fun createMockTree(totalTeams: Int): RadialBracketTree {
         val rounds = mutableListOf<RadialRound>()
         var matchesInRound = totalTeams / 2
