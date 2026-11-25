@@ -149,6 +149,38 @@ class MatchesUiStateTest {
         org.junit.Assert.assertTrue(League.PREMIER_LEAGUE in loading.loadingTeamLeagues)
         org.junit.Assert.assertFalse(League.LA_LIGA in loading.loadingTeamLeagues)
     }
+
+    @Test
+    fun resolveQuickSwitchLeagues_prependsVirtualCollectionsAndSortsAlphabetically() {
+        val myLeagues = setOf(
+            League.PREMIER_LEAGUE.code,
+            League.BUNDESLIGA.code,
+            League.LIGA_MX.code,
+            League.FAVORITES.code,
+            League.DEBUG.code,
+            "unknown.league"
+        )
+        val names = mapOf(
+            League.PREMIER_LEAGUE to "Premier League",
+            League.BUNDESLIGA to "Bundesliga",
+            League.LIGA_MX to "Liga MX"
+        )
+
+        val resolved = resolveQuickSwitchLeagues(myLeagues) { league ->
+            names[league] ?: league.name
+        }
+
+        assertEquals(
+            listOf(
+                League.FAVORITES,
+                League.MY_LEAGUES,
+                League.BUNDESLIGA,
+                League.LIGA_MX,
+                League.PREMIER_LEAGUE
+            ),
+            resolved
+        )
+    }
 }
 
 

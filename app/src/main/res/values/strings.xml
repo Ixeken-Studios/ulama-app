@@ -347,10 +347,12 @@
     <string name="settings_about_changelog_title">Historial de cambios</string>
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
     <string name="settings_about_changelog_sheet_subtitle">Versión 2.2.0 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_feat8_title">Nuevo centro de competiciones</string>
+    <string name="settings_about_changelog_feat8_desc">Rediseño completo para elegir ligas, explorar regiones en el mapa mundial y seguir equipos favoritos en un solo lugar.</string>
     <string name="settings_about_changelog_feat6_title">Alineaciones, eventos e iconos</string>
     <string name="settings_about_changelog_feat6_desc">Iconos de tarjetas, goles y asistencias en la alineación, vista al iniciar y al terminar el partido, nueva pestaña Eventos e iconos en todas las pestañas.</string>
     <string name="settings_about_changelog_feat7_title">Más gestos y corrección de bugs</string>
-    <string name="settings_about_changelog_feat7_desc">Deslizamiento horizontal fluido entre Estadísticas, Alineaciones, Eventos y Tabla, actualización automática en vivo y corrección de llaves eliminatorias, marcadores y series.</string>
+    <string name="settings_about_changelog_feat7_desc">Gestos de deslizamiento en la página principal para cambiar de liga y fechas, y en los detalles del partido entre pestañas, además de actualización automática en vivo y corrección de llaves eliminatorias, marcadores y series.</string>
     <string name="settings_about_changelog_feat4_title">Tarjetas en alineaciones y estabilidad</string>
     <string name="settings_about_changelog_feat4_desc">Tarjetas amarillas, dobles amarillas y rojas en la cancha y banca, además de mejoras en calendarios, llaves y seguimiento automático.</string>
     <string name="dialog_update_confirm_manual_title">¿Buscar actualizaciones?</string>
@@ -405,6 +407,7 @@
 
     <!-- Accesibilidad: Descripciones para lectores de pantalla TalkBack -->
     <string name="cd_settings_button">Abrir ajustes</string>
+    <string name="cd_league_pager_position">%1$s, vista %2$d de %3$d</string>
     <string name="cd_venue_icon">Ubicación del estadio</string>
     <string name="cd_team_crest">Escudo de %1$s</string>
     <string name="cd_league_logo">Logotipo de %1$s</string>

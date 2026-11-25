@@ -65,6 +65,8 @@ data class UlamaSpacing(
     val tabContentPaddingHorizontal: Dp = SpaceNormal,
     val selectorPaddingHorizontal: Dp = SpaceNormal,
     val selectorPaddingVertical: Dp = SpaceSmall,
+    val pagerDotGap: Dp = SpaceConnectedGap,
+    val pillIndicatorTopSpacing: Dp = SpaceMatrixGap,
     val emptyCardPaddingVertical: Dp = SpaceExtraLarge,
     val emptyCardPaddingHorizontal: Dp = SpaceLarge,
 

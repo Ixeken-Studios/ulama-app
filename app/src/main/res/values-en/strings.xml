@@ -347,10 +347,12 @@
     <string name="settings_about_changelog_title">Changelog</string>
     <string name="settings_about_changelog_sheet_title">What\'s new</string>
     <string name="settings_about_changelog_sheet_subtitle">Version 2.2.0 · Features and improvements</string>
+    <string name="settings_about_changelog_feat8_title">New competitions hub</string>
+    <string name="settings_about_changelog_feat8_desc">Complete redesign to choose leagues, browse regions on the world map, and follow favorite teams in one place.</string>
     <string name="settings_about_changelog_feat6_title">Lineups, events, and icons</string>
     <string name="settings_about_changelog_feat6_desc">Card, goal, and assist icons in lineups, Starting and Final match views, a new Events tab, and icons across all match detail tabs.</string>
     <string name="settings_about_changelog_feat7_title">More gestures and bug fixes</string>
-    <string name="settings_about_changelog_feat7_desc">Smooth horizontal swiping across Stats, Lineups, Events, and Table, automatic live refresh, and fixes for knockout brackets, scores, and two-legged ties.</string>
+    <string name="settings_about_changelog_feat7_desc">Swipe gestures on the home screen to switch leagues and dates and across match detail tabs, plus automatic live refresh and fixes for knockout brackets, scores, and two-legged ties.</string>
     <string name="settings_about_changelog_feat4_title">Cards in lineups and stability</string>
     <string name="settings_about_changelog_feat4_desc">Yellow, second yellow, and red cards on the pitch and substitutes, plus improvements to schedules, brackets, and auto-follow.</string>
     <string name="dialog_update_confirm_manual_title">Check for updates?</string>
@@ -405,6 +407,7 @@
 
     <!-- Accessibility: Descriptions for TalkBack screen readers -->
     <string name="cd_settings_button">Open settings</string>
+    <string name="cd_league_pager_position">%1$s, view %2$d of %3$d</string>
     <string name="cd_venue_icon">Stadium location</string>
     <string name="cd_team_crest">%1$s crest</string>
     <string name="cd_league_logo">%1$s logo</string>

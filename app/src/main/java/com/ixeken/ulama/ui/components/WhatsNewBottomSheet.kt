@@ -44,8 +44,9 @@ import com.ixeken.ulama.ui.theme.UlamaTheme
  * para evitar desincronizaciones al actualizar versiones.
  */
 internal val changelogFeatureEntries: List<Triple<Int, Int, Int>> = listOf(
-    Triple(R.string.settings_about_changelog_feat6_title, R.string.settings_about_changelog_feat6_desc, R.drawable.ic_groups),
+    Triple(R.string.settings_about_changelog_feat8_title, R.string.settings_about_changelog_feat8_desc, R.drawable.ic_public),
     Triple(R.string.settings_about_changelog_feat7_title, R.string.settings_about_changelog_feat7_desc, R.drawable.ic_swap_horiz),
+    Triple(R.string.settings_about_changelog_feat6_title, R.string.settings_about_changelog_feat6_desc, R.drawable.ic_groups),
     Triple(R.string.settings_about_changelog_feat4_title, R.string.settings_about_changelog_feat4_desc, R.drawable.ic_update)
 )
 

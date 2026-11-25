@@ -34,6 +34,10 @@ val DimLeagueRowMinHeight: Dp = 56.dp
 val DimLeagueActionMinWidth: Dp = 88.dp
 val DimTeamGridCrest: Dp = 44.dp
 val DimTeamGridCellMin: Dp = 152.dp
+val DimPagerDotSize: Dp = 4.dp
+val DimPagerActiveDotWidth: Dp = 12.dp
+val DimPillSwipeThreshold: Dp = 28.dp
+val DimPillMaxDragOffset: Dp = 36.dp
 
 /**
  * Nivel 2: Tokens semanticos de dimensiones para componentes de UI.
@@ -64,7 +68,11 @@ data class UlamaDimensions(
     val leagueRowMinHeight: Dp = DimLeagueRowMinHeight,
     val leagueActionMinWidth: Dp = DimLeagueActionMinWidth,
     val teamGridCrest: Dp = DimTeamGridCrest,
-    val teamGridCellMin: Dp = DimTeamGridCellMin
+    val teamGridCellMin: Dp = DimTeamGridCellMin,
+    val pagerDotSize: Dp = DimPagerDotSize,
+    val pagerActiveDotWidth: Dp = DimPagerActiveDotWidth,
+    val pillSwipeThreshold: Dp = DimPillSwipeThreshold,
+    val pillMaxDragOffset: Dp = DimPillMaxDragOffset
 )
 
 val LocalUlamaDimensions = staticCompositionLocalOf { UlamaDimensions() }
