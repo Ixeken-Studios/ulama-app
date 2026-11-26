@@ -3123,7 +3123,7 @@ private fun AboutFeatureItemCard(
 }
 
 /**
- * Hoja modal con el desglose de cambios y nuevas caracteristicas en Ulama 2.2.0.
+ * Hoja modal con el desglose de cambios y nuevas caracteristicas en Ulama 2.2.1.
  */
 @Composable
 private fun ChangelogBottomSheet(

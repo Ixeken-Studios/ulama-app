@@ -271,7 +271,7 @@
     <string name="settings_section_privacy">Privacy</string>
     <string name="settings_section_privacy_desc">Zero telemetry and on-device network use</string>
     <string name="settings_section_about">About app</string>
-    <string name="settings_section_about_desc">Version 2.2.0 · MIT License</string>
+    <string name="settings_section_about_desc">Version 2.2.1 · MIT License</string>
 
     <!-- Settings - Appearance: Theme switching, color palettes, and motion physics -->
     <string name="settings_section_colors_style">Colors and theme</string>
@@ -358,7 +358,7 @@
     <string name="settings_about_privacy_espn_desc">Requests travel directly from your phone to public ESPN APIs. Only standard HTTP technical data required for connection is sent, without linking any personal identity or location.</string>
 
     <!-- Settings - About App & Legal: Versioning, brand backstory, credits, and MIT license -->
-    <string name="settings_about_version_label">v2.2.0</string>
+    <string name="settings_about_version_label">v2.2.1</string>
     <string name="settings_about_brand_description">The name evokes ulama, the ancient Mesoamerican ballgame</string>
     <string name="settings_about_creator_label">Created by</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -384,15 +384,11 @@
     <string name="settings_about_check_on_start_desc">Automatically check for updates when launching the app</string>
     <string name="settings_about_changelog_title">Changelog</string>
     <string name="settings_about_changelog_sheet_title">What\'s new</string>
-    <string name="settings_about_changelog_sheet_subtitle">Version 2.2.0 · Features and improvements</string>
-    <string name="settings_about_changelog_feat8_title">New competitions hub</string>
-    <string name="settings_about_changelog_feat8_desc">Complete redesign to choose leagues, browse regions on the world map, and follow favorite teams in one place.</string>
-    <string name="settings_about_changelog_feat6_title">Lineups, events, and icons</string>
-    <string name="settings_about_changelog_feat6_desc">Card, goal, and assist icons in lineups, Starting and Final match views, a new Events tab, and icons across all match detail tabs.</string>
-    <string name="settings_about_changelog_feat7_title">More gestures and bug fixes</string>
-    <string name="settings_about_changelog_feat7_desc">Swipe gestures on the home screen to switch leagues and dates and across match detail tabs, plus automatic live refresh and fixes for knockout brackets, scores, and two-legged ties.</string>
-    <string name="settings_about_changelog_feat4_title">Cards in lineups and stability</string>
-    <string name="settings_about_changelog_feat4_desc">Yellow, second yellow, and red cards on the pitch and substitutes, plus improvements to schedules, brackets, and auto-follow.</string>
+    <string name="settings_about_changelog_sheet_subtitle">Version 2.2.1 · Features and improvements</string>
+    <string name="settings_about_changelog_leagues_title">New leagues and tournaments</string>
+    <string name="settings_about_changelog_leagues_desc">13 new competitions across all five continents including women\'s football, Brasileirão, MLS, Libertadores, Europa League, and leagues from Asia, Africa, and Oceania.</string>
+    <string name="settings_about_changelog_perf_title">Performance optimizations</string>
+    <string name="settings_about_changelog_perf_desc">Improvements to crest loading with expressive fallbacks, unified standings tables, and optimized support for knockout brackets and series.</string>
     <string name="dialog_update_confirm_manual_title">Check for updates?</string>
     <string name="dialog_update_confirm_manual_desc">The official GitHub repository will be queried to check if a newer version of Ulama exists. Do you want to continue?</string>
     <string name="dialog_update_confirm_on_start_title">Check on startup?</string>
@@ -420,8 +416,8 @@
     <string name="sheet_update_available_notes_label">Release notes</string>
     <string name="sheet_update_available_download">Download update</string>
     <string name="sheet_update_available_later">Later</string>
-    <string name="sheet_whats_new_title">What\'s new in Ulama 2.2.0</string>
-    <string name="sheet_whats_new_subtitle">Your sports application has been completely redesigned</string>
+    <string name="sheet_whats_new_title">What\'s new in Ulama 2.2.1</string>
+    <string name="sheet_whats_new_subtitle">New competitions and performance improvements</string>
     <string name="sheet_whats_new_action_explore">Start exploring</string>
 
     <!-- Welcome Guide: Interactive three-step walkthrough for first app launch -->

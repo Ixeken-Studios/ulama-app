@@ -271,7 +271,7 @@
     <string name="settings_section_privacy">Privacidad</string>
     <string name="settings_section_privacy_desc">Cero telemetría y uso de red on-device</string>
     <string name="settings_section_about">Información de la app</string>
-    <string name="settings_section_about_desc">Versión 2.2.0 · Licencia MIT</string>
+    <string name="settings_section_about_desc">Versión 2.2.1 · Licencia MIT</string>
 
     <!-- Ajustes - Apariencia: Opciones de tema claro/oscuro, paletas de colores y estilos de física/movimiento -->
     <string name="settings_section_colors_style">Colores y tema</string>
@@ -358,7 +358,7 @@
     <string name="settings_about_privacy_espn_desc">Las consultas viajan directamente desde tu teléfono a las APIs públicas de ESPN. Solo se transmiten los datos técnicos estándares del protocolo HTTP requeridos para establecer la conexión, sin vincular ninguna identidad personal ni ubicación.</string>
 
     <!-- Ajustes - Información de la App y Legal: Versión, marca mesoamericana, créditos de autor y licencia MIT -->
-    <string name="settings_about_version_label">v2.2.0</string>
+    <string name="settings_about_version_label">v2.2.1</string>
     <string name="settings_about_brand_description">El nombre evoca al ulama, el antiguo juego de pelota mesoamericano</string>
     <string name="settings_about_creator_label">Creado por</string>
     <string name="settings_about_creator_name">ixeken studios</string>
@@ -384,15 +384,11 @@
     <string name="settings_about_check_on_start_desc">Buscar actualizaciones automáticamente al abrir la app</string>
     <string name="settings_about_changelog_title">Historial de cambios</string>
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
-    <string name="settings_about_changelog_sheet_subtitle">Versión 2.2.0 · Novedades y mejoras</string>
-    <string name="settings_about_changelog_feat8_title">Nuevo centro de competiciones</string>
-    <string name="settings_about_changelog_feat8_desc">Rediseño completo para elegir ligas, explorar regiones en el mapa mundial y seguir equipos favoritos en un solo lugar.</string>
-    <string name="settings_about_changelog_feat6_title">Alineaciones, eventos e iconos</string>
-    <string name="settings_about_changelog_feat6_desc">Iconos de tarjetas, goles y asistencias en la alineación, vista al iniciar y al terminar el partido, nueva pestaña Eventos e iconos en todas las pestañas.</string>
-    <string name="settings_about_changelog_feat7_title">Más gestos y corrección de bugs</string>
-    <string name="settings_about_changelog_feat7_desc">Gestos de deslizamiento en la página principal para cambiar de liga y fechas, y en los detalles del partido entre pestañas, además de actualización automática en vivo y corrección de llaves eliminatorias, marcadores y series.</string>
-    <string name="settings_about_changelog_feat4_title">Tarjetas en alineaciones y estabilidad</string>
-    <string name="settings_about_changelog_feat4_desc">Tarjetas amarillas, dobles amarillas y rojas en la cancha y banca, además de mejoras en calendarios, llaves y seguimiento automático.</string>
+    <string name="settings_about_changelog_sheet_subtitle">Versión 2.2.1 · Novedades y mejoras</string>
+    <string name="settings_about_changelog_leagues_title">Nuevas ligas y torneos</string>
+    <string name="settings_about_changelog_leagues_desc">13 competiciones nuevas en los cinco continentes incluyendo fútbol femenino, Brasileirão, MLS, Libertadores, Europa League, ligas de Asia, África y Oceanía.</string>
+    <string name="settings_about_changelog_perf_title">Optimizaciones de rendimiento</string>
+    <string name="settings_about_changelog_perf_desc">Mejoras en carga de escudos con respaldos expresivos, tablas unificadas y soporte optimizado para llaves y series eliminatorias.</string>
     <string name="dialog_update_confirm_manual_title">¿Buscar actualizaciones?</string>
     <string name="dialog_update_confirm_manual_desc">Se consultará el repositorio oficial de GitHub para comprobar si existe una versión más reciente de Ulama. ¿Deseas continuar?</string>
     <string name="dialog_update_confirm_on_start_title">¿Buscar al iniciar?</string>
@@ -420,8 +416,8 @@
     <string name="sheet_update_available_notes_label">Notas de la versión</string>
     <string name="sheet_update_available_download">Descargar actualización</string>
     <string name="sheet_update_available_later">Más tarde</string>
-    <string name="sheet_whats_new_title">Novedades de Ulama 2.2.0</string>
-    <string name="sheet_whats_new_subtitle">Tu aplicación deportiva se ha renovado por completo</string>
+    <string name="sheet_whats_new_title">Novedades de Ulama 2.2.1</string>
+    <string name="sheet_whats_new_subtitle">Nuevas competiciones y mejoras de rendimiento</string>
     <string name="sheet_whats_new_action_explore">Comenzar a explorar</string>
 
     <!-- Guía de Bienvenida: Walkthrough interactivo de tres pasos para el primer arranque -->

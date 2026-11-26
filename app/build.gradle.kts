@@ -25,8 +25,8 @@ android {
         applicationId = "com.ixeken.ulama"
         minSdk = 35
         targetSdk = 37
-        versionCode = 5
-        versionName = "2.2.0"
+        versionCode = 6
+        versionName = "2.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
