@@ -98,11 +98,17 @@ data class RadialBracketTree(
 
     /**
      * Resuelve el partido padre en la ronda subsecuente hacia el centro.
-     * En un arbol binario simetrico el cruce padre siempre corresponde a matchIndex dividido entre dos.
+     * En arboles con ronda previa de igual tamano (llaves de 6 equipos con bye) el enlace es directo 1 a 1;
+     * en arboles binarios simetricos corresponde a matchIndex dividido entre dos.
      */
     fun getParentMatch(roundIndex: Int, matchIndex: Int): RadialMatch? {
+        val currentRound = rounds.getOrNull(roundIndex) ?: return null
         val nextRound = rounds.getOrNull(roundIndex + 1) ?: return null
-        val parentIndex = RadialGeometry.getParentMatchIndex(matchIndex)
+        val parentIndex = if (nextRound.matches.size == currentRound.matches.size) {
+            matchIndex
+        } else {
+            RadialGeometry.getParentMatchIndex(matchIndex)
+        }
         return nextRound.matches.getOrNull(parentIndex)
     }
 }
@@ -168,6 +174,39 @@ object RadialBracketBuilder {
      * @param hasThirdPlace Indica si se debe reservar el nodo inferior para el partido de 3er lugar.
      */
     fun createEmptyTree(totalTeams: Int, hasThirdPlace: Boolean = false): RadialBracketTree {
+        if (totalTeams == 6) {
+            val rounds = listOf(
+                RadialRound(
+                    roundIndex = 0,
+                    name = "Eliminación",
+                    matches = (0 until 2).map { idx ->
+                        RadialMatch(id = "empty_0_$idx", matchIndex = idx)
+                    }
+                ),
+                RadialRound(
+                    roundIndex = 1,
+                    name = "Semifinales",
+                    matches = (0 until 2).map { idx ->
+                        RadialMatch(id = "empty_1_$idx", matchIndex = idx)
+                    }
+                ),
+                RadialRound(
+                    roundIndex = 2,
+                    name = "Final",
+                    matches = listOf(RadialMatch(id = "empty_2_0", matchIndex = 0))
+                )
+            )
+            val thirdPlace = if (hasThirdPlace) {
+                RadialMatch(id = "empty_third_0", matchIndex = 0)
+            } else null
+            return RadialBracketTree(
+                totalTeams = totalTeams,
+                rounds = rounds,
+                champion = null,
+                thirdPlaceMatch = thirdPlace
+            )
+        }
+
         val rounds = mutableListOf<RadialRound>()
         var matchesInRound = totalTeams / 2
         var roundIdx = 0
@@ -302,13 +341,28 @@ object RadialBracketBuilder {
                 val unassigned = rawMatchesByRound[r]?.toMutableList() ?: mutableListOf()
                 val parentRound = r + 1
                 val parentSlots = slottedRounds[parentRound].size
+                val isOneToOneRound = slottedRounds[r].size == parentSlots
 
                 for (p in 0 until parentSlots) {
                     val parentMatch = slottedRounds[parentRound][p] ?: continue
+                    val teamAId = parentMatch.teamA?.id
+                    val teamBId = parentMatch.teamB?.id
+
+                    if (isOneToOneRound) {
+                        val linkedMatch = unassigned.firstOrNull {
+                            (teamAId != null && it.containsTeam(teamAId)) ||
+                                (teamBId != null && it.containsTeam(teamBId))
+                        }
+                        if (linkedMatch != null) {
+                            slottedRounds[r][p] = linkedMatch
+                            unassigned.remove(linkedMatch)
+                        }
+                        continue
+                    }
+
                     val f0 = 2 * p
                     val f1 = (2 * p) + 1
 
-                    val teamAId = parentMatch.teamA?.id
                     val matchForA = if (teamAId != null) {
                         unassigned.firstOrNull { it.containsTeam(teamAId) }
                     } else null
@@ -318,7 +372,6 @@ object RadialBracketBuilder {
                         unassigned.remove(matchForA)
                     }
 
-                    val teamBId = parentMatch.teamB?.id
                     val matchForB = if (teamBId != null) {
                         unassigned.firstOrNull { it.containsTeam(teamBId) }
                     } else null
@@ -381,13 +434,49 @@ object RadialBracketBuilder {
     internal fun normalizeRoundIndex(seriesTitle: String?, totalTeams: Int): Int? {
         val title = seriesTitle?.lowercase().orEmpty()
         if (title.isBlank()) return null
+
+        if (title.contains("playoff series") || title == "round-one" || title == "round one") {
+            return if (totalTeams == 16) 0 else null
+        }
+
+        if (title.contains("elimination-final") || title.contains("elimination final")) {
+            return if (totalTeams == 6) 0 else null
+        }
+
+        if (title.contains("conference") && title.contains("semi")) {
+            return when (totalTeams) {
+                32 -> 2
+                16 -> 1
+                else -> 0
+            }
+        }
+
+        if (title.contains("conference") && title.contains("final")) {
+            return when (totalTeams) {
+                32 -> 3
+                16 -> 2
+                else -> 1
+            }
+        }
+
+        if (title == "mls-cup" || title == "mls cup" || title == "grand-final" || title == "grand final") {
+            return when (totalTeams) {
+                32 -> 4
+                16 -> 3
+                else -> 2
+            }
+        }
+
         if (title.contains("prelim") ||
             title.contains("play-in") ||
             title.contains("play in") ||
+            title.contains("wild-card") ||
+            title.contains("wild card") ||
             title.contains("relegation") ||
             title.contains("qualif") ||
             title.contains("repechaje") ||
-            title.contains("clasific")
+            title.contains("clasific") ||
+            title.contains("playoff")
         ) {
             return null
         }
@@ -403,7 +492,8 @@ object RadialBracketBuilder {
             title.contains("cuart") || title.contains("quarter") -> when (totalTeams) {
                 32 -> 2
                 16 -> 1
-                else -> 0
+                8 -> 0
+                else -> null
             }
             title.contains("semi") -> when (totalTeams) {
                 32 -> 3
@@ -426,8 +516,24 @@ object RadialBracketBuilder {
 
         val latestMatch = matches.maxByOrNull { it.dateUtc } ?: firstMatch
         val startedMatches = matches.filter { it.status.state != MatchState.SCHEDULED }
-        val hasAggregate = matches.any { it.isAggregateActive }
-        val isMultiLegSeries = matches.any { it.legNumber != null } || matches.size >= 2
+        val isBestOfSeries = matches.any { it.isBestOfSeries }
+        val requiredWins = ((matches.firstNotNullOfOrNull { it.seriesTotalGames } ?: 3) / 2) + 1
+        val hasAggregate = !isBestOfSeries && matches.any { it.isAggregateActive }
+        val isMultiLegSeries = !isBestOfSeries && (matches.any { it.legNumber != null } || matches.size >= 2)
+
+        var winsA = 0
+        var winsB = 0
+        if (isBestOfSeries) {
+            matches.filter { it.isFinished }.forEach { m ->
+                val winnerId = when {
+                    m.isHomeWinner -> m.homeTeam.id
+                    m.isAwayWinner -> m.awayTeam.id
+                    else -> null
+                }
+                if (winnerId == teamAInfo.id) winsA++
+                else if (winnerId == teamBInfo.id) winsB++
+            }
+        }
 
         val numericScoreA: Int?
         val numericScoreB: Int?
@@ -440,6 +546,12 @@ object RadialBracketBuilder {
                 numericScoreB = null
                 scoreA = null
                 scoreB = null
+            }
+            isBestOfSeries -> {
+                numericScoreA = winsA
+                numericScoreB = winsB
+                scoreA = winsA.toString()
+                scoreB = winsB.toString()
             }
             hasAggregate -> {
                 val aggMatch = matches.lastOrNull { it.isAggregateActive } ?: latestMatch
@@ -470,9 +582,11 @@ object RadialBracketBuilder {
             }
         }
 
-        // En series a dos vueltas nunca se declara vencedor tras concluir unicamente el partido de ida.
+        // En series a dos vueltas nunca se declara vencedor tras concluir unicamente el partido de ida;
+        // en series Best-of-N solo concluye cuando un club alcanza la mayoria de victorias o ESPN cierra la serie.
         val isSeriesFinished = when {
             matches.any { it.isSeriesCompleted } -> true
+            isBestOfSeries -> winsA >= requiredWins || winsB >= requiredWins
             isMultiLegSeries -> (matches.size >= 2 && matches.all { it.isFinished }) ||
                 matches.any { (it.legNumber ?: 0) >= 2 && it.isFinished }
             else -> latestMatch.isFinished

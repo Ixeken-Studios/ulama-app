@@ -578,6 +578,20 @@ fun Match.localizedSeriesTitle(): String? {
         lower.contains("playoff")
     if (!isExcludedKnockout) {
         when {
+            lower == "wild-card" || lower == "wild card" ->
+                return stringResource(R.string.round_wild_card)
+            lower == "round-one" || lower == "round one" ->
+                return stringResource(R.string.round_first_round)
+            lower == "elimination-finals" || lower == "elimination finals" ->
+                return stringResource(R.string.round_elimination_finals)
+            lower == "conference-semifinals" ->
+                return stringResource(R.string.round_conference_semifinals)
+            lower == "conference-finals" ->
+                return stringResource(R.string.round_conference_finals)
+            lower == "mls-cup" || lower == "mls cup" ->
+                return stringResource(R.string.round_mls_cup)
+            lower == "grand-final" || lower == "grand final" ->
+                return stringResource(R.string.round_grand_final)
             lower.contains("3rd") || lower.contains("third") || lower.contains("tercer") || lower.contains("3er") ->
                 return stringResource(R.string.round_third_place)
             lower.contains("round-of-32") || lower.contains("round of 32") || lower.contains("dieciseis") ->
@@ -603,6 +617,8 @@ fun Match.localizedSeriesTitle(): String? {
             stringResource(R.string.round_second_stage)
         lower == "third stage" || lower == "third-stage" ->
             stringResource(R.string.round_third_stage)
+        lower == "playoff series" ->
+            stringResource(R.string.round_first_round)
         lower.contains("knockout") && lower.contains("playoff") ->
             stringResource(R.string.round_knockout_playoffs)
         else -> title

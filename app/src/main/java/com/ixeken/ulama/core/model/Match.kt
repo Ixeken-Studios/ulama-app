@@ -23,6 +23,7 @@ data class Match(
     val seriesSummary: String? = null,
     val isSeriesCompleted: Boolean = false,
     val seriesWinnerTeamId: String? = null,
+    val seriesTotalGames: Int? = null,
     val homeScorers: List<GoalScorer> = emptyList(),
     val awayScorers: List<GoalScorer> = emptyList()
 ) {
@@ -50,7 +51,13 @@ data class Match(
                     title.contains("Play-In", ignoreCase = true) ||
                     title.contains("Play In", ignoreCase = true) ||
                     title.contains("Prelim", ignoreCase = true) ||
-                    title.contains("Liguilla", ignoreCase = true)
+                    title.contains("Liguilla", ignoreCase = true) ||
+                    title.contains("Round One", ignoreCase = true) ||
+                    title.contains("Round-One", ignoreCase = true) ||
+                    title.contains("Wild Card", ignoreCase = true) ||
+                    title.contains("Wild-Card", ignoreCase = true) ||
+                    title.contains("MLS Cup", ignoreCase = true) ||
+                    title.contains("mls-cup", ignoreCase = true)
                 if (hasKnockoutKeyword) return true
 
                 val isGroupOrRegular = title.contains("Grupo", ignoreCase = true) ||
@@ -68,11 +75,17 @@ data class Match(
         }
 
     /**
+     * Identifica si la serie corresponde a una eliminatoria al mejor de multiples victorias (ej. Best-of-3).
+     */
+    val isBestOfSeries: Boolean
+        get() = (seriesTotalGames ?: 0) >= 3
+
+    /**
      * Identifica si existe un marcador global valido registrado para ambos contendientes.
-     * Un partido de ida (legNumber == 1) no posee marcador global por definicion.
+     * Un partido de ida (legNumber == 1) y las series por victorias (Best-of-N) no muestran marcador global.
      */
     val isAggregateActive: Boolean
-        get() = aggregateHomeScore != null && aggregateAwayScore != null && legNumber != 1
+        get() = !isBestOfSeries && aggregateHomeScore != null && aggregateAwayScore != null && legNumber != 1
 
     /**
      * Determina si el encuentro deportivo ha finalizado de forma definitiva.

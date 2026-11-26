@@ -84,6 +84,23 @@ enum class League(
             TableLegendEntry(rangeText = "1-8", labelRes = R.string.legend_round_of_16)
         )
     ),
+    A_LEAGUE_MEN(
+        code = "aus.1",
+        nameRes = R.string.league_aus_1,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/1308.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1308.png",
+        region = LeagueRegion.OCEANIA,
+        subRegionRes = R.string.subregion_oceania,
+        knockoutBracketTeams = 6,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 2, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-2", labelRes = R.string.legend_semifinals_direct),
+            TableLegendEntry(rangeText = "3-6", labelRes = R.string.legend_elimination_finals)
+        )
+    ),
     BRAZILEIRAO(
         code = "bra.1",
         nameRes = R.string.league_bra_1,
@@ -323,6 +340,23 @@ enum class League(
             TableLegendEntry(rangeText = "6", labelRes = R.string.legend_conference_league),
             TableLegendEntry(rangeText = "16", labelRes = R.string.legend_relegation_playoff),
             TableLegendEntry(rangeText = "17-18", labelRes = R.string.legend_relegation)
+        )
+    ),
+    MLS(
+        code = "usa.1",
+        nameRes = R.string.league_usa_1,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/19.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png",
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_usa_canada,
+        knockoutBracketTeams = 16,
+        groupCutoffs = listOf(
+            TableCutoff(rankAfter = 7, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 9, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.DASHED)
+        ),
+        groupLegend = listOf(
+            TableLegendEntry(rangeText = "1-7", labelRes = R.string.legend_mls_round_one),
+            TableLegendEntry(rangeText = "8-9", labelRes = R.string.legend_mls_wild_card)
         )
     ),
     PREMIER_LEAGUE(

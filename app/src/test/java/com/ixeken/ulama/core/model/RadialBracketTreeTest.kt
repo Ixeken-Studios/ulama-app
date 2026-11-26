@@ -906,6 +906,80 @@ class RadialBracketTreeTest {
         org.junit.Assert.assertFalse(qfSlot.teamA?.isWinner == true)
     }
 
+    @Test
+    fun radialBracketBuilder_bestOfThreeSeries_countsMatchWinsInsteadOfGoalsAndSuppressesAggregate() {
+        val finished = MatchStatus(MatchState.FINISHED, "FT", "FT", isCompleted = true)
+        val columbusHome = Team("189", "Columbus", "CLB", "CLB", null, true, score = 1, isWinner = true)
+        val nycAway = Team("10739", "NYCFC", "NYC", "NYC", null, false, score = 0, isWinner = false)
+        val nycHome2 = Team("10739", "NYCFC", "NYC", "NYC", null, true, score = 5, isWinner = true)
+        val columbusAway2 = Team("189", "Columbus", "CLB", "CLB", null, false, score = 0, isWinner = false)
+        val columbusHome3 = Team("189", "Columbus", "CLB", "CLB", null, true, score = 1, isWinner = true, shootoutScore = 5)
+        val nycAway3 = Team("10739", "NYCFC", "NYC", "NYC", null, false, score = 1, isWinner = false, shootoutScore = 4)
+
+        val g1 = Match("g1", "2026-11-01T20:00Z", columbusHome, nycAway, finished, null, League.MLS, seriesTitle = "Playoff Series", seriesTotalGames = 3)
+        val g2 = Match("g2", "2026-11-06T20:00Z", nycHome2, columbusAway2, finished, null, League.MLS, seriesTitle = "Playoff Series", seriesTotalGames = 3)
+        val g3 = Match("g3", "2026-11-11T20:00Z", columbusHome3, nycAway3, finished, null, League.MLS, seriesTitle = "Playoff Series", seriesTotalGames = 3, isSeriesCompleted = true, seriesWinnerTeamId = "189")
+
+        assertTrue(!g1.isAggregateActive)
+        assertTrue(!g2.isAggregateActive)
+
+        val afterTwo = RadialBracketBuilder.build(listOf(g1, g2), League.MLS)!!
+        val slotMid = afterTwo.rounds[0].matches.first()
+        assertEquals("1", slotMid.teamA?.score)
+        assertEquals("1", slotMid.teamB?.score)
+        assertNull(slotMid.winnerTeamId)
+
+        val afterThree = RadialBracketBuilder.build(listOf(g1, g2, g3), League.MLS)!!
+        val slotFinal = afterThree.rounds[0].matches.first()
+        assertEquals("2", slotFinal.teamA?.score)
+        assertEquals("1", slotFinal.teamB?.score)
+        assertEquals("189", slotFinal.winnerTeamId)
+    }
+
+    @Test
+    fun normalizeRoundIndex_mapsMlsConferencesAndAfcSixTeamByes() {
+        assertNull(RadialBracketBuilder.normalizeRoundIndex("wild-card", 16))
+        assertEquals(0, RadialBracketBuilder.normalizeRoundIndex("Playoff Series", 16))
+        assertEquals(1, RadialBracketBuilder.normalizeRoundIndex("conference-semifinals", 16))
+        assertEquals(2, RadialBracketBuilder.normalizeRoundIndex("conference-finals", 16))
+        assertEquals(3, RadialBracketBuilder.normalizeRoundIndex("mls-cup", 16))
+
+        assertEquals(0, RadialBracketBuilder.normalizeRoundIndex("elimination-finals", 6))
+        assertEquals(1, RadialBracketBuilder.normalizeRoundIndex("Semifinals", 6))
+        assertEquals(2, RadialBracketBuilder.normalizeRoundIndex("grand-final", 6))
+    }
+
+    @Test
+    fun radialBracketBuilder_sixTeamByeBracket_linksEliminationFinalsToSemisOneToOne() {
+        val finished = MatchStatus(MatchState.FINISHED, "FT", "FT", isCompleted = true)
+        val auck = Team("1", "Auckland FC", "AUC", "AUC", null, true, score = 2, isWinner = true)
+        val syd = Team("2", "Sydney FC", "SYD", "SYD", null, false, score = 1, isWinner = false)
+        val mel = Team("3", "Melbourne", "MEL", "MEL", null, true, score = 3, isWinner = true)
+        val per = Team("4", "Perth", "PER", "PER", null, false, score = 0, isWinner = false)
+        val top1 = Team("5", "Adelaide", "ADE", "ADE", null, true, score = 1, isWinner = false)
+        val auckAway = Team("1", "Auckland FC", "AUC", "AUC", null, false, score = 3, isWinner = true)
+        val top2 = Team("6", "Brisbane", "BRI", "BRI", null, true, score = 0, isWinner = false)
+        val melAway = Team("3", "Melbourne", "MEL", "MEL", null, false, score = 2, isWinner = true)
+
+        val elim1 = Match("e1", "2027-05-02T09:00Z", auck, syd, finished, null, League.A_LEAGUE_MEN, seriesTitle = "elimination-finals")
+        val elim2 = Match("e2", "2027-05-03T09:00Z", mel, per, finished, null, League.A_LEAGUE_MEN, seriesTitle = "elimination-finals")
+        val semi1 = Match("s1", "2027-05-10T09:00Z", top1, auckAway, finished, null, League.A_LEAGUE_MEN, seriesTitle = "Semifinals", legNumber = 2, isSeriesCompleted = true, seriesWinnerTeamId = "1")
+        val semi2 = Match("s2", "2027-05-11T09:00Z", top2, melAway, finished, null, League.A_LEAGUE_MEN, seriesTitle = "Semifinals", legNumber = 2, isSeriesCompleted = true, seriesWinnerTeamId = "3")
+
+        val tree = RadialBracketBuilder.build(listOf(elim1, elim2, semi1, semi2), League.A_LEAGUE_MEN)!!
+        assertEquals(6, tree.totalTeams)
+        assertEquals(3, tree.totalRounds)
+        assertEquals(2, tree.rounds[0].matches.size)
+        assertEquals(2, tree.rounds[1].matches.size)
+        assertEquals(1, tree.rounds[2].matches.size)
+        assertTrue(tree.rounds[0].matches[0].containsTeam("1"))
+        assertTrue(tree.rounds[1].matches[0].containsTeam("1"))
+        assertTrue(tree.rounds[0].matches[1].containsTeam("3"))
+        assertTrue(tree.rounds[1].matches[1].containsTeam("3"))
+        assertEquals(tree.rounds[1].matches[0].id, tree.getParentMatch(0, 0)?.id)
+        assertEquals(tree.rounds[1].matches[1].id, tree.getParentMatch(0, 1)?.id)
+    }
+
     private fun createMockTree(totalTeams: Int): RadialBracketTree {
         val rounds = mutableListOf<RadialRound>()
         var matchesInRound = totalTeams / 2

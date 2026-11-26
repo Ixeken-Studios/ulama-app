@@ -15,9 +15,9 @@ class LeagueTest {
 
     @Test
     fun standardLeagues_containsAllClubAndInternationalLeagues() {
-        assertEquals(19, League.clubLeagues.size)
+        assertEquals(21, League.clubLeagues.size)
         assertEquals(8, League.internationalLeagues.size)
-        assertEquals(27, League.standardLeagues.size)
+        assertEquals(29, League.standardLeagues.size)
 
         League.clubLeagues.forEach { league ->
             assertFalse(league.isInternational)
@@ -155,12 +155,26 @@ class LeagueTest {
     }
 
     @Test
+    fun phaseThreeLeagues_configureMlsAndOceaniaBracketDeclaratively() {
+        assertEquals("usa.1", League.MLS.code)
+        assertEquals(LeagueRegion.AMERICAS, League.MLS.region)
+        assertEquals(16, League.MLS.knockoutBracketTeams)
+        assertEquals(listOf(7, 9), League.MLS.groupCutoffs.map { it.rankAfter })
+
+        assertEquals("aus.1", League.A_LEAGUE_MEN.code)
+        assertEquals(LeagueRegion.OCEANIA, League.A_LEAGUE_MEN.region)
+        assertEquals(6, League.A_LEAGUE_MEN.knockoutBracketTeams)
+        assertEquals(listOf(2, 6), League.A_LEAGUE_MEN.tableCutoffs.map { it.rankAfter })
+    }
+
+    @Test
     fun regionsAndSubRegions_coverAllStandardLeaguesDeclaratively() {
         League.standardLeagues.forEach { league ->
             org.junit.Assert.assertNotEquals(LeagueRegion.ALL, league.region)
-            org.junit.Assert.assertNotEquals(LeagueRegion.OCEANIA, league.region)
             assertTrue(league.subRegionRes != 0)
         }
+        val oceania = League.standardLeagues.filter { it.region == LeagueRegion.OCEANIA }
+        assertEquals(setOf(League.A_LEAGUE_MEN), oceania.toSet())
 
         val european = League.standardLeagues.filter { it.region == LeagueRegion.EUROPE }
         val england = european.filter { it.subRegionRes == com.ixeken.ulama.R.string.subregion_england }

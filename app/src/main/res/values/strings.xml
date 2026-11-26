@@ -5,6 +5,7 @@
     <string name="cd_back_button">Volver</string>
 
     <!-- Ligas y Competiciones: Nombres de los torneos soportados en la aplicación -->
+    <string name="league_aus_1">A-League Men</string>
     <string name="league_afc_champions">AFC Champions League Elite</string>
     <string name="league_bra_1">Brasileirão</string>
     <string name="league_ger_1">Bundesliga</string>
@@ -19,6 +20,7 @@
     <string name="league_mex_1">Liga MX</string>
     <string name="league_mex_w_1">Liga MX Femenil</string>
     <string name="league_fra_1">Ligue 1</string>
+    <string name="league_usa_1">MLS</string>
     <string name="league_eng_1">Premier League</string>
     <string name="league_por_1">Primeira Liga</string>
     <string name="league_ita_1">Serie A</string>
@@ -73,6 +75,10 @@
     <string name="legend_uwcl">Champions League Femenina</string>
     <string name="legend_uwcl_qualifying">Previa de Champions Femenina</string>
     <string name="legend_quarterfinals_direct">Cuartos de final directos</string>
+    <string name="legend_semifinals_direct">Semifinales directas</string>
+    <string name="legend_elimination_finals">Ronda de eliminación</string>
+    <string name="legend_mls_round_one">Playoffs · Primera ronda</string>
+    <string name="legend_mls_wild_card">Wild Card</string>
     <string name="legend_direct_promotion">Ascenso directo</string>
     <string name="legend_promotion_playoff">Play-offs de ascenso</string>
     <string name="legend_relegation">Descenso</string>
@@ -123,6 +129,13 @@
     <string name="round_second_stage">Fase 2</string>
     <string name="round_third_stage">Fase 3</string>
     <string name="round_knockout_playoffs">Play-offs eliminatorios</string>
+    <string name="round_wild_card">Wild Card</string>
+    <string name="round_first_round">Primera ronda</string>
+    <string name="round_conference_semifinals">Semifinales de conferencia</string>
+    <string name="round_conference_finals">Finales de conferencia</string>
+    <string name="round_mls_cup">MLS Cup</string>
+    <string name="round_elimination_finals">Ronda de eliminación</string>
+    <string name="round_grand_final">Gran Final</string>
 
     <!-- Visor de Detalle de Partido: Pestañas de estadísticas, alineaciones y seguimiento de encuentro -->
     <string name="tab_stats">Estadísticas</string>
@@ -510,9 +523,11 @@
     <string name="subregion_brazil">Brasil</string>
     <string name="subregion_south_america">Sudamérica</string>
     <string name="subregion_mexico">México</string>
+    <string name="subregion_usa_canada">EE. UU. y Canadá</string>
     <string name="subregion_concacaf">Concacaf</string>
     <string name="subregion_africa">África</string>
     <string name="subregion_asia">Asia</string>
+    <string name="subregion_oceania">Oceanía</string>
     <string name="subregion_global_tournaments">Torneos globales</string>
     <string name="competitions_title">Competiciones</string>
     <string name="competitions_search_placeholder">Buscar liga, país o equipo...</string>

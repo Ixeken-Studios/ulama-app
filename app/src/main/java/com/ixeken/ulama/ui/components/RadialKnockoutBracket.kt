@@ -631,6 +631,102 @@ private fun computeTwoSidedBracketLayout(
 
     val yMin = if (widthDp >= 480.dp) 24.dp else 20.dp
     val yMax = heightDp - if (widthDp >= 480.dp) 48.dp else 42.dp
+    val isSixTeamByeLayout = totalMatches0 == 2 && tree.rounds.getOrNull(1)?.matches?.size == 2
+
+    if (isSixTeamByeLayout) {
+        val ySemiMid = (yMin + yMax) / 2
+        val semiDeltaY = ((yMax - yMin) * 0.24f).coerceIn(28.dp, 46.dp)
+        val ySemiTop = ySemiMid - semiDeltaY
+        val ySemiBottom = ySemiMid + semiDeltaY
+        val pairDeltaY = if (widthDp >= 480.dp) 16.dp else 13.dp
+
+        val xLeftSemi = xLeftMin + stepX
+        val xRightSemi = widthDp - xLeftSemi
+
+        val elimLeft = matches0.getOrNull(0)
+        val semiLeft = tree.rounds[1].matches.getOrNull(0)
+        val elimLeftFeedsTop = elimLeft != null &&
+            semiLeft?.teamA?.id != null &&
+            elimLeft.containsTeam(semiLeft.teamA.id)
+        val elimLeftTargetY = if (elimLeftFeedsTop) ySemiTop else ySemiBottom
+
+        if (elimLeft != null) {
+            val hasW = elimLeft.winnerTeamId != null
+            val isWA = hasW && elimLeft.winnerTeamId == elimLeft.teamA?.id
+            val isLA = hasW && elimLeft.winnerTeamId != elimLeft.teamA?.id
+            val isWB = hasW && elimLeft.winnerTeamId == elimLeft.teamB?.id
+            val isLB = hasW && elimLeft.winnerTeamId != elimLeft.teamB?.id
+            val yA = elimLeftTargetY - pairDeltaY
+            val yB = elimLeftTargetY + pairDeltaY
+            nodes.add(MacroLayoutNode(elimLeft.teamA, PointDp(xLeftMin, yA), isWinner = isWA, isLoser = isLA))
+            nodes.add(MacroLayoutNode(elimLeft.teamB, PointDp(xLeftMin, yB), isWinner = isWB, isLoser = isLB))
+
+            val forkX = (xLeftMin + nodeHalfW + xLeftSemi - nodeHalfW) / 2
+            lines.add(Pair(PointDp(xLeftMin + nodeHalfW, yA), PointDp(forkX, yA)))
+            lines.add(Pair(PointDp(xLeftMin + nodeHalfW, yB), PointDp(forkX, yB)))
+            lines.add(Pair(PointDp(forkX, yA), PointDp(forkX, yB)))
+            lines.add(Pair(PointDp(forkX, elimLeftTargetY), PointDp(xLeftSemi - nodeHalfW, elimLeftTargetY)))
+        }
+
+        val elimRight = matches0.getOrNull(1)
+        val semiRight = tree.rounds[1].matches.getOrNull(1)
+        val elimRightFeedsTop = elimRight != null &&
+            semiRight?.teamA?.id != null &&
+            elimRight.containsTeam(semiRight.teamA.id)
+        val elimRightTargetY = if (elimRightFeedsTop) ySemiTop else ySemiBottom
+
+        if (elimRight != null) {
+            val xRightMin = widthDp - xLeftMin
+            val hasW = elimRight.winnerTeamId != null
+            val isWA = hasW && elimRight.winnerTeamId == elimRight.teamA?.id
+            val isLA = hasW && elimRight.winnerTeamId != elimRight.teamA?.id
+            val isWB = hasW && elimRight.winnerTeamId == elimRight.teamB?.id
+            val isLB = hasW && elimRight.winnerTeamId != elimRight.teamB?.id
+            val yA = elimRightTargetY - pairDeltaY
+            val yB = elimRightTargetY + pairDeltaY
+            nodes.add(MacroLayoutNode(elimRight.teamA, PointDp(xRightMin, yA), isWinner = isWA, isLoser = isLA))
+            nodes.add(MacroLayoutNode(elimRight.teamB, PointDp(xRightMin, yB), isWinner = isWB, isLoser = isLB))
+
+            val forkX = (xRightMin - nodeHalfW + xRightSemi + nodeHalfW) / 2
+            lines.add(Pair(PointDp(xRightMin - nodeHalfW, yA), PointDp(forkX, yA)))
+            lines.add(Pair(PointDp(xRightMin - nodeHalfW, yB), PointDp(forkX, yB)))
+            lines.add(Pair(PointDp(forkX, yA), PointDp(forkX, yB)))
+            lines.add(Pair(PointDp(forkX, elimRightTargetY), PointDp(xRightSemi + nodeHalfW, elimRightTargetY)))
+        }
+
+        val forkXLeft = (xLeftSemi + nodeHalfW + xLeftFinal - nodeHalfW) / 2
+        val forkXRight = (xRightSemi - nodeHalfW + xRightFinal + nodeHalfW) / 2
+
+        if (semiLeft != null) {
+            val hasW = semiLeft.winnerTeamId != null
+            val isWA = hasW && semiLeft.winnerTeamId == semiLeft.teamA?.id
+            val isLA = hasW && semiLeft.winnerTeamId != semiLeft.teamA?.id
+            val isWB = hasW && semiLeft.winnerTeamId == semiLeft.teamB?.id
+            val isLB = hasW && semiLeft.winnerTeamId != semiLeft.teamB?.id
+            nodes.add(MacroLayoutNode(semiLeft.teamA, PointDp(xLeftSemi, ySemiTop), isWinner = isWA, isLoser = isLA))
+            nodes.add(MacroLayoutNode(semiLeft.teamB, PointDp(xLeftSemi, ySemiBottom), isWinner = isWB, isLoser = isLB))
+            lines.add(Pair(PointDp(xLeftSemi + nodeHalfW, ySemiTop), PointDp(forkXLeft, ySemiTop)))
+            lines.add(Pair(PointDp(xLeftSemi + nodeHalfW, ySemiBottom), PointDp(forkXLeft, ySemiBottom)))
+            lines.add(Pair(PointDp(forkXLeft, ySemiTop), PointDp(forkXLeft, ySemiBottom)))
+            lines.add(Pair(PointDp(forkXLeft, ySemiMid), PointDp(xLeftFinal - nodeHalfW, ySemiMid)))
+        }
+        leftYCenters[Pair(1, 0)] = ySemiMid
+
+        if (semiRight != null) {
+            val hasW = semiRight.winnerTeamId != null
+            val isWA = hasW && semiRight.winnerTeamId == semiRight.teamA?.id
+            val isLA = hasW && semiRight.winnerTeamId != semiRight.teamA?.id
+            val isWB = hasW && semiRight.winnerTeamId == semiRight.teamB?.id
+            val isLB = hasW && semiRight.winnerTeamId != semiRight.teamB?.id
+            nodes.add(MacroLayoutNode(semiRight.teamA, PointDp(xRightSemi, ySemiTop), isWinner = isWA, isLoser = isLA))
+            nodes.add(MacroLayoutNode(semiRight.teamB, PointDp(xRightSemi, ySemiBottom), isWinner = isWB, isLoser = isLB))
+            lines.add(Pair(PointDp(xRightSemi - nodeHalfW, ySemiTop), PointDp(forkXRight, ySemiTop)))
+            lines.add(Pair(PointDp(xRightSemi - nodeHalfW, ySemiBottom), PointDp(forkXRight, ySemiBottom)))
+            lines.add(Pair(PointDp(forkXRight, ySemiTop), PointDp(forkXRight, ySemiBottom)))
+            lines.add(Pair(PointDp(forkXRight, ySemiMid), PointDp(xRightFinal + nodeHalfW, ySemiMid)))
+        }
+        rightYCenters[Pair(1, 0)] = ySemiMid
+    } else {
     val stepY0 = if (halfMatches0 > 0) (yMax - yMin) / halfMatches0 else 0.dp
     val pairDeltaY = (stepY0 * 0.23f).coerceIn(
         if (widthDp >= 480.dp) 15.dp else 12.dp,
@@ -746,6 +842,7 @@ private fun computeTwoSidedBracketLayout(
                 lines.add(Pair(PointDp(forkXRight, yRightMid), PointDp(nextXRight + nodeHalfW, yRightMid)))
             }
         }
+    }
     }
 
     // 3. Finalistas en el centro y conexion ascendente hacia el Campeon

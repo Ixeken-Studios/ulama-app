@@ -1319,6 +1319,13 @@ class MatchRepositoryImpl(
             !seasonSlug.isNullOrBlank() -> {
                 val slugLower = seasonSlug.lowercase()
                 when {
+                    slugLower.contains("wild-card") || slugLower.contains("wild card") -> "wild-card"
+                    slugLower.contains("round-one") || slugLower.contains("round one") -> "round-one"
+                    slugLower.contains("elimination-final") -> "elimination-finals"
+                    slugLower.contains("conference") && slugLower.contains("semi") -> "conference-semifinals"
+                    slugLower.contains("conference") && slugLower.contains("final") -> "conference-finals"
+                    slugLower.contains("mls-cup") -> "mls-cup"
+                    slugLower.contains("grand-final") -> "grand-final"
                     slugLower.contains("3rd-place") || slugLower.contains("third-place") -> "3rd-place-match"
                     slugLower.contains("round-of-32") -> "round-of-32"
                     slugLower.contains("round-of-16") -> "round-of-16"
@@ -1345,6 +1352,7 @@ class MatchRepositoryImpl(
         val seriesSummary = competition.notes.firstOrNull()?.text?.ifBlank { null }
         val isSeriesCompleted = series?.completed == true
         val seriesWinnerTeamId = series?.competitors?.firstOrNull { it.winner }?.id?.takeIf { it.isNotBlank() }
+        val seriesTotalGames = series?.totalCompetitions
         val homeScorers = extractGoalScorers(competition.details, homeTeam.id)
         val awayScorers = extractGoalScorers(competition.details, awayTeam.id)
 
@@ -1374,6 +1382,7 @@ class MatchRepositoryImpl(
             seriesSummary = seriesSummary,
             isSeriesCompleted = isSeriesCompleted,
             seriesWinnerTeamId = seriesWinnerTeamId,
+            seriesTotalGames = seriesTotalGames,
             homeScorers = homeScorers,
             awayScorers = awayScorers
         )

@@ -2637,6 +2637,67 @@ class MatchRepositoryTest {
         assertEquals(listOf(2, 3), libGroups.first().cutoffs.map { it.rankAfter })
         assertEquals(2, libGroups.first().legend.size)
     }
+
+    @Test
+    fun getMatches_mapsSeriesTotalGamesAndConferenceEliminationSlugs() = runBlocking {
+        val today = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
+        val todayIso = "${today}T20:00:00Z"
+
+        fun makeEvent(id: String, slug: String, seriesTitle: String?, totalGames: Int?) =
+            com.ixeken.ulama.data.espn.model.EspnEventDto(
+                id = id,
+                date = todayIso,
+                season = com.ixeken.ulama.data.espn.model.EspnSeasonDto(slug = slug),
+                competitions = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnCompetitionDto(
+                        id = id,
+                        date = todayIso,
+                        competitors = listOf(
+                            EspnCompetitorDto(id = "1", homeAway = "home", team = EspnTeamDto(id = "1", name = "Home")),
+                            EspnCompetitorDto(id = "2", homeAway = "away", team = EspnTeamDto(id = "2", name = "Away"))
+                        ),
+                        status = EspnStatusDto(type = EspnStatusTypeDto(state = "pre", completed = false)),
+                        series = seriesTitle?.let {
+                            com.ixeken.ulama.data.espn.model.EspnSeriesDto(title = it, totalCompetitions = totalGames)
+                        }
+                    )
+                )
+            )
+
+        val fakeApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) =
+                when (league) {
+                    League.MLS.code -> EspnScoreboardResponse(
+                        events = listOf(
+                            makeEvent("m1", "eastern-conference-playoffs---round-one", "Playoff Series", 3),
+                            makeEvent("m2", "eastern-conference-playoffs---semifinals", null, null),
+                            makeEvent("m3", "mls-cup", null, null)
+                        )
+                    )
+                    else -> EspnScoreboardResponse(
+                        events = listOf(
+                            makeEvent("a1", "elimination-finals", null, null),
+                            makeEvent("a2", "grand-final", null, null)
+                        )
+                    )
+                }
+            override suspend fun getStandings(league: String, cacheControl: String?) = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+        val mlsMatches = repo.getMatches(League.MLS, forceRefresh = true).getOrThrow()
+        assertEquals(3, mlsMatches.first { it.id == "m1" }.seriesTotalGames)
+        assertTrue(mlsMatches.first { it.id == "m1" }.isBestOfSeries)
+        assertEquals("conference-semifinals", mlsMatches.first { it.id == "m2" }.seriesTitle)
+        assertEquals("mls-cup", mlsMatches.first { it.id == "m3" }.seriesTitle)
+        assertTrue(mlsMatches.all { it.isKnockout })
+
+        val ausMatches = repo.getMatches(League.A_LEAGUE_MEN, forceRefresh = true).getOrThrow()
+        assertEquals("elimination-finals", ausMatches.first { it.id == "a1" }.seriesTitle)
+        assertEquals("grand-final", ausMatches.first { it.id == "a2" }.seriesTitle)
+    }
 }
 
 
