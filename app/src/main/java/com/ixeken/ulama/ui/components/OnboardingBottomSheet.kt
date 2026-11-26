@@ -56,7 +56,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.AppSettings
 import com.ixeken.ulama.core.model.ColorPalette
@@ -606,8 +605,8 @@ private fun LeagueCircleItem(
                             )
                         }
                         else -> {
-                            AsyncImage(
-                                model = league.getLogoUrl(isDark),
+                            LeagueCrestImage(
+                                logoUrl = league.getLogoUrl(isDark),
                                 contentDescription = stringResource(
                                     R.string.cd_league_logo,
                                     stringResource(league.nameRes)

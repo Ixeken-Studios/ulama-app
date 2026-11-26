@@ -5,16 +5,23 @@
     <string name="cd_back_button">Back</string>
 
     <!-- Leagues & Competitions: Names of all supported football competitions -->
+    <string name="league_bra_1">Brasileirão</string>
     <string name="league_ger_1">Bundesliga</string>
     <string name="league_uefa_champions">Champions League</string>
     <string name="league_eng_2">Championship</string>
+    <string name="league_uefa_europa_conf">Conference League</string>
     <string name="league_ned_1">Eredivisie</string>
+    <string name="league_uefa_europa">Europa League</string>
     <string name="league_esp_1">LaLiga</string>
     <string name="league_mex_1">Liga MX</string>
     <string name="league_fra_1">Ligue 1</string>
     <string name="league_eng_1">Premier League</string>
+    <string name="league_por_1">Primeira Liga</string>
     <string name="league_ita_1">Serie A</string>
+    <string name="league_uefa_wchampions">Women\'s Champions League</string>
+    <string name="league_eng_w_1">Women\'s Super League</string>
     <string name="league_fifa_world">FIFA World Cup</string>
+    <string name="league_fifa_wwc">Women\'s World Cup</string>
     <string name="league_uefa_nations">UEFA Nations League</string>
     <string name="league_concacaf_nations">Concacaf Nations League</string>
     <string name="league_fifa_friendly">Friendlies</string>
@@ -49,9 +56,18 @@
 
     <!-- Table Legends: Explanatory zone indicators for European qualification and relegation -->
     <string name="legend_champions_league">Champions League</string>
+    <string name="legend_champions_qualifying">Champions League qualifying</string>
     <string name="legend_europa_league">Europa League</string>
+    <string name="legend_europa_qualifying">Europa League qualifying</string>
     <string name="legend_conference_league">Conference League</string>
+    <string name="legend_conference_qualifying">Conference League qualifying</string>
     <string name="legend_conference_playoff">Conference League play-offs</string>
+    <string name="legend_libertadores">Copa Libertadores</string>
+    <string name="legend_pre_libertadores">Libertadores qualifying</string>
+    <string name="legend_sudamericana">Copa Sudamericana</string>
+    <string name="legend_uwcl">Women\'s Champions League</string>
+    <string name="legend_uwcl_qualifying">UWCL qualifying</string>
+    <string name="legend_quarterfinals_direct">Quarter-finals</string>
     <string name="legend_direct_promotion">Direct promotion</string>
     <string name="legend_promotion_playoff">Promotion play-offs</string>
     <string name="legend_relegation">Relegation</string>
@@ -481,6 +497,8 @@
     <string name="subregion_germany">Germany</string>
     <string name="subregion_france">France</string>
     <string name="subregion_netherlands">Netherlands</string>
+    <string name="subregion_portugal">Portugal</string>
+    <string name="subregion_brazil">Brazil</string>
     <string name="subregion_mexico">Mexico</string>
     <string name="subregion_concacaf">Concacaf</string>
     <string name="subregion_africa">Africa</string>

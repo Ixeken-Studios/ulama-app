@@ -61,7 +61,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.ui.theme.UlamaMotion
@@ -391,8 +390,8 @@ private fun LeaguePillIcon(
             )
         }
         else -> {
-            AsyncImage(
-                model = league.getLogoUrl(isDark),
+            LeagueCrestImage(
+                logoUrl = league.getLogoUrl(isDark),
                 contentDescription = stringResource(
                     R.string.cd_league_logo,
                     stringResource(league.nameRes)

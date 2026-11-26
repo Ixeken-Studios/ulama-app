@@ -31,7 +31,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.CutoffLineStyle
 import com.ixeken.ulama.core.model.League
@@ -295,9 +294,13 @@ private fun StandingRow(
                 },
                 modifier = Modifier.width(UlamaTheme.dimensions.tableRankWidth)
             )
-            AsyncImage(
-                model = logoUrl,
+            TeamCrestImage(
+                logoUrl = logoUrl,
+                teamName = entry.teamName,
+                abbreviation = entry.teamAbbreviation,
+                teamId = entry.teamId,
                 contentDescription = stringResource(R.string.cd_team_crest, entry.teamName),
+                showMonogram = false,
                 modifier = Modifier.size(UlamaTheme.dimensions.crestSmall)
             )
             Spacer(modifier = Modifier.width(UlamaTheme.spacing.small))

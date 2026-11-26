@@ -105,11 +105,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.LeagueRegion
 import com.ixeken.ulama.core.model.StandingEntry
+import com.ixeken.ulama.ui.components.LeagueCrestImage
+import com.ixeken.ulama.ui.components.TeamCrestImage
 import com.ixeken.ulama.ui.components.bounceClick
 import com.ixeken.ulama.ui.components.iconPop
 import com.ixeken.ulama.ui.components.rememberMorphingSegmentShape
@@ -901,8 +902,8 @@ private fun SegmentedLeagueGroup(
                 onToggleMyLeague = { onToggleMyLeague(league.code) },
                 toggleMyLeagueDescription = stringResource(R.string.cd_toggle_my_league, leagueName),
                 leadingContent = {
-                    AsyncImage(
-                        model = league.getLogoUrl(isDark),
+                    LeagueCrestImage(
+                        logoUrl = league.getLogoUrl(isDark),
                         contentDescription = stringResource(R.string.cd_league_logo, leagueName),
                         modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
                     )
@@ -1231,8 +1232,8 @@ private fun TeamsGridContent(
                             modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
                         )
                     } else {
-                        AsyncImage(
-                            model = league.getLogoUrl(isDark),
+                        LeagueCrestImage(
+                            logoUrl = league.getLogoUrl(isDark),
                             contentDescription = stringResource(
                                 R.string.cd_league_logo,
                                 stringResource(league.nameRes)
@@ -1398,27 +1399,14 @@ private fun TeamGridCard(
                 .padding(UlamaTheme.spacing.medium)
         ) {
             val crestUrl = entry.getLogoUrl(isDark)
-            if (!crestUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = crestUrl,
-                    contentDescription = stringResource(R.string.cd_team_crest, displayName),
-                    modifier = Modifier.size(UlamaTheme.dimensions.teamGridCrest)
-                )
-            } else {
-                Surface(
-                    shape = shapes.chip,
-                    color = colorScheme.surfaceContainerHighest,
-                    modifier = Modifier.size(UlamaTheme.dimensions.teamGridCrest)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = entry.teamAbbreviation.ifBlank { displayName.take(3).uppercase() },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
+            TeamCrestImage(
+                logoUrl = crestUrl,
+                teamName = displayName,
+                abbreviation = entry.teamAbbreviation,
+                teamId = entry.teamId,
+                contentDescription = stringResource(R.string.cd_team_crest, displayName),
+                modifier = Modifier.size(UlamaTheme.dimensions.teamGridCrest)
+            )
 
             Box(
                 contentAlignment = Alignment.Center,
@@ -1593,8 +1581,8 @@ private fun SearchOverlayResults(
                     onToggleMyLeague = { onToggleMyLeague(league.code) },
                     toggleMyLeagueDescription = stringResource(R.string.cd_toggle_my_league, leagueName),
                     leadingContent = {
-                        AsyncImage(
-                            model = league.getLogoUrl(isDark),
+                        LeagueCrestImage(
+                            logoUrl = league.getLogoUrl(isDark),
                             contentDescription = stringResource(R.string.cd_league_logo, leagueName),
                             modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
                         )
@@ -1664,13 +1652,14 @@ private fun TeamSearchResultRow(
             )
         },
         leadingContent = {
-            item.entry.getLogoUrl(isDark)?.let { logo ->
-                AsyncImage(
-                    model = logo,
-                    contentDescription = null,
-                    modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
-                )
-            }
+            TeamCrestImage(
+                logoUrl = item.entry.getLogoUrl(isDark),
+                teamName = item.entry.teamName,
+                abbreviation = item.entry.teamAbbreviation,
+                teamId = item.entry.teamId,
+                contentDescription = null,
+                modifier = Modifier.size(UlamaTheme.dimensions.leagueLogoList)
+            )
         },
         trailingContent = {
             FilledIconToggleButton(

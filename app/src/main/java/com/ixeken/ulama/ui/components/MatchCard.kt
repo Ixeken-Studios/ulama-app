@@ -37,7 +37,6 @@ import com.ixeken.ulama.core.model.resolveExtraTimeSuffixRes
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.Match
@@ -120,8 +119,8 @@ fun MatchCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (hasBadge) {
-                        AsyncImage(
-                            model = match.league.getLogoUrl(isDark),
+                        LeagueCrestImage(
+                            logoUrl = match.league.getLogoUrl(isDark),
                             contentDescription = stringResource(match.league.nameRes),
                             modifier = Modifier.size(UlamaTheme.dimensions.iconSmall)
                         )
@@ -211,8 +210,11 @@ private fun TeamColumn(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AsyncImage(
-            model = logoUrl,
+        TeamCrestImage(
+            logoUrl = logoUrl,
+            teamName = team.name,
+            abbreviation = team.abbreviation,
+            teamId = team.id,
             contentDescription = stringResource(R.string.cd_team_crest, team.name),
             modifier = Modifier
                 .size(UlamaTheme.dimensions.crestNormal)

@@ -36,7 +36,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.RadialBracketTree
 import com.ixeken.ulama.core.model.RadialMatch
@@ -334,9 +333,12 @@ private fun TwoSidedTeamPill(
                 width >= 26.dp -> if (team.score != null) 13.dp else 14.dp
                 else -> if (team.score != null) 11.dp else 12.dp
             }
-            AsyncImage(
-                model = team.getCrestUrl(isDark),
-                contentDescription = team.name,
+            TeamCrestImage(
+                logoUrl = team.getCrestUrl(isDark),
+                teamName = team.name,
+                abbreviation = team.shortName,
+                teamId = team.id,
+                showMonogram = false,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(crestSize)
             )
@@ -406,9 +408,12 @@ private fun CenterChampionCrest(
             modifier = Modifier.fillMaxSize().padding(4.dp),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = champion.getCrestUrl(isDark),
-                contentDescription = champion.name,
+            TeamCrestImage(
+                logoUrl = champion.getCrestUrl(isDark),
+                teamName = champion.name,
+                abbreviation = champion.shortName,
+                teamId = champion.id,
+                showMonogram = false,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.size(size - 10.dp)
             )
@@ -450,9 +455,12 @@ private fun ThirdPlaceMacroBadge(
                 val hasWinner = match.winnerTeamId != null
                 val isWA = hasWinner && match.winnerTeamId == teamA.id
                 val isLA = hasWinner && match.winnerTeamId != teamA.id
-                AsyncImage(
-                    model = teamA.getCrestUrl(isDark),
-                    contentDescription = teamA.name,
+                TeamCrestImage(
+                    logoUrl = teamA.getCrestUrl(isDark),
+                    teamName = teamA.name,
+                    abbreviation = teamA.shortName,
+                    teamId = teamA.id,
+                    showMonogram = false,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .size(15.dp)
@@ -500,9 +508,12 @@ private fun ThirdPlaceMacroBadge(
                         }
                     )
                 }
-                AsyncImage(
-                    model = teamB.getCrestUrl(isDark),
-                    contentDescription = teamB.name,
+                TeamCrestImage(
+                    logoUrl = teamB.getCrestUrl(isDark),
+                    teamName = teamB.name,
+                    abbreviation = teamB.shortName,
+                    teamId = teamB.id,
+                    showMonogram = false,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .size(15.dp)

@@ -1,8 +1,14 @@
 package com.ixeken.ulama.ui.theme
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -64,7 +70,26 @@ data class UlamaShapes(
     val listSegmentOuterRadius: Dp = RadiusMedium,
     val listSegmentActiveRadius: Dp = RadiusLarge,
     val teamCardRestRadius: Dp = RadiusMedium,
-    val teamCardSelectedRadius: Dp = RadiusExtraLarge
+    val teamCardSelectedRadius: Dp = RadiusExtraLarge,
+    val crestFallbackShapes: List<Shape> = listOf(CircleShape)
 )
+
+/**
+ * Construye y memoriza el conjunto de formas expresivas de Material 3 utilizadas como
+ * respaldo determinista cuando un club carece de escudo oficial en la API.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun rememberCrestFallbackShapes(): List<Shape> {
+    val cookie9 = MaterialShapes.Cookie9Sided.toShape()
+    val cookie12 = MaterialShapes.Cookie12Sided.toShape()
+    val sunny = MaterialShapes.Sunny.toShape()
+    val softBurst = MaterialShapes.SoftBurst.toShape()
+    val clover4 = MaterialShapes.Clover4Leaf.toShape()
+    val puffy = MaterialShapes.Puffy.toShape()
+    return remember(cookie9, cookie12, sunny, softBurst, clover4, puffy) {
+        listOf(cookie9, cookie12, sunny, softBurst, clover4, puffy)
+    }
+}
 
 val LocalUlamaShapes = staticCompositionLocalOf { UlamaShapes() }

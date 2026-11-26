@@ -65,6 +65,26 @@ enum class League(
             TableLegendEntry(rangeText = "3-4", labelRes = R.string.legend_playoff_round)
         )
     ),
+    BRAZILEIRAO(
+        code = "bra.1",
+        nameRes = R.string.league_bra_1,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/85.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/85.png",
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_brazil,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 4, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 6, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 12, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.DASHED),
+            TableCutoff(rankAfter = 16, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.DASHED)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-4", labelRes = R.string.legend_libertadores),
+            TableLegendEntry(rangeText = "5-6", labelRes = R.string.legend_pre_libertadores),
+            TableLegendEntry(rangeText = "7-12", labelRes = R.string.legend_sudamericana),
+            TableLegendEntry(rangeText = "17-20", labelRes = R.string.legend_relegation)
+        )
+    ),
     BUNDESLIGA(
         code = "ger.1",
         nameRes = R.string.league_ger_1,
@@ -122,6 +142,24 @@ enum class League(
             TableLegendEntry(rangeText = "22-24", labelRes = R.string.legend_relegation)
         )
     ),
+    CONFERENCE_LEAGUE(
+        code = "uefa.europa.conf",
+        nameRes = R.string.league_uefa_europa_conf,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/20296.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/20296.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_european_competitions,
+        isTournament = true,
+        knockoutBracketTeams = 16,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 8, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 24, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-8", labelRes = R.string.legend_round_of_16),
+            TableLegendEntry(rangeText = "9-24", labelRes = R.string.legend_playoff_round)
+        )
+    ),
     EREDIVISIE(
         code = "ned.1",
         nameRes = R.string.league_ned_1,
@@ -142,6 +180,24 @@ enum class League(
             TableLegendEntry(rangeText = "5-8", labelRes = R.string.legend_conference_playoff),
             TableLegendEntry(rangeText = "16", labelRes = R.string.legend_relegation_playoff),
             TableLegendEntry(rangeText = "17-18", labelRes = R.string.legend_relegation)
+        )
+    ),
+    EUROPA_LEAGUE(
+        code = "uefa.europa",
+        nameRes = R.string.league_uefa_europa,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2310.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_european_competitions,
+        isTournament = true,
+        knockoutBracketTeams = 16,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 8, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 24, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-8", labelRes = R.string.legend_round_of_16),
+            TableLegendEntry(rangeText = "9-24", labelRes = R.string.legend_playoff_round)
         )
     ),
     LA_LIGA(
@@ -218,6 +274,30 @@ enum class League(
             TableLegendEntry(rangeText = "18-20", labelRes = R.string.legend_relegation)
         )
     ),
+    PRIMEIRA_LIGA(
+        code = "por.1",
+        nameRes = R.string.league_por_1,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/14.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/14.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_portugal,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 1, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 2, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 3, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 4, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.DASHED),
+            TableCutoff(rankAfter = 15, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.DASHED),
+            TableCutoff(rankAfter = 16, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1", labelRes = R.string.legend_champions_league),
+            TableLegendEntry(rangeText = "2", labelRes = R.string.legend_champions_qualifying),
+            TableLegendEntry(rangeText = "3", labelRes = R.string.legend_europa_qualifying),
+            TableLegendEntry(rangeText = "4", labelRes = R.string.legend_conference_qualifying),
+            TableLegendEntry(rangeText = "16", labelRes = R.string.legend_relegation_playoff),
+            TableLegendEntry(rangeText = "17-18", labelRes = R.string.legend_relegation)
+        )
+    ),
     SERIE_A(
         code = "ita.1",
         nameRes = R.string.league_ita_1,
@@ -235,6 +315,44 @@ enum class League(
             TableLegendEntry(rangeText = "5", labelRes = R.string.legend_europa_league),
             TableLegendEntry(rangeText = "6", labelRes = R.string.legend_conference_league),
             TableLegendEntry(rangeText = "18-20", labelRes = R.string.legend_relegation)
+        )
+    ),
+    WOMENS_CHAMPIONS_LEAGUE(
+        code = "uefa.wchampions",
+        nameRes = R.string.league_uefa_wchampions,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2408.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2408.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_european_competitions,
+        isTournament = true,
+        knockoutBracketTeams = 8,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 4, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 12, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-4", labelRes = R.string.legend_quarterfinals_direct),
+            TableLegendEntry(rangeText = "5-12", labelRes = R.string.legend_playoff_round)
+        )
+    ),
+    WSL(
+        code = "eng.w.1",
+        nameRes = R.string.league_eng_w_1,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2314.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2314.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_england,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 2, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 3, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 12, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.DASHED),
+            TableCutoff(rankAfter = 13, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-2", labelRes = R.string.legend_uwcl),
+            TableLegendEntry(rangeText = "3", labelRes = R.string.legend_uwcl_qualifying),
+            TableLegendEntry(rangeText = "13", labelRes = R.string.legend_relegation_playoff),
+            TableLegendEntry(rangeText = "14", labelRes = R.string.legend_relegation)
         )
     ),
     WORLD_CUP(
@@ -319,6 +437,19 @@ enum class League(
         isTournament = true,
         tournamentYear = "2027",
         knockoutBracketTeams = 16
+    ),
+    WOMENS_WORLD_CUP(
+        code = "fifa.wwc",
+        nameRes = R.string.league_fifa_wwc,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/60.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/60.png",
+        category = LeagueCategory.INTERNATIONAL,
+        region = LeagueRegion.GLOBAL,
+        subRegionRes = R.string.subregion_global_tournaments,
+        isTournament = true,
+        tournamentYear = "2027",
+        knockoutBracketTeams = 16,
+        hasThirdPlaceMatch = true
     );
 
     /**

@@ -15,9 +15,9 @@ class LeagueTest {
 
     @Test
     fun standardLeagues_containsAllClubAndInternationalLeagues() {
-        assertEquals(9, League.clubLeagues.size)
-        assertEquals(7, League.internationalLeagues.size)
-        assertEquals(16, League.standardLeagues.size)
+        assertEquals(15, League.clubLeagues.size)
+        assertEquals(8, League.internationalLeagues.size)
+        assertEquals(23, League.standardLeagues.size)
 
         League.clubLeagues.forEach { league ->
             assertFalse(league.isInternational)
@@ -45,6 +45,27 @@ class LeagueTest {
         assertEquals("concacaf.gold", League.GOLD_CUP.code)
         assertEquals("caf.nations", League.AFCON.code)
         assertEquals("afc.asian.cup", League.ASIAN_CUP.code)
+        assertEquals("fifa.wwc", League.WOMENS_WORLD_CUP.code)
+    }
+
+    @Test
+    fun phaseOneClubLeagues_codesAndFormatsMatchEspn() {
+        assertEquals("bra.1", League.BRAZILEIRAO.code)
+        assertEquals("por.1", League.PRIMEIRA_LIGA.code)
+        assertEquals("eng.w.1", League.WSL.code)
+        assertEquals("uefa.europa", League.EUROPA_LEAGUE.code)
+        assertEquals("uefa.europa.conf", League.CONFERENCE_LEAGUE.code)
+        assertEquals("uefa.wchampions", League.WOMENS_CHAMPIONS_LEAGUE.code)
+
+        assertTrue(League.EUROPA_LEAGUE.isTournament)
+        assertEquals(16, League.EUROPA_LEAGUE.knockoutBracketTeams)
+        assertTrue(League.CONFERENCE_LEAGUE.isTournament)
+        assertEquals(16, League.CONFERENCE_LEAGUE.knockoutBracketTeams)
+        assertTrue(League.WOMENS_CHAMPIONS_LEAGUE.isTournament)
+        assertEquals(8, League.WOMENS_CHAMPIONS_LEAGUE.knockoutBracketTeams)
+        assertFalse(League.BRAZILEIRAO.isTournament)
+        assertFalse(League.PRIMEIRA_LIGA.isTournament)
+        assertFalse(League.WSL.isTournament)
     }
 
     @Test
@@ -68,6 +89,10 @@ class LeagueTest {
         assertTrue(League.GOLD_CUP.hasKnockoutBracket)
         assertEquals(8, League.GOLD_CUP.knockoutBracketTeams)
         assertFalse(League.GOLD_CUP.hasThirdPlaceMatch)
+
+        assertTrue(League.WOMENS_WORLD_CUP.hasKnockoutBracket)
+        assertEquals(16, League.WOMENS_WORLD_CUP.knockoutBracketTeams)
+        assertTrue(League.WOMENS_WORLD_CUP.hasThirdPlaceMatch)
 
         assertFalse(League.FRIENDLIES.hasKnockoutBracket)
         assertEquals(0, League.FRIENDLIES.knockoutBracketTeams)
@@ -103,6 +128,7 @@ class LeagueTest {
         assertEquals("2027", League.GOLD_CUP.defaultTournamentYear(2026))
         assertEquals("2027", League.AFCON.defaultTournamentYear(2026))
         assertEquals("2027", League.ASIAN_CUP.defaultTournamentYear(2026))
+        assertEquals("2027", League.WOMENS_WORLD_CUP.defaultTournamentYear(2026))
         assertEquals("2026", League.CHAMPIONS_LEAGUE.defaultTournamentYear(2026))
         assertEquals("2026", League.WORLD_CUP.defaultTournamentYear(2026))
     }
@@ -121,8 +147,17 @@ class LeagueTest {
             it.subRegionRes == com.ixeken.ulama.R.string.subregion_european_competitions
         }
 
-        assertEquals(setOf(League.PREMIER_LEAGUE, League.CHAMPIONSHIP), england.toSet())
-        assertEquals(setOf(League.CHAMPIONS_LEAGUE, League.UEFA_NATIONS_LEAGUE), europeanComps.toSet())
+        assertEquals(setOf(League.PREMIER_LEAGUE, League.CHAMPIONSHIP, League.WSL), england.toSet())
+        assertEquals(
+            setOf(
+                League.CHAMPIONS_LEAGUE,
+                League.UEFA_NATIONS_LEAGUE,
+                League.EUROPA_LEAGUE,
+                League.CONFERENCE_LEAGUE,
+                League.WOMENS_CHAMPIONS_LEAGUE
+            ),
+            europeanComps.toSet()
+        )
         assertEquals(5, LeagueRegion.continents.size)
     }
 }

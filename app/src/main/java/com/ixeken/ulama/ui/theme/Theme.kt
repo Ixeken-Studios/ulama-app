@@ -507,12 +507,16 @@ fun UlamaTheme(
     val motion = if (isExpressiveMotion) UlamaMotion.Expressive else UlamaMotion.Standard
     val motionScheme = if (isExpressiveMotion) MotionScheme.expressive() else MotionScheme.standard()
     val borders = UlamaBorders(cardBorder = null)
+    val crestFallbackShapes = rememberCrestFallbackShapes()
+    val ulamaShapes = androidx.compose.runtime.remember(crestFallbackShapes) {
+        UlamaShapes(crestFallbackShapes = crestFallbackShapes)
+    }
 
     CompositionLocalProvider(
         LocalDarkTheme provides darkTheme,
         LocalUlamaColors provides UlamaColors(),
         LocalUlamaMotion provides motion,
-        LocalUlamaShapes provides UlamaShapes(),
+        LocalUlamaShapes provides ulamaShapes,
         LocalUlamaSpacing provides UlamaSpacing(),
         LocalUlamaDimensions provides UlamaDimensions(),
         LocalUlamaBorders provides borders

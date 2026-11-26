@@ -46,7 +46,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.GoalScorer
 import com.ixeken.ulama.core.model.Match
@@ -57,6 +56,7 @@ import com.ixeken.ulama.core.model.resolveExtraTimeSuffixRes
 import androidx.compose.ui.platform.LocalContext
 import com.ixeken.ulama.core.util.DateTimeUtils
 import com.ixeken.ulama.ui.components.RollingScoreText
+import com.ixeken.ulama.ui.components.TeamCrestImage
 import com.ixeken.ulama.ui.components.bounceClick
 import com.ixeken.ulama.ui.components.iconPop
 import com.ixeken.ulama.ui.components.livePulse
@@ -248,8 +248,11 @@ private fun HeaderTeamColumn(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
         ) {
-            AsyncImage(
-                model = team.getLogoUrl(UlamaTheme.isDark),
+            TeamCrestImage(
+                logoUrl = team.getLogoUrl(UlamaTheme.isDark),
+                teamName = team.name,
+                abbreviation = team.abbreviation,
+                teamId = team.id,
                 contentDescription = stringResource(R.string.cd_team_crest, team.name),
                 modifier = Modifier.size(38.dp)
             )
