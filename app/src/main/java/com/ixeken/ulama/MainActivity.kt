@@ -548,11 +548,13 @@ class MainActivity : ComponentActivity() {
                         standings = uiState.resolvedDetailStandings,
                         cutoffs = when {
                             selectedMatch.league.tableCutoffs.isNotEmpty() -> selectedMatch.league.tableCutoffs
+                            selectedMatch.league.groupCutoffs.isNotEmpty() -> selectedMatch.league.groupCutoffs
                             uiState.groups.isNotEmpty() -> uiState.groups.firstOrNull()?.cutoffs.orEmpty()
                             else -> emptyList()
                         },
                         legend = when {
                             selectedMatch.league.tableLegend.isNotEmpty() -> selectedMatch.league.tableLegend
+                            selectedMatch.league.groupLegend.isNotEmpty() -> selectedMatch.league.groupLegend
                             uiState.groups.isNotEmpty() -> uiState.groups.firstOrNull()?.legend.orEmpty()
                             else -> emptyList()
                         },

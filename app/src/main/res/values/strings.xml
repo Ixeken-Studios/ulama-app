@@ -5,15 +5,19 @@
     <string name="cd_back_button">Volver</string>
 
     <!-- Ligas y Competiciones: Nombres de los torneos soportados en la aplicación -->
+    <string name="league_afc_champions">AFC Champions League Elite</string>
     <string name="league_bra_1">Brasileirão</string>
     <string name="league_ger_1">Bundesliga</string>
+    <string name="league_caf_champions">CAF Champions League</string>
     <string name="league_uefa_champions">Champions League</string>
     <string name="league_eng_2">Championship</string>
     <string name="league_uefa_europa_conf">Conference League</string>
     <string name="league_ned_1">Eredivisie</string>
     <string name="league_uefa_europa">Europa League</string>
     <string name="league_esp_1">LaLiga</string>
+    <string name="league_conmebol_libertadores">Copa Libertadores</string>
     <string name="league_mex_1">Liga MX</string>
+    <string name="league_mex_w_1">Liga MX Femenil</string>
     <string name="league_fra_1">Ligue 1</string>
     <string name="league_eng_1">Premier League</string>
     <string name="league_por_1">Primeira Liga</string>
@@ -65,6 +69,7 @@
     <string name="legend_libertadores">Copa Libertadores</string>
     <string name="legend_pre_libertadores">Previa de Libertadores</string>
     <string name="legend_sudamericana">Copa Sudamericana</string>
+    <string name="legend_sudamericana_playoffs">Play-offs de Sudamericana</string>
     <string name="legend_uwcl">Champions League Femenina</string>
     <string name="legend_uwcl_qualifying">Previa de Champions Femenina</string>
     <string name="legend_quarterfinals_direct">Cuartos de final directos</string>
@@ -114,6 +119,10 @@
     <string name="round_semifinals">Semifinales</string>
     <string name="round_final">Final</string>
     <string name="round_third_place">Tercer lugar</string>
+    <string name="round_first_stage">Fase 1</string>
+    <string name="round_second_stage">Fase 2</string>
+    <string name="round_third_stage">Fase 3</string>
+    <string name="round_knockout_playoffs">Play-offs eliminatorios</string>
 
     <!-- Visor de Detalle de Partido: Pestañas de estadísticas, alineaciones y seguimiento de encuentro -->
     <string name="tab_stats">Estadísticas</string>
@@ -499,6 +508,7 @@
     <string name="subregion_netherlands">Países Bajos</string>
     <string name="subregion_portugal">Portugal</string>
     <string name="subregion_brazil">Brasil</string>
+    <string name="subregion_south_america">Sudamérica</string>
     <string name="subregion_mexico">México</string>
     <string name="subregion_concacaf">Concacaf</string>
     <string name="subregion_africa">África</string>

@@ -33,7 +33,10 @@ enum class League(
     @param:StringRes val bracketTitleRes: Int = R.string.title_radial_bracket,
     val hasStandings: Boolean = true,
     val tableCutoffs: List<TableCutoff> = emptyList(),
-    val tableLegend: List<TableLegendEntry> = emptyList()
+    val tableLegend: List<TableLegendEntry> = emptyList(),
+    val groupCutoffs: List<TableCutoff> = emptyList(),
+    val groupLegend: List<TableLegendEntry> = emptyList(),
+    val mergeStandingsGroups: Boolean = false
 ) {
     FAVORITES(
         code = "favorites",
@@ -63,6 +66,22 @@ enum class League(
         tableLegend = listOf(
             TableLegendEntry(rangeText = "1-2", labelRes = R.string.legend_champions_league),
             TableLegendEntry(rangeText = "3-4", labelRes = R.string.legend_playoff_round)
+        )
+    ),
+    AFC_CHAMPIONS(
+        code = "afc.champions",
+        nameRes = R.string.league_afc_champions,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2200.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2200.png",
+        region = LeagueRegion.ASIA,
+        subRegionRes = R.string.subregion_asia,
+        isTournament = true,
+        knockoutBracketTeams = 16,
+        groupCutoffs = listOf(
+            TableCutoff(rankAfter = 8, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        groupLegend = listOf(
+            TableLegendEntry(rangeText = "1-8", labelRes = R.string.legend_round_of_16)
         )
     ),
     BRAZILEIRAO(
@@ -104,6 +123,22 @@ enum class League(
             TableLegendEntry(rangeText = "6", labelRes = R.string.legend_conference_league),
             TableLegendEntry(rangeText = "16", labelRes = R.string.legend_relegation_playoff),
             TableLegendEntry(rangeText = "17-18", labelRes = R.string.legend_relegation)
+        )
+    ),
+    CAF_CHAMPIONS(
+        code = "caf.champions",
+        nameRes = R.string.league_caf_champions,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/2391.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2391.png",
+        region = LeagueRegion.AFRICA,
+        subRegionRes = R.string.subregion_africa,
+        isTournament = true,
+        knockoutBracketTeams = 8,
+        groupCutoffs = listOf(
+            TableCutoff(rankAfter = 2, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        groupLegend = listOf(
+            TableLegendEntry(rangeText = "1-2", labelRes = R.string.legend_quarterfinals_direct)
         )
     ),
     CHAMPIONS_LEAGUE(
@@ -218,6 +253,24 @@ enum class League(
             TableLegendEntry(rangeText = "18-20", labelRes = R.string.legend_relegation)
         )
     ),
+    LIBERTADORES(
+        code = "conmebol.libertadores",
+        nameRes = R.string.league_conmebol_libertadores,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/58.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/58.png",
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_south_america,
+        isTournament = true,
+        knockoutBracketTeams = 16,
+        groupCutoffs = listOf(
+            TableCutoff(rankAfter = 2, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 3, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.DASHED)
+        ),
+        groupLegend = listOf(
+            TableLegendEntry(rangeText = "1-2", labelRes = R.string.legend_round_of_16),
+            TableLegendEntry(rangeText = "3", labelRes = R.string.legend_sudamericana_playoffs)
+        )
+    ),
     LIGA_MX(
         code = "mex.1",
         nameRes = R.string.league_mex_1,
@@ -227,6 +280,23 @@ enum class League(
         subRegionRes = R.string.subregion_mexico,
         knockoutBracketTeams = 8,
         bracketTitleRes = R.string.legend_liguilla,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 8, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1-8", labelRes = R.string.legend_liguilla)
+        )
+    ),
+    LIGA_MX_FEMENIL(
+        code = "mex.w.1",
+        nameRes = R.string.league_mex_w_1,
+        lightLogoUrl = "",
+        darkLogoUrl = "",
+        region = LeagueRegion.AMERICAS,
+        subRegionRes = R.string.subregion_mexico,
+        knockoutBracketTeams = 8,
+        bracketTitleRes = R.string.legend_liguilla,
+        mergeStandingsGroups = true,
         tableCutoffs = listOf(
             TableCutoff(rankAfter = 8, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID)
         ),

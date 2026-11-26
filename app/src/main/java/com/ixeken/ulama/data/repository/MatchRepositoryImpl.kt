@@ -317,14 +317,28 @@ class MatchRepositoryImpl(
                 }
                 val flattenedChildren = flattenStandingsChildren(response.children)
 
-                if (flattenedChildren.size > 1) {
-                    val groupCutoffs = listOf(
-                        TableCutoff(
-                            rankAfter = 2,
-                            zoneType = TableZoneType.QUALIFICATION,
-                            lineStyle = CutoffLineStyle.SOLID
+                if (league.mergeStandingsGroups && flattenedChildren.size > 1) {
+                    val mergedEntries = flattenedChildren
+                        .flatMap { (_, rawEntries) -> rawEntries }
+                        .mapNotNull { it.toStandingEntry() }
+                        .distinctBy { it.teamId.ifBlank { it.teamName } }
+                        .map { it.copy(rank = 0) }
+                    val sortedMerged = sortStandingEntries(mergedEntries)
+
+                    groupsCache[league] = emptyList()
+                    standingsCache[league] = sortedMerged
+                    standingsTimestampCache[league] = System.currentTimeMillis()
+                    Pair(sortedMerged, emptyList())
+                } else if (flattenedChildren.size > 1) {
+                    val resolvedGroupCutoffs = league.groupCutoffs.ifEmpty {
+                        listOf(
+                            TableCutoff(
+                                rankAfter = 2,
+                                zoneType = TableZoneType.QUALIFICATION,
+                                lineStyle = CutoffLineStyle.SOLID
+                            )
                         )
-                    )
+                    }
 
                     val groupsList = flattenedChildren.mapNotNull { (rawName, rawEntries) ->
                         val entries = rawEntries.mapNotNull { it.toStandingEntry() }
@@ -336,8 +350,8 @@ class MatchRepositoryImpl(
                         GroupStandings(
                             name = groupName,
                             standings = sortedEntries,
-                            cutoffs = if (sortedEntries.size >= 2) groupCutoffs else emptyList(),
-                            legend = emptyList()
+                            cutoffs = if (sortedEntries.size >= 2) resolvedGroupCutoffs else emptyList(),
+                            legend = league.groupLegend
                         )
                     }
 
@@ -411,14 +425,21 @@ class MatchRepositoryImpl(
     }
 
     private fun normalizeGroupName(rawName: String): String {
+        val cleanedPrefix = when {
+            rawName.contains(" - Group ", ignoreCase = true) ->
+                rawName.substringAfter(" - ").trim()
+            rawName.contains(" - Grupo ", ignoreCase = true) ->
+                rawName.substringAfter(" - ").trim()
+            else -> rawName
+        }
         return when {
-            rawName.startsWith("Group ", ignoreCase = true) -> rawName.substring(6).trim()
-            rawName.startsWith("Grupo ", ignoreCase = true) -> rawName.substring(6).trim()
-            rawName.startsWith("League ", ignoreCase = true) ->
-                rawName.replace("League ", "Liga ", ignoreCase = true)
+            cleanedPrefix.startsWith("Group ", ignoreCase = true) -> cleanedPrefix.substring(6).trim()
+            cleanedPrefix.startsWith("Grupo ", ignoreCase = true) -> cleanedPrefix.substring(6).trim()
+            cleanedPrefix.startsWith("League ", ignoreCase = true) ->
+                cleanedPrefix.replace("League ", "Liga ", ignoreCase = true)
                     .replace(", Group ", " - Grupo ", ignoreCase = true)
                     .replace("Group ", "Grupo ", ignoreCase = true)
-            else -> rawName
+            else -> cleanedPrefix
         }
     }
 

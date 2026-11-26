@@ -15,16 +15,18 @@ class LeagueTest {
 
     @Test
     fun standardLeagues_containsAllClubAndInternationalLeagues() {
-        assertEquals(15, League.clubLeagues.size)
+        assertEquals(19, League.clubLeagues.size)
         assertEquals(8, League.internationalLeagues.size)
-        assertEquals(23, League.standardLeagues.size)
+        assertEquals(27, League.standardLeagues.size)
 
         League.clubLeagues.forEach { league ->
             assertFalse(league.isInternational)
             assertFalse(league.isVirtual)
             assertTrue(league.code.isNotBlank())
-            assertTrue(league.lightLogoUrl.isNotBlank())
-            assertTrue(league.darkLogoUrl.isNotBlank())
+            if (league != League.LIGA_MX_FEMENIL) {
+                assertTrue(league.lightLogoUrl.isNotBlank())
+                assertTrue(league.darkLogoUrl.isNotBlank())
+            }
         }
 
         League.internationalLeagues.forEach { league ->
@@ -66,6 +68,25 @@ class LeagueTest {
         assertFalse(League.BRAZILEIRAO.isTournament)
         assertFalse(League.PRIMEIRA_LIGA.isTournament)
         assertFalse(League.WSL.isTournament)
+    }
+
+    @Test
+    fun phaseTwoLeagues_configureGroupsMergeAndCutoffsDeclaratively() {
+        assertEquals("afc.champions", League.AFC_CHAMPIONS.code)
+        assertEquals(LeagueRegion.ASIA, League.AFC_CHAMPIONS.region)
+        assertEquals(8, League.AFC_CHAMPIONS.groupCutoffs.first().rankAfter)
+
+        assertEquals("caf.champions", League.CAF_CHAMPIONS.code)
+        assertEquals(LeagueRegion.AFRICA, League.CAF_CHAMPIONS.region)
+        assertEquals(8, League.CAF_CHAMPIONS.knockoutBracketTeams)
+
+        assertEquals("conmebol.libertadores", League.LIBERTADORES.code)
+        assertEquals(listOf(2, 3), League.LIBERTADORES.groupCutoffs.map { it.rankAfter })
+
+        assertEquals("mex.w.1", League.LIGA_MX_FEMENIL.code)
+        assertTrue(League.LIGA_MX_FEMENIL.mergeStandingsGroups)
+        assertEquals("", League.LIGA_MX_FEMENIL.lightLogoUrl)
+        assertEquals(8, League.LIGA_MX_FEMENIL.knockoutBracketTeams)
     }
 
     @Test

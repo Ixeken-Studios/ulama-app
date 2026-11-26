@@ -2514,6 +2514,129 @@ class MatchRepositoryTest {
         assertEquals("223", mappedLeg2.seriesWinnerTeamId)
         assertTrue(matches.none { it.id == "old_reg" })
     }
+
+    @Test
+    fun getStandings_mergeStandingsGroups_unifiesAndReranksByPoints() = runBlocking {
+        fun makeEntry(id: String, name: String, rank: Double, pts: Double, gd: Double) =
+            com.ixeken.ulama.data.espn.model.EspnStandingsEntryDto(
+                team = com.ixeken.ulama.data.espn.model.EspnStandingsTeamDto(
+                    id = id,
+                    name = name,
+                    displayName = name
+                ),
+                stats = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnStatDto(name = "rank", value = rank),
+                    com.ixeken.ulama.data.espn.model.EspnStatDto(name = "points", value = pts),
+                    com.ixeken.ulama.data.espn.model.EspnStatDto(name = "pointDifferential", value = gd)
+                )
+            )
+
+        val fakeApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) =
+                EspnScoreboardResponse()
+            override suspend fun getStandings(league: String, cacheControl: String?) = EspnStandingsResponse(
+                children = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnStandingsChildDto(
+                        name = "Group 1",
+                        standings = com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto(
+                            season = 2026,
+                            entries = listOf(
+                                makeEntry("1", "Monterrey", 1.0, 37.0, 20.0),
+                                makeEntry("4", "Toluca", 4.0, 27.0, 10.0)
+                            )
+                        )
+                    ),
+                    com.ixeken.ulama.data.espn.model.EspnStandingsChildDto(
+                        name = "Group 2",
+                        standings = com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto(
+                            season = 2026,
+                            entries = listOf(
+                                makeEntry("2", "America", 1.0, 37.0, 25.0),
+                                makeEntry("3", "UNAM", 3.0, 20.0, 5.0)
+                            )
+                        )
+                    )
+                )
+            )
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+        val standings = repo.getStandings(League.LIGA_MX_FEMENIL, forceRefresh = true).getOrThrow()
+        val groups = repo.getGroups(League.LIGA_MX_FEMENIL, forceRefresh = false).getOrThrow()
+
+        assertTrue(groups.isEmpty())
+        assertEquals(listOf("2", "1", "4", "3"), standings.map { it.teamId })
+        assertEquals(listOf(1, 2, 3, 4), standings.map { it.rank })
+    }
+
+    @Test
+    fun getGroups_appliesLeagueGroupCutoffsLegendAndStripsTournamentPrefix() = runBlocking {
+        fun makeEntry(id: String, name: String, rank: Double, pts: Double) =
+            com.ixeken.ulama.data.espn.model.EspnStandingsEntryDto(
+                team = com.ixeken.ulama.data.espn.model.EspnStandingsTeamDto(
+                    id = id,
+                    name = name,
+                    displayName = name
+                ),
+                stats = listOf(
+                    com.ixeken.ulama.data.espn.model.EspnStatDto(name = "rank", value = rank),
+                    com.ixeken.ulama.data.espn.model.EspnStatDto(name = "points", value = pts)
+                )
+            )
+
+        val fakeApi = object : EspnApiService {
+            override suspend fun getScoreboard(league: String, dates: String?, limit: Int?, cacheControl: String?) =
+                EspnScoreboardResponse()
+            override suspend fun getStandings(league: String, cacheControl: String?) = when (league) {
+                League.CAF_CHAMPIONS.code -> EspnStandingsResponse(
+                    children = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnStandingsChildDto(
+                            name = "2026-27 CAF Champions League - Group A",
+                            standings = com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto(
+                                entries = listOf(makeEntry("1", "Al Ahly", 1.0, 9.0), makeEntry("2", "FAR", 2.0, 6.0))
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnStandingsChildDto(
+                            name = "2026-27 CAF Champions League - Group B",
+                            standings = com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto(
+                                entries = listOf(makeEntry("3", "Sundowns", 1.0, 9.0), makeEntry("4", "Esperance", 2.0, 6.0))
+                            )
+                        )
+                    )
+                )
+                else -> EspnStandingsResponse(
+                    children = listOf(
+                        com.ixeken.ulama.data.espn.model.EspnStandingsChildDto(
+                            name = "Group A",
+                            standings = com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto(
+                                entries = (1..4).map { makeEntry("a$it", "Club A$it", it.toDouble(), (12 - it * 2).toDouble()) }
+                            )
+                        ),
+                        com.ixeken.ulama.data.espn.model.EspnStandingsChildDto(
+                            name = "Group B",
+                            standings = com.ixeken.ulama.data.espn.model.EspnStandingsEntriesDto(
+                                entries = (1..4).map { makeEntry("b$it", "Club B$it", it.toDouble(), (12 - it * 2).toDouble()) }
+                            )
+                        )
+                    )
+                )
+            }
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+
+        val cafGroups = repo.getGroups(League.CAF_CHAMPIONS, forceRefresh = true).getOrThrow()
+        assertEquals(listOf("A", "B"), cafGroups.map { it.name })
+        assertEquals(listOf(2), cafGroups.first().cutoffs.map { it.rankAfter })
+
+        val libGroups = repo.getGroups(League.LIBERTADORES, forceRefresh = true).getOrThrow()
+        assertEquals(listOf(2, 3), libGroups.first().cutoffs.map { it.rankAfter })
+        assertEquals(2, libGroups.first().legend.size)
+    }
 }
 
 

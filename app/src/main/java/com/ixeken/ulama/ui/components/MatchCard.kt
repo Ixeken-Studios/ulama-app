@@ -597,6 +597,14 @@ fun Match.localizedSeriesTitle(): String? {
             stringResource(R.string.tournament_apertura)
         lower == "torneo-clausura" || lower == "clausura" || lower == "torneo clausura" ->
             stringResource(R.string.tournament_clausura)
+        lower == "first stage" || lower == "first-stage" ->
+            stringResource(R.string.round_first_stage)
+        lower == "second stage" || lower == "second-stage" ->
+            stringResource(R.string.round_second_stage)
+        lower == "third stage" || lower == "third-stage" ->
+            stringResource(R.string.round_third_stage)
+        lower.contains("knockout") && lower.contains("playoff") ->
+            stringResource(R.string.round_knockout_playoffs)
         else -> title
     }
 }
