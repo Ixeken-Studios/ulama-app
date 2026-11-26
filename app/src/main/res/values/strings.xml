@@ -273,6 +273,10 @@
     <string name="settings_section_privacy_desc">Cero telemetría y uso de red on-device</string>
     <string name="settings_section_about">Información de la app</string>
     <string name="settings_section_about_desc">Versión 2.2.1 · Licencia MIT</string>
+    <string name="settings_data_saver_title">Modo de ahorro de datos</string>
+    <string name="settings_data_saver_on_desc">Activo · Solo muestra escudos ya guardados en caché sin descargar imágenes</string>
+    <string name="settings_data_saver_off_desc">Evita descargar escudos nuevos en redes móviles usando solo los guardados en caché</string>
+    <string name="cd_settings_data_saver">Modo de ahorro de datos</string>
 
     <!-- Ajustes - Apariencia: Opciones de tema claro/oscuro, paletas de colores y estilos de física/movimiento -->
     <string name="settings_section_colors_style">Colores y tema</string>

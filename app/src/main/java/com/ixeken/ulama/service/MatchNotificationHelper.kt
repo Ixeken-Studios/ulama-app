@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
@@ -19,18 +18,21 @@ import android.util.LruCache
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import coil3.SingletonImageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.ixeken.ulama.MainActivity
 import com.ixeken.ulama.R
 import com.ixeken.ulama.core.model.FollowedMatch
 import com.ixeken.ulama.core.model.League
 import com.ixeken.ulama.core.model.MatchState
 import com.ixeken.ulama.core.model.resolveExtraTimeSuffixRes
-import com.ixeken.ulama.core.network.ImageFallbackInterceptor
+import com.ixeken.ulama.data.repository.AppSettingsRepositoryImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 /**
  * Gestor y constructor de notificaciones del sistema para Ulama.
@@ -46,37 +48,37 @@ object MatchNotificationHelper {
     const val EXTRA_OPEN_MATCH_ID = "extra_open_match_id"
 
     private val logoMemoryCache = LruCache<String, Bitmap>(30)
-    private val httpClient by lazy {
-        OkHttpClient.Builder()
-            .addInterceptor(ImageFallbackInterceptor())
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.SECONDS)
-            .build()
-    }
 
     /**
-     * Descarga y almacena en memoria el escudo oficial del club para su visualizacion en la tarjeta expandida.
-     * Utiliza el interceptor de Combiner para bajar directamente la miniatura de 128px en lugar del archivo crudo de 500px.
+     * Recupera el escudo del club reutilizando el DiskCache de 128 MB y el pool HTTP/2 de Coil 3.
+     * Cuando el modo de ahorro de datos esta activo, lee exclusivamente desde memoria o disco sin tocar la red.
      */
-    suspend fun loadTeamLogoBitmap(url: String?): Bitmap? = withContext(Dispatchers.IO) {
+    suspend fun loadTeamLogoBitmap(context: Context, url: String?): Bitmap? = withContext(Dispatchers.IO) {
         if (url.isNullOrBlank()) return@withContext null
         logoMemoryCache.get(url)?.let { return@withContext it }
 
+        val appContext = context.applicationContext
+        val isDataSaver = AppSettingsRepositoryImpl.provide(appContext).settings.value.dataSaverMode
+
         runCatching {
-            val request = Request.Builder().url(ImageFallbackInterceptor.toCombinerUrl(url, 128)).build()
-            httpClient.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val bytes = response.body.bytes()
-                    if (bytes.isEmpty()) return@use null
-                    val original = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@use null
-                    val scaled = if (original.width == 128 && original.height == 128) {
-                        original
-                    } else {
-                        Bitmap.createScaledBitmap(original, 128, 128, true)
-                    }
-                    logoMemoryCache.put(url, scaled)
-                    scaled
-                } else null
+            val request = ImageRequest.Builder(appContext)
+                .data(url)
+                .size(128, 128)
+                .allowHardware(false)
+                .networkCachePolicy(if (isDataSaver) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                .build()
+            val result = SingletonImageLoader.get(appContext).execute(request)
+            if (result is SuccessResult) {
+                val decoded = result.image.toBitmap()
+                val scaled = if (decoded.width == 128 && decoded.height == 128) {
+                    decoded
+                } else {
+                    Bitmap.createScaledBitmap(decoded, 128, 128, true)
+                }
+                logoMemoryCache.put(url, scaled)
+                scaled
+            } else {
+                null
             }
         }.getOrNull()
     }

@@ -79,8 +79,8 @@ class MatchLiveNotificationService : Service() {
                         val notif = MatchNotificationHelper.buildLiveNotification(this, match)
                         startForegroundCompat(match.matchId.hashCode(), notif)
                         serviceScope.launch {
-                            val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(match.homeTeamLogo)
-                            val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(match.awayTeamLogo)
+                            val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(this@MatchLiveNotificationService, match.homeTeamLogo)
+                            val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(this@MatchLiveNotificationService, match.awayTeamLogo)
                             val richNotif = MatchNotificationHelper.buildLiveNotification(
                                 this@MatchLiveNotificationService,
                                 match,
@@ -101,8 +101,8 @@ class MatchLiveNotificationService : Service() {
                         val liveNotif = MatchNotificationHelper.buildLiveNotification(this, match, goalTeamName = team)
                         startForegroundCompat(match.matchId.hashCode(), liveNotif)
                         serviceScope.launch {
-                            val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(match.homeTeamLogo)
-                            val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(match.awayTeamLogo)
+                            val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(this@MatchLiveNotificationService, match.homeTeamLogo)
+                            val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(this@MatchLiveNotificationService, match.awayTeamLogo)
                             val richNotif = MatchNotificationHelper.buildLiveNotification(
                                 this@MatchLiveNotificationService,
                                 match,
@@ -146,8 +146,8 @@ class MatchLiveNotificationService : Service() {
                     notificationManager().notify(requestedMatch.matchId.hashCode(), notif)
                 }
                 serviceScope.launch {
-                    val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(requestedMatch.homeTeamLogo)
-                    val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(requestedMatch.awayTeamLogo)
+                    val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(this@MatchLiveNotificationService, requestedMatch.homeTeamLogo)
+                    val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(this@MatchLiveNotificationService, requestedMatch.awayTeamLogo)
                     val richNotif = MatchNotificationHelper.buildLiveNotification(
                         this@MatchLiveNotificationService,
                         requestedMatch,
@@ -301,8 +301,8 @@ class MatchLiveNotificationService : Service() {
 
         val notifId = updatedMatch.matchId.hashCode()
 
-        val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(updatedMatch.homeTeamLogo)
-        val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(updatedMatch.awayTeamLogo)
+        val homeLogo = MatchNotificationHelper.loadTeamLogoBitmap(this, updatedMatch.homeTeamLogo)
+        val awayLogo = MatchNotificationHelper.loadTeamLogoBitmap(this, updatedMatch.awayTeamLogo)
 
         if (homeScored || awayScored) {
             val scoringClub = if (homeScored) updatedMatch.homeTeamName else updatedMatch.awayTeamName

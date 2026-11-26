@@ -21,7 +21,8 @@ interface AppSettingsRepository {
     fun setMotionStyle(style: MotionStyle)
     fun setNotificationLeadMinutes(minutes: Int)
     fun setAutoFollowFavorites(enabled: Boolean)
-    fun setAppLanguage(language: com.ixeken.ulama.core.model.AppLanguage)
+    fun setDataSaverMode(enabled: Boolean)
+    fun setAppLanguage(language: AppLanguage)
     fun setCheckUpdatesOnStart(enabled: Boolean)
     fun setLastKnownVersion(version: String)
     fun setOnboardingCompleted(completed: Boolean)
@@ -48,9 +49,9 @@ class AppSettingsRepositoryImpl(
             KEY_NOTIFICATION_LEAD_MINUTES,
             AppSettings.DEFAULT_NOTIFICATION_LEAD_MINUTES
         )
-
         val checkUpdatesOnStart = prefs.getBoolean(KEY_CHECK_UPDATES_ON_START, false)
         val autoFollowFavorites = prefs.getBoolean(KEY_AUTO_FOLLOW_FAVORITES, false)
+        val dataSaverMode = prefs.getBoolean(KEY_DATA_SAVER_MODE, false)
         val lastKnownVersion = prefs.getString(KEY_LAST_KNOWN_VERSION, "") ?: ""
         val hasCompletedOnboarding = prefs.getBoolean(KEY_HAS_COMPLETED_ONBOARDING, false)
         val languageStr = prefs.getString(KEY_APP_LANGUAGE, AppLanguage.SYSTEM.name)
@@ -85,12 +86,12 @@ class AppSettingsRepositoryImpl(
             motionStyle = motionStyle,
             appLanguage = appLanguage,
             notificationLeadMinutes = leadMinutes,
+            autoFollowFavorites = autoFollowFavorites,
+            dataSaverMode = dataSaverMode,
             checkUpdatesOnStart = checkUpdatesOnStart,
             lastKnownVersion = lastKnownVersion,
-            hasCompletedOnboarding = hasCompletedOnboarding,
-            autoFollowFavorites = autoFollowFavorites
+            hasCompletedOnboarding = hasCompletedOnboarding
         )
-
     }
 
     override fun setThemeMode(mode: ThemeMode) {
@@ -117,6 +118,11 @@ class AppSettingsRepositoryImpl(
     override fun setAutoFollowFavorites(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_AUTO_FOLLOW_FAVORITES, enabled).apply()
         _settings.value = _settings.value.copy(autoFollowFavorites = enabled)
+    }
+
+    override fun setDataSaverMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_DATA_SAVER_MODE, enabled).apply()
+        _settings.value = _settings.value.copy(dataSaverMode = enabled)
     }
 
     override fun setAppLanguage(language: AppLanguage) {
@@ -147,6 +153,7 @@ class AppSettingsRepositoryImpl(
         private const val KEY_APP_LANGUAGE = "settings_app_language"
         private const val KEY_NOTIFICATION_LEAD_MINUTES = "settings_notification_lead_minutes"
         private const val KEY_AUTO_FOLLOW_FAVORITES = "settings_auto_follow_favorites"
+        private const val KEY_DATA_SAVER_MODE = "settings_data_saver_mode"
         private const val KEY_CHECK_UPDATES_ON_START = "settings_check_updates_on_start"
         private const val KEY_LAST_KNOWN_VERSION = "settings_last_known_version"
         private const val KEY_HAS_COMPLETED_ONBOARDING = "settings_has_completed_onboarding"

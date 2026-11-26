@@ -1,0 +1,25 @@
+# Perfil de distribucion DEX consumido por R8 en tiempo de compilacion para agrupar las clases
+# del primer frame en el bloque primario de classes.dex reduciendo fallos de pagina en frio.
+SLcom/ixeken/ulama/UlamaApplication;
+SLcom/ixeken/ulama/MainActivity;
+SLcom/ixeken/ulama/MainActivityKt;
+SLcom/ixeken/ulama/core/network/NetworkClient;
+SLcom/ixeken/ulama/core/network/CacheInterceptor;
+SLcom/ixeken/ulama/core/network/ResponseCacheInterceptor;
+SLcom/ixeken/ulama/core/network/ImageFallbackInterceptor;
+SLcom/ixeken/ulama/core/util/DateTimeUtils;
+SLcom/ixeken/ulama/core/model/League;
+SLcom/ixeken/ulama/core/model/Match;
+SLcom/ixeken/ulama/core/model/Team;
+SLcom/ixeken/ulama/data/repository/AppSettingsRepositoryImpl;
+SLcom/ixeken/ulama/data/repository/FavoriteTeamsRepositoryImpl;
+SLcom/ixeken/ulama/data/repository/MyLeaguesRepositoryImpl;
+SLcom/ixeken/ulama/data/repository/MatchFollowRepository;
+SLcom/ixeken/ulama/data/repository/MatchRepositoryImpl;
+SLcom/ixeken/ulama/ui/matches/MatchesViewModel;
+SLcom/ixeken/ulama/ui/matches/MatchesUiState;
+SLcom/ixeken/ulama/ui/theme/ThemeKt;
+SLcom/ixeken/ulama/ui/components/UlamaTopAppBarKt;
+SLcom/ixeken/ulama/ui/components/TemporalFilterTabsKt;
+SLcom/ixeken/ulama/ui/components/MatchesGroupCardKt;
+SLcom/ixeken/ulama/ui/components/CrestImageKt;

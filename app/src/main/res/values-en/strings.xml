@@ -273,6 +273,10 @@
     <string name="settings_section_privacy_desc">Zero telemetry and on-device network use</string>
     <string name="settings_section_about">About app</string>
     <string name="settings_section_about_desc">Version 2.2.1 · MIT License</string>
+    <string name="settings_data_saver_title">Data saver mode</string>
+    <string name="settings_data_saver_on_desc">Active · Shows only cached crests without downloading new images</string>
+    <string name="settings_data_saver_off_desc">Skip downloading uncached crests on mobile networks</string>
+    <string name="cd_settings_data_saver">Data saver mode</string>
 
     <!-- Settings - Appearance: Theme switching, color palettes, and motion physics -->
     <string name="settings_section_colors_style">Colors and theme</string>

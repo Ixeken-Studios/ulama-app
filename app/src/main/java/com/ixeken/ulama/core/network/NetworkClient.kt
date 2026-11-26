@@ -4,11 +4,13 @@ import android.content.Context
 import com.ixeken.ulama.data.espn.EspnApiService
 import kotlinx.serialization.json.Json
 import okhttp3.Cache
+import okhttp3.Dispatcher
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.io.File
+import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 /**
@@ -41,14 +43,29 @@ object NetworkClient {
     private fun createOkHttpClient(context: Context): OkHttpClient {
         val cacheDirectory = File(context.cacheDir, "espn_http_cache")
         val diskCache = Cache(cacheDirectory, CACHE_SIZE)
+        // Elevamos el limite por host sobre HTTP/2 para evitar encolamientos hacia site.api.espn.com
+        val dispatcher = Dispatcher().apply {
+            maxRequestsPerHost = 12
+        }
 
         return OkHttpClient.Builder()
+            .dispatcher(dispatcher)
+            .fastFallback(true)
             .cache(diskCache)
             .addInterceptor(CacheInterceptor(context.applicationContext))
             .addNetworkInterceptor(ResponseCacheInterceptor())
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
+    }
+
+    /**
+     * Inicializa anticipadamente el cliente HTTP/2 y el cache DNS de ESPN en segundo plano
+     * durante la creacion del proceso para recortar latencia en la primera consulta de portada.
+     */
+    fun prewarm(context: Context) {
+        createEspnApiService(context)
+        runCatching { InetAddress.getAllByName("site.api.espn.com") }
     }
 
     fun createEspnApiService(context: Context): EspnApiService {

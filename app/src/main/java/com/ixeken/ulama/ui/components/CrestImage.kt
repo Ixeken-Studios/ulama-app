@@ -18,18 +18,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import com.ixeken.ulama.R
 import com.ixeken.ulama.ui.theme.UlamaTheme
+import com.ixeken.ulama.ui.theme.rememberCrestFallbackShapes
 
 /**
  * Renderiza el escudo de un club con respaldo geometrico basado en MaterialShapes.
- * Asigna de forma determinista una forma distinta segun la identidad del equipo para diferenciar
- * visualmente clubes sin imagen oficial sin parpadeos durante recomposiciones o desplazamientos.
+ * Cuando el modo de ahorro de datos esta activo, deshabilita unicamente el acceso a red en Coil
+ * para mostrar al instante cualquier imagen ya presente en RAM o disco y recurrir al monograma
+ * expresivo en 0 ms si el escudo no estaba en cache.
  *
  * @param logoUrl URL del escudo remoto resuelta segun el tema activo.
  * @param teamName Nombre completo del club usado como respaldo de iniciales.
@@ -51,11 +56,19 @@ fun TeamCrestImage(
     showMonogram: Boolean = true,
     contentScale: ContentScale = ContentScale.Fit
 ) {
-    var hasLoadError by remember(logoUrl) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val isDataSaver = UlamaTheme.isDataSaver
+    var hasLoadError by remember(logoUrl, isDataSaver) { mutableStateOf(false) }
 
     if (!logoUrl.isNullOrBlank() && !hasLoadError) {
+        val imageRequest = remember(context, logoUrl, isDataSaver) {
+            ImageRequest.Builder(context)
+                .data(logoUrl)
+                .networkCachePolicy(if (isDataSaver) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                .build()
+        }
         AsyncImage(
-            model = logoUrl,
+            model = imageRequest,
             contentDescription = contentDescription,
             contentScale = contentScale,
             onError = { hasLoadError = true },
@@ -64,7 +77,8 @@ fun TeamCrestImage(
         return
     }
 
-    val fallbackShapes = UlamaTheme.shapes.crestFallbackShapes
+    // Solo teselamos las 6 formas expresivas cuando un club realmente requiere el respaldo geometrico.
+    val fallbackShapes = rememberCrestFallbackShapes()
     val fallbackShape = remember(teamId, teamName, fallbackShapes) {
         val seed = teamId.ifBlank { teamName }
         val index = (seed.hashCode() and Int.MAX_VALUE) % fallbackShapes.size
@@ -112,7 +126,7 @@ fun TeamCrestImage(
 
 /**
  * Renderiza el emblema oficial de una competicion o un trofeo semantico cuando la API
- * no provee logotipo propio para el torneo o falla la descarga remota.
+ * no provee logotipo propio, falla la descarga o el modo de ahorro de datos omite escudos no cacheados.
  *
  * @param logoUrl URL del logotipo de la liga segun el brillo del tema activo.
  * @param contentDescription Descripcion accesible del torneo para TalkBack.
@@ -126,11 +140,19 @@ fun LeagueCrestImage(
     modifier: Modifier = Modifier,
     fallbackTint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
-    var hasLoadError by remember(logoUrl) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val isDataSaver = UlamaTheme.isDataSaver
+    var hasLoadError by remember(logoUrl, isDataSaver) { mutableStateOf(false) }
 
     if (!logoUrl.isNullOrBlank() && !hasLoadError) {
+        val imageRequest = remember(context, logoUrl, isDataSaver) {
+            ImageRequest.Builder(context)
+                .data(logoUrl)
+                .networkCachePolicy(if (isDataSaver) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                .build()
+        }
         AsyncImage(
-            model = logoUrl,
+            model = imageRequest,
             contentDescription = contentDescription,
             onError = { hasLoadError = true },
             modifier = modifier

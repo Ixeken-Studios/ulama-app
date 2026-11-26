@@ -459,12 +459,23 @@ data class UlamaColors(
     val pitchAssistIcon: Color = LightGreen
 )
 
-val LocalUlamaColors = staticCompositionLocalOf { UlamaColors() }
+private val DefaultUlamaColors = UlamaColors()
+private val DefaultUlamaShapes = UlamaShapes()
+private val DefaultUlamaSpacing = UlamaSpacing()
+private val DefaultUlamaDimensions = UlamaDimensions()
+private val DefaultUlamaBorders = UlamaBorders(cardBorder = null)
+
+val LocalUlamaColors = staticCompositionLocalOf { DefaultUlamaColors }
 
 /**
  * CompositionLocal que expone si el tema visual activo es oscuro, respetando configuracion manual y de sistema.
  */
 val LocalDarkTheme = staticCompositionLocalOf { false }
+
+/**
+ * CompositionLocal que expone si el modo de ahorro de datos esta activo para restringir descargas remotas de imagenes.
+ */
+val LocalDataSaver = staticCompositionLocalOf { false }
 
 /**
  * Tema principal de Ulama que aplica los tokens semanticos del sistema, formas, espaciado y movimiento desacoplado.
@@ -474,6 +485,7 @@ val LocalDarkTheme = staticCompositionLocalOf { false }
  * @param dynamicColor Habilita la extraccion dinamica de color del sistema en Android 12 o superior.
  * @param colorPalette Paleta de color semantica seleccionada (Dynamic, Ulama o Monochrome).
  * @param isExpressiveMotion Conmuta entre simulacion de fisicas con rebote (Expressive) o curvas estandar (Standard).
+ * @param dataSaver Activa la restriccion de descarga de escudos no presentes en cache local.
  * @param content Contenido composable envuelto bajo la jerarquia del tema.
  */
 @Composable
@@ -482,6 +494,7 @@ fun UlamaTheme(
     dynamicColor: Boolean = true,
     colorPalette: ColorPalette = if (dynamicColor) ColorPalette.DYNAMIC else ColorPalette.ULAMA,
     isExpressiveMotion: Boolean = true,
+    dataSaver: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -506,20 +519,16 @@ fun UlamaTheme(
     }
     val motion = if (isExpressiveMotion) UlamaMotion.Expressive else UlamaMotion.Standard
     val motionScheme = if (isExpressiveMotion) MotionScheme.expressive() else MotionScheme.standard()
-    val borders = UlamaBorders(cardBorder = null)
-    val crestFallbackShapes = rememberCrestFallbackShapes()
-    val ulamaShapes = androidx.compose.runtime.remember(crestFallbackShapes) {
-        UlamaShapes(crestFallbackShapes = crestFallbackShapes)
-    }
 
     CompositionLocalProvider(
         LocalDarkTheme provides darkTheme,
-        LocalUlamaColors provides UlamaColors(),
+        LocalDataSaver provides dataSaver,
+        LocalUlamaColors provides DefaultUlamaColors,
         LocalUlamaMotion provides motion,
-        LocalUlamaShapes provides ulamaShapes,
-        LocalUlamaSpacing provides UlamaSpacing(),
-        LocalUlamaDimensions provides UlamaDimensions(),
-        LocalUlamaBorders provides borders
+        LocalUlamaShapes provides DefaultUlamaShapes,
+        LocalUlamaSpacing provides DefaultUlamaSpacing,
+        LocalUlamaDimensions provides DefaultUlamaDimensions,
+        LocalUlamaBorders provides DefaultUlamaBorders
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,
@@ -539,6 +548,11 @@ object UlamaTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalDarkTheme.current
+
+    val isDataSaver: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDataSaver.current
 
     val colors: UlamaColors
         @Composable

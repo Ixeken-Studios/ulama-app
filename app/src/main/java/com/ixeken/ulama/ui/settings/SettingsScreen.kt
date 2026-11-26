@@ -151,6 +151,7 @@ fun SettingsScreen(
     onAppLanguageChanged: (AppLanguage) -> Unit = {},
     onNotificationLeadMinutesChanged: (Int) -> Unit = {},
     onAutoFollowFavoritesChanged: (Boolean) -> Unit = {},
+    onDataSaverModeChanged: (Boolean) -> Unit = {},
     onCheckUpdatesOnStartChanged: (Boolean) -> Unit = {},
     onShowWalkthrough: () -> Unit = {},
     onBackClick: () -> Unit,
@@ -207,6 +208,7 @@ fun SettingsScreen(
                     SettingsRootContent(
                         appSettings = appSettings,
                         currentLanguage = currentLanguage,
+                        onDataSaverModeChanged = onDataSaverModeChanged,
                         onNavigateToAppearance = { destination = SettingsDestination.APPEARANCE },
                         onNavigateToLanguage = { destination = SettingsDestination.LANGUAGE },
                         onNavigateToNotifications = { destination = SettingsDestination.NOTIFICATIONS },
@@ -266,6 +268,7 @@ fun SettingsScreen(
 private fun SettingsRootContent(
     appSettings: AppSettings,
     currentLanguage: AppLanguage,
+    onDataSaverModeChanged: (Boolean) -> Unit,
     onNavigateToAppearance: () -> Unit,
     onNavigateToLanguage: () -> Unit,
     onNavigateToNotifications: () -> Unit,
@@ -464,7 +467,33 @@ private fun SettingsRootContent(
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateListEntry(index = 5, key = "settings_root_about")
+                        .animateListEntry(index = 5, key = "settings_root_data_saver")
+                ) {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.settings_data_saver_title),
+                        description = stringResource(
+                            if (appSettings.dataSaverMode) {
+                                R.string.settings_data_saver_on_desc
+                            } else {
+                                R.string.settings_data_saver_off_desc
+                            }
+                        ),
+                        checked = appSettings.dataSaverMode,
+                        onCheckedChange = onDataSaverModeChanged,
+                        icon = painterResource(R.drawable.ic_data_saver_on),
+                        iconContentDescription = stringResource(R.string.cd_settings_data_saver),
+                        shape = standaloneShape
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(UlamaTheme.spacing.medium))
+
+                Surface(
+                    shape = standaloneShape,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateListEntry(index = 6, key = "settings_root_about")
                 ) {
                     SettingsCategoryRow(
                         title = stringResource(R.string.settings_section_about),
@@ -1412,16 +1441,22 @@ private fun SettingsSwitchRow(
     iconContentDescription: String? = null,
     shape: androidx.compose.ui.graphics.Shape? = null
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val clickModifier = if (shape != null) {
-        modifier.fillMaxWidth().clip(shape)
+        modifier
+            .fillMaxWidth()
+            .bounceClick(enabled = true, interactionSource = interactionSource)
+            .clip(shape)
     } else {
-        modifier.fillMaxWidth()
+        modifier
+            .fillMaxWidth()
+            .bounceClick(enabled = true, interactionSource = interactionSource)
     }
 
     Box(
         modifier = clickModifier
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = ripple(),
                 onClick = { onCheckedChange(!checked) }
             )

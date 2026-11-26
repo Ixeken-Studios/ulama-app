@@ -77,6 +77,23 @@ class FavoriteTeamsRepositoryTest {
         assertTrue(newRepo.isFavorite("227"))
         assertTrue(newRepo.isFavorite("83"))
     }
+
+    @Test
+    fun recordTeamLeagues_persistsAndCleansUpWhenUnfollowed() {
+        repository.toggleFavorite("86")
+        assertFalse(repository.hasMappedLeaguesForAllFavorites())
+
+        repository.recordTeamLeagues("86", listOf("esp.1", "uefa.champions"))
+        assertTrue(repository.hasMappedLeaguesForAllFavorites())
+        assertEquals(setOf("esp.1", "uefa.champions"), repository.favoriteLeagueCodes.value)
+
+        val reloaded = FavoriteTeamsRepositoryImpl(fakePrefs)
+        assertTrue(reloaded.hasMappedLeaguesForAllFavorites())
+        assertEquals(setOf("esp.1", "uefa.champions"), reloaded.favoriteLeagueCodes.value)
+
+        reloaded.toggleFavorite("86")
+        assertTrue(reloaded.favoriteLeagueCodes.value.isEmpty())
+    }
 }
 
 /**

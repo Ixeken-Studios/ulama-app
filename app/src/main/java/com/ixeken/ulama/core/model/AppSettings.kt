@@ -72,6 +72,7 @@ data class AppSettings(
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
     val notificationLeadMinutes: Int = DEFAULT_NOTIFICATION_LEAD_MINUTES,
     val autoFollowFavorites: Boolean = false,
+    val dataSaverMode: Boolean = false,
     val checkUpdatesOnStart: Boolean = false,
     val lastKnownVersion: String = "",
     val hasCompletedOnboarding: Boolean = false

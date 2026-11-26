@@ -78,22 +78,28 @@ class MatchRepositoryImpl(
     override suspend fun getMatches(
         league: League,
         dates: String?,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
+        cacheOnly: Boolean,
+        onPreliminaryMatches: ((List<Match>) -> Unit)?
     ): Result<List<Match>> = withContext(ioDispatcher) {
         if (dates == null && !forceRefresh) {
             val cached = matchesCache[league]
-            if (cached != null && System.currentTimeMillis() - cached.second < 60_000L) {
+            if (cached != null && (cacheOnly || System.currentTimeMillis() - cached.second < 60_000L)) {
                 return@withContext Result.success(cached.first)
             }
         }
 
         val result = runCatching {
-            val cacheControlHeader = if (forceRefresh) "no-cache" else null
+            val cacheControlHeader = when {
+                cacheOnly -> com.ixeken.ulama.core.network.CacheInterceptor.CACHE_CONTROL_DISK_SEED
+                forceRefresh -> "no-cache"
+                else -> null
+            }
             if (dates != null) {
                 val dateKey = "${league.code}_$dates"
                 if (!forceRefresh) {
                     val cachedDate = dateMatchesCache[dateKey]
-                    if (cachedDate != null && System.currentTimeMillis() - cachedDate.second < 60_000L) {
+                    if (cachedDate != null && (cacheOnly || System.currentTimeMillis() - cachedDate.second < 60_000L)) {
                         return@runCatching cachedDate.first
                     }
                 }
@@ -101,7 +107,7 @@ class MatchRepositoryImpl(
                 val mapped = response.events.mapNotNull { it.toMatch(league) }
                     .filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
                     .sanitizeAggregateScores()
-                if (mapped.isNotEmpty()) {
+                if (mapped.isNotEmpty() && !cacheOnly) {
                     dateMatchesCache[dateKey] = Pair(mapped, System.currentTimeMillis())
                 }
                 return@runCatching mapped
@@ -118,11 +124,29 @@ class MatchRepositoryImpl(
                 cacheControl = cacheControlHeader
             )
             val initialMatches = initialResponse.events.mapNotNull { it.toMatch(league) }
+            val activeLeagueSeason = initialResponse.leagues.firstOrNull()?.season
+            val activeSeasonStartDate = activeLeagueSeason?.startDate
+            val activeSeasonYear = activeLeagueSeason?.year
+
             val calendar = initialResponse.leagues.firstOrNull()?.extractDateStrings().orEmpty()
             // Si un torneo anual alcanza el tope de 200 eventos, complementamos con las fechas activas del calendario
             // para evitar que las jornadas actuales o proximas queden truncadas al final del ano.
             val shouldResolveCalendar = !league.isTournament || (calendar.isNotEmpty() && initialMatches.size >= 180)
             val targetDates = if (shouldResolveCalendar) resolveMatchdayDates(calendar) else emptyList()
+
+            // Emision progresiva de Fase 1: permite a la UI pintar la pestana Hoy apenas llega el primer viaje de red
+            // sin esperar las llamadas complementarias de jornadas pasadas, proximas o eliminatorias mensuales.
+            if (!cacheOnly && onPreliminaryMatches != null && targetDates.isNotEmpty() && initialMatches.isNotEmpty()) {
+                val preliminarySanitized = sanitizeMatchesForSeason(
+                    matches = initialMatches,
+                    league = league,
+                    activeSeasonStartDate = activeSeasonStartDate,
+                    activeSeasonYear = activeSeasonYear
+                )
+                if (preliminarySanitized.isNotEmpty()) {
+                    onPreliminaryMatches(preliminarySanitized)
+                }
+            }
 
             val matchesList = if (targetDates.isEmpty()) {
                 initialMatches
@@ -144,14 +168,18 @@ class MatchRepositoryImpl(
                             }
 
                             val isPastDate = dateStr < todayBasicIso
-                            val dateCacheControl = if (isPastDate) null else cacheControlHeader
+                            val dateCacheControl = when {
+                                cacheOnly -> com.ixeken.ulama.core.network.CacheInterceptor.CACHE_CONTROL_DISK_SEED
+                                isPastDate -> null
+                                else -> cacheControlHeader
+                            }
                             runCatching {
                                 val dayMatches = apiService.getScoreboard(
                                     league = league.code,
                                     dates = dateStr,
                                     cacheControl = dateCacheControl
                                 ).events.mapNotNull { it.toMatch(league) }
-                                if (dayMatches.isNotEmpty()) {
+                                if (dayMatches.isNotEmpty() && !cacheOnly) {
                                     dateMatchesCache[dateKey] = Pair(dayMatches, System.currentTimeMillis())
                                 }
                                 dayMatches
@@ -198,7 +226,11 @@ class MatchRepositoryImpl(
                                 ) {
                                     return@async cachedMonth.first
                                 }
-                                val monthCacheControl = if (isPastMonth) null else cacheControlHeader
+                                val monthCacheControl = when {
+                                    cacheOnly -> com.ixeken.ulama.core.network.CacheInterceptor.CACHE_CONTROL_DISK_SEED
+                                    isPastMonth -> null
+                                    else -> cacheControlHeader
+                                }
                                 runCatching {
                                     val koEvents = apiService.getScoreboard(
                                         league = league.code,
@@ -207,7 +239,7 @@ class MatchRepositoryImpl(
                                     ).events
                                         .mapNotNull { it.toMatch(league) }
                                         .filter { it.isKnockout }
-                                    if (koEvents.isNotEmpty() || isPastMonth) {
+                                    if (!cacheOnly && (koEvents.isNotEmpty() || isPastMonth)) {
                                         dateMatchesCache[monthKey] = Pair(koEvents, System.currentTimeMillis())
                                     }
                                     koEvents
@@ -224,34 +256,20 @@ class MatchRepositoryImpl(
                 matchesList
             }
 
-            val activeLeagueSeason = initialResponse.leagues.firstOrNull()?.season
-            val activeSeasonStartDate = activeLeagueSeason?.startDate
-            val activeSeasonYear = activeLeagueSeason?.year
+            val sanitizedList = sanitizeMatchesForSeason(
+                matches = enrichedMatchesList,
+                league = league,
+                activeSeasonStartDate = activeSeasonStartDate,
+                activeSeasonYear = activeSeasonYear
+            )
 
-            val sanitizedList = when {
-                league.tournamentYear != null -> {
-                    // Filtramos partidos historicos anteriores al certamen oficial futuro declarado.
-                    enrichedMatchesList.filter { it.dateUtc >= "${league.tournamentYear}-01-01T00:00:00Z" }
-                }
-                activeSeasonStartDate != null -> {
-                    // Descartamos encuentros de fases o ediciones concluidas antes del inicio oficial de la temporada activa.
-                    enrichedMatchesList.filter { it.dateUtc >= activeSeasonStartDate }
-                }
-                activeSeasonYear != null -> {
-                    // Respaldo de filtrado si la API solo reporta el ano calendario base del certamen.
-                    enrichedMatchesList.filter { it.dateUtc >= "$activeSeasonYear-01-01T00:00:00Z" }
-                }
-                else -> enrichedMatchesList
-            }.filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
-            .sanitizeAggregateScores()
-
-            if (sanitizedList.isNotEmpty()) {
+            if (sanitizedList.isNotEmpty() && !cacheOnly) {
                 matchesCache[league] = Pair(sanitizedList, System.currentTimeMillis())
             }
             sanitizedList
         }
 
-        if (result.isFailure && dates == null) {
+        if (result.isFailure && dates == null && !cacheOnly) {
             val fallbackCached = matchesCache[league]?.first
             if (!fallbackCached.isNullOrEmpty()) {
                 return@withContext Result.success(fallbackCached)
@@ -260,13 +278,42 @@ class MatchRepositoryImpl(
         result
     }
 
+    private fun sanitizeMatchesForSeason(
+        matches: List<Match>,
+        league: League,
+        activeSeasonStartDate: String?,
+        activeSeasonYear: Int?
+    ): List<Match> = when {
+        league.tournamentYear != null -> {
+            // Filtramos partidos historicos anteriores al certamen oficial futuro declarado.
+            matches.filter { it.dateUtc >= "${league.tournamentYear}-01-01T00:00:00Z" }
+        }
+        activeSeasonStartDate != null -> {
+            // Descartamos encuentros de fases o ediciones concluidas antes del inicio oficial de la temporada activa.
+            matches.filter { it.dateUtc >= activeSeasonStartDate }
+        }
+        activeSeasonYear != null -> {
+            // Respaldo de filtrado si la API solo reporta el ano calendario base del certamen.
+            matches.filter { it.dateUtc >= "$activeSeasonYear-01-01T00:00:00Z" }
+        }
+        else -> matches
+    }.filterNot { it.homeTeam.isPlaceholder && it.awayTeam.isPlaceholder }
+        .sanitizeAggregateScores()
+
     override suspend fun getStandings(league: League, forceRefresh: Boolean): Result<List<StandingEntry>> = withContext(ioDispatcher) {
-        fetchStandingsData(league, forceRefresh).map { it.first }
+        fetchStandingsData(league, forceRefresh, cacheOnly = false).map { it.first }
     }
 
     override suspend fun getGroups(league: League, forceRefresh: Boolean): Result<List<GroupStandings>> = withContext(ioDispatcher) {
-        fetchStandingsData(league, forceRefresh).map { it.second }
+        fetchStandingsData(league, forceRefresh, cacheOnly = false).map { it.second }
     }
+
+    override suspend fun getStandingsAndGroups(
+        league: League,
+        forceRefresh: Boolean,
+        cacheOnly: Boolean
+    ): Result<Pair<List<StandingEntry>, List<GroupStandings>>> =
+        fetchStandingsData(league, forceRefresh, cacheOnly)
 
     /**
      * Consulta el endpoint de posiciones de ESPN resolviendo clasificacion general de liga unica o particion
@@ -274,11 +321,12 @@ class MatchRepositoryImpl(
      */
     private suspend fun fetchStandingsData(
         league: League,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
+        cacheOnly: Boolean = false
     ): Result<Pair<List<StandingEntry>, List<GroupStandings>>> = withContext(ioDispatcher) {
         val now = System.currentTimeMillis()
         val lastFetch = standingsTimestampCache[league] ?: 0L
-        if (!forceRefresh || (now - lastFetch) < STANDINGS_DEDUP_WINDOW_MS) {
+        if (!forceRefresh || cacheOnly || (now - lastFetch) < STANDINGS_DEDUP_WINDOW_MS) {
             val cachedStandings = standingsCache[league]
             val cachedGroups = groupsCache[league]
             if (cachedStandings != null && cachedGroups != null) {
@@ -291,7 +339,7 @@ class MatchRepositoryImpl(
             val lastFetchInside = standingsTimestampCache[league] ?: 0L
             // Evitamos que llamadas simultaneas a getStandings y getGroups con forceRefresh = true
             // disparen dos descargas de red consecutivas para la misma competicion.
-            if (!forceRefresh || (nowInside - lastFetchInside) < STANDINGS_DEDUP_WINDOW_MS) {
+            if (!forceRefresh || cacheOnly || (nowInside - lastFetchInside) < STANDINGS_DEDUP_WINDOW_MS) {
                 val cachedStandings = standingsCache[league]
                 val cachedGroups = groupsCache[league]
                 if (cachedStandings != null && cachedGroups != null) {
@@ -299,7 +347,11 @@ class MatchRepositoryImpl(
                 }
             }
 
-            val cacheControlHeader = if (forceRefresh) "no-cache" else null
+            val cacheControlHeader = when {
+                cacheOnly -> com.ixeken.ulama.core.network.CacheInterceptor.CACHE_CONTROL_DISK_SEED
+                forceRefresh -> "no-cache"
+                else -> null
+            }
             val result = runCatching {
                 val response = apiService.getStandings(league = league.code, cacheControl = cacheControlHeader)
                 val targetTournamentYear = league.tournamentYear?.toIntOrNull()
@@ -309,9 +361,11 @@ class MatchRepositoryImpl(
                     // Si el torneo inicia en un ano futuro pero ESPN aun devuelve la tabla de una edicion anterior
                     // (season < targetTournamentYear o sin metadato de temporada), omitimos la tabla historica.
                     if (reportedSeason == null || reportedSeason < targetTournamentYear) {
-                        groupsCache[league] = emptyList()
-                        standingsCache[league] = emptyList()
-                        standingsTimestampCache[league] = System.currentTimeMillis()
+                        if (!cacheOnly) {
+                            groupsCache[league] = emptyList()
+                            standingsCache[league] = emptyList()
+                            standingsTimestampCache[league] = System.currentTimeMillis()
+                        }
                         return@runCatching Pair(emptyList<StandingEntry>(), emptyList<GroupStandings>())
                     }
                 }
@@ -325,9 +379,11 @@ class MatchRepositoryImpl(
                         .map { it.copy(rank = 0) }
                     val sortedMerged = sortStandingEntries(mergedEntries)
 
-                    groupsCache[league] = emptyList()
-                    standingsCache[league] = sortedMerged
-                    standingsTimestampCache[league] = System.currentTimeMillis()
+                    if (!cacheOnly) {
+                        groupsCache[league] = emptyList()
+                        standingsCache[league] = sortedMerged
+                        standingsTimestampCache[league] = System.currentTimeMillis()
+                    }
                     Pair(sortedMerged, emptyList())
                 } else if (flattenedChildren.size > 1) {
                     val resolvedGroupCutoffs = league.groupCutoffs.ifEmpty {
@@ -356,9 +412,11 @@ class MatchRepositoryImpl(
                     }
 
                     val flattenedStandings = groupsList.flatMap { it.standings }
-                    groupsCache[league] = groupsList
-                    standingsCache[league] = flattenedStandings
-                    standingsTimestampCache[league] = System.currentTimeMillis()
+                    if (!cacheOnly) {
+                        groupsCache[league] = groupsList
+                        standingsCache[league] = flattenedStandings
+                        standingsTimestampCache[league] = System.currentTimeMillis()
+                    }
                     Pair(flattenedStandings, groupsList)
                 } else {
                     val entries = flattenedChildren.firstOrNull()?.second
@@ -366,14 +424,16 @@ class MatchRepositoryImpl(
                     val mapped = entries.mapNotNull { it.toStandingEntry() }
                     val sortedEntries = sortStandingEntries(mapped)
 
-                    groupsCache[league] = emptyList()
-                    standingsCache[league] = sortedEntries
-                    standingsTimestampCache[league] = System.currentTimeMillis()
+                    if (!cacheOnly) {
+                        groupsCache[league] = emptyList()
+                        standingsCache[league] = sortedEntries
+                        standingsTimestampCache[league] = System.currentTimeMillis()
+                    }
                     Pair(sortedEntries, emptyList())
                 }
             }
 
-            if (result.isFailure) {
+            if (result.isFailure && !cacheOnly) {
                 val cachedStandings = standingsCache[league]
                 val cachedGroups = groupsCache[league]
                 if (cachedStandings != null && cachedGroups != null) {
@@ -992,10 +1052,10 @@ class MatchRepositoryImpl(
 
         val rawText = play.shortText?.takeIf { it.isNotBlank() } ?: play.text?.takeIf { it.isNotBlank() } ?: return ""
         return rawText
-            .replace(Regex("""^(?:Goal!?\s*[-:]?\s*|Gol!?\s*[-:]?\s*|Own Goal by\s*)""", RegexOption.IGNORE_CASE), "")
+            .replace(SCORER_PREFIX_REGEX, "")
             .substringBefore(" (")
             .substringBefore(" - ")
-            .replace(Regex("""\s+\d+(?:\+\d+)?'.*$"""), "")
+            .replace(SCORER_MINUTE_SUFFIX_REGEX, "")
             .trim()
     }
 
@@ -1396,8 +1456,7 @@ class MatchRepositoryImpl(
         if (!isPenaltyContext) return Pair(null, null)
 
         // Patron 1: Formato entre parentesis ej. "FT-Pens (3-5)" o "(4-2 pen.)"
-        val parensRegex = Regex("""\(\s*(\d+)\s*[-–]\s*(\d+)\s*(?:pen|pens)?\.?\s*\)""", RegexOption.IGNORE_CASE)
-        val parensMatch = parensRegex.find(combined)
+        val parensMatch = SHOOTOUT_PARENS_REGEX.find(combined)
         if (parensMatch != null) {
             val h = parensMatch.groupValues[1].toIntOrNull()
             val a = parensMatch.groupValues[2].toIntOrNull()
@@ -1405,8 +1464,7 @@ class MatchRepositoryImpl(
         }
 
         // Patron 2: Formato descriptivo ej. "4-2 on penalties" o "4-2 pens"
-        val trailingRegex = Regex("""(\d+)\s*[-–]\s*(\d+)\s*(?:on\s+)?(?:pens?|penalties)""", RegexOption.IGNORE_CASE)
-        val trailingMatch = trailingRegex.find(combined)
+        val trailingMatch = SHOOTOUT_TRAILING_REGEX.find(combined)
         if (trailingMatch != null) {
             val h = trailingMatch.groupValues[1].toIntOrNull()
             val a = trailingMatch.groupValues[2].toIntOrNull()
@@ -1508,6 +1566,10 @@ class MatchRepositoryImpl(
         private const val STANDINGS_DEDUP_WINDOW_MS = 5_000L
         private const val PAST_DATE_CACHE_TTL_MS = 24 * 3600 * 1000L
         private val YEAR_MONTH_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMM")
+        private val SCORER_PREFIX_REGEX = Regex("""^(?:Goal!?\s*[-:]?\s*|Gol!?\s*[-:]?\s*|Own Goal by\s*)""", RegexOption.IGNORE_CASE)
+        private val SCORER_MINUTE_SUFFIX_REGEX = Regex("""\s+\d+(?:\+\d+)?'.*$""")
+        private val SHOOTOUT_PARENS_REGEX = Regex("""\(\s*(\d+)\s*[-–]\s*(\d+)\s*(?:pen|pens)?\.?\s*\)""", RegexOption.IGNORE_CASE)
+        private val SHOOTOUT_TRAILING_REGEX = Regex("""(\d+)\s*[-–]\s*(\d+)\s*(?:on\s+)?(?:pens?|penalties)""", RegexOption.IGNORE_CASE)
 
         /**
          * Determina los meses (YYYYMM) del calendario que pueden contener rondas de una fase eliminatoria

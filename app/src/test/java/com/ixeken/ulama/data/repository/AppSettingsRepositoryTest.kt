@@ -10,7 +10,7 @@ import org.junit.Test
 
 /**
  * Pruebas unitarias para AppSettingsRepositoryImpl que verifican la persistencia
- * y reactividad de los ajustes visuales de la aplicacion.
+ * y reactividad de los ajustes visuales y de ahorro de datos de la aplicacion.
  */
 class AppSettingsRepositoryTest {
 
@@ -31,6 +31,7 @@ class AppSettingsRepositoryTest {
         assertEquals(MotionStyle.EXPRESSIVE, initial.motionStyle)
         assertEquals(5, initial.notificationLeadMinutes)
         assertEquals(false, initial.autoFollowFavorites)
+        assertEquals(false, initial.dataSaverMode)
         assertEquals(false, initial.checkUpdatesOnStart)
         assertEquals("", initial.lastKnownVersion)
     }
@@ -93,6 +94,17 @@ class AppSettingsRepositoryTest {
     }
 
     @Test
+    fun setDataSaverMode_updatesStateAndPersists() {
+        repository.setDataSaverMode(true)
+        assertEquals(true, repository.settings.value.dataSaverMode)
+        assertEquals(true, fakePrefs.getBoolean("settings_data_saver_mode", false))
+
+        repository.setDataSaverMode(false)
+        assertEquals(false, repository.settings.value.dataSaverMode)
+        assertEquals(false, fakePrefs.getBoolean("settings_data_saver_mode", true))
+    }
+
+    @Test
     fun setCheckUpdatesOnStart_updatesStateAndPersists() {
         repository.setCheckUpdatesOnStart(true)
         assertEquals(true, repository.settings.value.checkUpdatesOnStart)
@@ -117,6 +129,7 @@ class AppSettingsRepositoryTest {
         fakePrefs.putString("settings_motion_style", MotionStyle.STANDARD.name)
         fakePrefs.putInt("settings_notification_lead_minutes", 10)
         fakePrefs.putBoolean("settings_auto_follow_favorites", true)
+        fakePrefs.putBoolean("settings_data_saver_mode", true)
         fakePrefs.putBoolean("settings_check_updates_on_start", true)
         fakePrefs.putString("settings_last_known_version", "1.0")
 
@@ -127,6 +140,7 @@ class AppSettingsRepositoryTest {
         assertEquals(MotionStyle.STANDARD, loaded.motionStyle)
         assertEquals(10, loaded.notificationLeadMinutes)
         assertEquals(true, loaded.autoFollowFavorites)
+        assertEquals(true, loaded.dataSaverMode)
         assertEquals(true, loaded.checkUpdatesOnStart)
         assertEquals("1.0", loaded.lastKnownVersion)
     }

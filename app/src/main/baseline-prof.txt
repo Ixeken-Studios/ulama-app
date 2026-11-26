@@ -1,0 +1,31 @@
+# Perfil base AOT nativo para Android 15+ (minSdk = 35) sin dependencias adicionales.
+# Precompila las rutas calientes de arranque en frio, red HTTP/2, mapeo JSON y portada Compose.
+HSPLcom/ixeken/ulama/UlamaApplication;->**(**)**
+HSPLcom/ixeken/ulama/MainActivity;->**(**)**
+HSPLcom/ixeken/ulama/MainActivityKt;->**(**)**
+HSPLcom/ixeken/ulama/core/network/NetworkClient;->**(**)**
+HSPLcom/ixeken/ulama/core/network/CacheInterceptor;->**(**)**
+HSPLcom/ixeken/ulama/core/network/ResponseCacheInterceptor;->**(**)**
+HSPLcom/ixeken/ulama/core/network/ImageFallbackInterceptor;->**(**)**
+HSPLcom/ixeken/ulama/core/util/DateTimeUtils;->**(**)**
+HSPLcom/ixeken/ulama/core/util/ImagePreloadHelper;->**(**)**
+HSPLcom/ixeken/ulama/core/model/League;->**(**)**
+HSPLcom/ixeken/ulama/core/model/Match;->**(**)**
+HSPLcom/ixeken/ulama/core/model/Team;->**(**)**
+HSPLcom/ixeken/ulama/core/model/MatchStatus;->**(**)**
+HSPLcom/ixeken/ulama/data/repository/AppSettingsRepositoryImpl;->**(**)**
+HSPLcom/ixeken/ulama/data/repository/FavoriteTeamsRepositoryImpl;->**(**)**
+HSPLcom/ixeken/ulama/data/repository/MyLeaguesRepositoryImpl;->**(**)**
+HSPLcom/ixeken/ulama/data/repository/MatchFollowRepository;->**(**)**
+HSPLcom/ixeken/ulama/data/repository/MatchRepositoryImpl;->**(**)**
+HSPLcom/ixeken/ulama/ui/matches/MatchesViewModel;->**(**)**
+HSPLcom/ixeken/ulama/ui/matches/MatchesViewModelKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/matches/MatchesUiState;->**(**)**
+HSPLcom/ixeken/ulama/ui/matches/MatchesUiStateKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/theme/ThemeKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/components/UlamaTopAppBarKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/components/TemporalFilterTabsKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/components/UlamaSegmentedTabsKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/components/MatchesGroupCardKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/components/CrestImageKt;->**(**)**
+HSPLcom/ixeken/ulama/ui/components/StandingsTableKt;->**(**)**

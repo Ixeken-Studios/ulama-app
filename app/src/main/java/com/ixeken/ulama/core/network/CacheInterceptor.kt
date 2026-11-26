@@ -17,6 +17,11 @@ class CacheInterceptor(private val context: Context) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         var request = chain.request()
 
+        // Las sondas explicitas a disco omiten la consulta de red del sistema y responden al instante.
+        if (request.cacheControl.onlyIfCached) {
+            return chain.proceed(request)
+        }
+
         if (!isOnline(context)) {
             val cacheControl = CacheControl.Builder()
                 .onlyIfCached()
@@ -28,6 +33,13 @@ class CacheInterceptor(private val context: Context) : Interceptor {
         }
 
         return chain.proceed(request)
+    }
+
+    companion object {
+        /**
+         * Directiva para semilla instantanea en arranque en frio desde el cache HTTP de OkHttp sin abrir red.
+         */
+        const val CACHE_CONTROL_DISK_SEED = "only-if-cached, max-stale=604800"
     }
 
     private fun isOnline(context: Context): Boolean {

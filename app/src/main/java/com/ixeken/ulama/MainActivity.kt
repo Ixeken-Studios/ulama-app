@@ -177,7 +177,8 @@ class MainActivity : ComponentActivity() {
             UlamaTheme(
                 darkTheme = darkTheme,
                 colorPalette = appSettings.colorPalette,
-                isExpressiveMotion = isExpressive
+                isExpressiveMotion = isExpressive,
+                dataSaver = appSettings.dataSaverMode
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -274,34 +275,35 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Precargamos los escudos cuando el centro de competiciones tiene clubes resueltos
-                // y exclusivamente para la variante de tema activa (claro u oscuro).
-                LaunchedEffect(isCompetitionsOpen, uiState.availableTeamsByLeague, darkTheme) {
-                    if (isCompetitionsOpen && uiState.availableTeamsByLeague.isNotEmpty()) {
+                // exclusivamente para la variante de tema activa y solo si el ahorro de datos esta inactivo.
+                LaunchedEffect(isCompetitionsOpen, uiState.availableTeamsByLeague, darkTheme, appSettings.dataSaverMode) {
+                    if (!appSettings.dataSaverMode && isCompetitionsOpen && uiState.availableTeamsByLeague.isNotEmpty()) {
                         val urls = uiState.availableTeamsByLeague.values.flatten().mapNotNull { entry ->
                             entry.getLogoUrl(darkTheme)
                         }
-                        ImagePreloadHelper.preloadImages(context, urls)
+                        ImagePreloadHelper.preloadImages(
+                            context = context,
+                            urls = urls,
+                            dataSaverEnabled = appSettings.dataSaverMode
+                        )
                     }
                 }
 
-                LaunchedEffect(uiState.matches, darkTheme) {
-                    if (uiState.matches.isNotEmpty()) {
+                // Precargamos unicamente los escudos de la pestana visible tras pintar los partidos,
+                // evitando competir con el JSON inicial ni descargar escudos fuera de pantalla.
+                LaunchedEffect(uiState.matches, uiState.isLoading, darkTheme, appSettings.dataSaverMode) {
+                    if (!appSettings.dataSaverMode && !uiState.isLoading && uiState.matches.isNotEmpty()) {
                         val urls = uiState.matches.flatMap { match ->
                             listOfNotNull(
                                 match.homeTeam.getLogoUrl(darkTheme),
                                 match.awayTeam.getLogoUrl(darkTheme)
                             )
                         }
-                        ImagePreloadHelper.preloadImages(context, urls)
-                    }
-                }
-
-                LaunchedEffect(uiState.standings, darkTheme) {
-                    if (uiState.standings.isNotEmpty()) {
-                        val urls = uiState.standings.mapNotNull { entry ->
-                            entry.getLogoUrl(darkTheme)
-                        }
-                        ImagePreloadHelper.preloadImages(context, urls)
+                        ImagePreloadHelper.preloadImages(
+                            context = context,
+                            urls = urls,
+                            dataSaverEnabled = appSettings.dataSaverMode
+                        )
                     }
                 }
 
@@ -350,6 +352,7 @@ class MainActivity : ComponentActivity() {
                             MatchAlarmScheduler.rescheduleAllFollowed(context, minutes)
                         },
                         onAutoFollowFavoritesChanged = settingsRepository::setAutoFollowFavorites,
+                        onDataSaverModeChanged = settingsRepository::setDataSaverMode,
                         onCheckUpdatesOnStartChanged = settingsRepository::setCheckUpdatesOnStart,
                         onShowWalkthrough = { isOnboardingSheetOpen = true },
                         onBackClick = { isSettingsOpen = false }
@@ -509,7 +512,7 @@ class MainActivity : ComponentActivity() {
                                     ) {
                                         HorizontalPager(
                                             state = pagerState,
-                                            beyondViewportPageCount = 1,
+                                            beyondViewportPageCount = 0,
                                             key = { TemporalFilter.entries[it].name },
                                             flingBehavior = PagerDefaults.flingBehavior(
                                                 state = pagerState,

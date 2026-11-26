@@ -17,8 +17,14 @@ object ImagePreloadHelper {
 
     /**
      * Encola la precarga de una coleccion de URLs en el cargador singleton omitiendo las ya procesadas en la sesion.
+     * Si el modo de ahorro de datos esta activo, aborta en linea 1 para evitar cualquier consumo en segundo plano.
      */
-    fun preloadImages(context: Context, urls: Collection<String?>) {
+    fun preloadImages(
+        context: Context,
+        urls: Collection<String?>,
+        dataSaverEnabled: Boolean = false
+    ) {
+        if (dataSaverEnabled) return
         val pendingUrls = urls.asSequence()
             .filterNotNull()
             .filter { it.isNotBlank() && preloadedUrls.add(it) }

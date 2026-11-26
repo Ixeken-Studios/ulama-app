@@ -2,13 +2,13 @@
 # Reglas de Optimizacion R8 y ProGuard para Ulama
 # ==============================================================================
 
-# Atributos esenciales para reflexion, anotaciones y tipos genericos
+# Atributos esenciales para anotaciones y tipos genericos de Retrofit / Serialization
 -keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, SourceFile, LineNumberTable
 
 # ------------------------------------------------------------------------------
 # 1. Kotlinx Serialization y DTOs de ESPN
 # ------------------------------------------------------------------------------
-# Conservar serializadores generados y miembros companeros
+# Conservar serializadores estaticos generados permitiendo inlining y eliminacion de metodos DTO sin uso
 -keepclassmembers class * {
     *** Companion;
 }
@@ -18,21 +18,17 @@
 -keepclassmembers class **$$serializer {
     *;
 }
--keepclassmembers class * {
+-keepclassmembers,allowobfuscation class * {
     @kotlinx.serialization.SerialName <fields>;
 }
-
-# Conservar nombres de campos en clases serializables sin necesidad de @SerialName
--keepclassmembers @kotlinx.serialization.Serializable class * {
+-keep,allowobfuscation,allowshrinking @kotlinx.serialization.Serializable class *
+-keepclassmembers,allowobfuscation @kotlinx.serialization.Serializable class * {
+    static *** Companion;
     <fields>;
 }
 
-# Conservar explicitamente las clases de transferencia de datos (DTOs) y modelos persistidos
--keep class com.ixeken.ulama.data.espn.model.** { *; }
--keep class com.ixeken.ulama.data.update.** { *; }
-
 # ------------------------------------------------------------------------------
-# 2. Retrofit 2 & OkHttp
+# 2. Retrofit 3 & OkHttp 5
 # ------------------------------------------------------------------------------
 -dontwarn retrofit2.**
 -dontwarn okhttp3.**
@@ -42,7 +38,7 @@
 -keepclassmembers,allowobfuscation interface * {
     @retrofit2.http.* <methods>;
 }
--keep class com.ixeken.ulama.data.espn.EspnApiService { *; }
+-keep interface com.ixeken.ulama.data.espn.EspnApiService { *; }
 
 # Base de datos de sufijos publicos de OkHttp
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase

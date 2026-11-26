@@ -2698,6 +2698,91 @@ class MatchRepositoryTest {
         assertEquals("elimination-finals", ausMatches.first { it.id == "a1" }.seriesTitle)
         assertEquals("grand-final", ausMatches.first { it.id == "a2" }.seriesTitle)
     }
+
+    @Test
+    fun getMatches_emitsPreliminaryMatchesBeforeClusterDatesAndSupportsCacheOnlySeed() = runBlocking {
+        val today = LocalDate.now(ZoneId.systemDefault())
+        val tomorrow = today.plusDays(1)
+        val todayIso = "${today}T20:00:00Z"
+        val tomorrowIso = "${tomorrow}T20:00:00Z"
+        val tomorrowBasic = tomorrow.format(DateTimeFormatter.BASIC_ISO_DATE)
+
+        val callOrder = mutableListOf<String>()
+        val capturedHeaders = mutableListOf<String?>()
+
+        fun buildEvent(id: String, dateIso: String) = EspnEventDto(
+            id = id,
+            date = dateIso,
+            competitions = listOf(
+                EspnCompetitionDto(
+                    id = id,
+                    date = dateIso,
+                    competitors = listOf(
+                        EspnCompetitorDto(id = "1", homeAway = "home", team = EspnTeamDto(id = "1", name = "America")),
+                        EspnCompetitorDto(id = "2", homeAway = "away", team = EspnTeamDto(id = "2", name = "Chivas"))
+                    ),
+                    status = EspnStatusDto(type = EspnStatusTypeDto(state = "pre", completed = false))
+                )
+            )
+        )
+
+        val fakeApi = object : EspnApiService {
+            override suspend fun getScoreboard(
+                league: String,
+                dates: String?,
+                limit: Int?,
+                cacheControl: String?
+            ): EspnScoreboardResponse {
+                capturedHeaders.add(cacheControl)
+                callOrder.add(dates ?: "base")
+                return if (dates == null) {
+                    EspnScoreboardResponse(
+                        leagues = listOf(
+                            EspnLeagueCalendarDto(
+                                calendar = listOf(
+                                    kotlinx.serialization.json.JsonPrimitive(todayIso),
+                                    kotlinx.serialization.json.JsonPrimitive(tomorrowIso)
+                                )
+                            )
+                        ),
+                        events = listOf(buildEvent("today_match", todayIso))
+                    )
+                } else if (dates == tomorrowBasic) {
+                    EspnScoreboardResponse(events = listOf(buildEvent("tomorrow_match", tomorrowIso)))
+                } else {
+                    EspnScoreboardResponse(events = emptyList())
+                }
+            }
+
+            override suspend fun getStandings(league: String, cacheControl: String?) = EspnStandingsResponse()
+            override suspend fun getMatchSummary(league: String, eventId: String, cacheControl: String?) =
+                com.ixeken.ulama.data.espn.model.EspnMatchSummaryResponse()
+        }
+
+        val repo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+        var preliminarySnapshotIds: List<String> = emptyList()
+        var callOrderAtPreliminary: List<String> = emptyList()
+
+        val finalMatches = repo.getMatches(
+            league = League.LIGA_MX,
+            forceRefresh = true,
+            onPreliminaryMatches = { prelim ->
+                preliminarySnapshotIds = prelim.map { it.id }
+                callOrderAtPreliminary = callOrder.toList()
+            }
+        ).getOrThrow()
+
+        // Fase 1 emite de inmediato tras la llamada base antes de consultar las fechas secundarias del calendario
+        assertEquals(listOf("today_match"), preliminarySnapshotIds)
+        assertEquals(listOf("base"), callOrderAtPreliminary)
+        assertEquals(listOf("today_match", "tomorrow_match"), finalMatches.map { it.id })
+
+        // Semilla cacheOnly inyecta only-if-cached cuando no existe cache previa en memoria
+        capturedHeaders.clear()
+        val freshRepo = MatchRepositoryImpl(fakeApi, Dispatchers.Unconfined)
+        freshRepo.getMatches(league = League.PREMIER_LEAGUE, cacheOnly = true)
+        assertTrue(capturedHeaders.all { it == com.ixeken.ulama.core.network.CacheInterceptor.CACHE_CONTROL_DISK_SEED })
+    }
 }
 
 
