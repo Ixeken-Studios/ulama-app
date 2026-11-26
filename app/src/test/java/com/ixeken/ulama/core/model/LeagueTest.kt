@@ -15,15 +15,15 @@ class LeagueTest {
 
     @Test
     fun standardLeagues_containsAllClubAndInternationalLeagues() {
-        assertEquals(21, League.clubLeagues.size)
+        assertEquals(22, League.clubLeagues.size)
         assertEquals(8, League.internationalLeagues.size)
-        assertEquals(29, League.standardLeagues.size)
+        assertEquals(30, League.standardLeagues.size)
 
         League.clubLeagues.forEach { league ->
             assertFalse(league.isInternational)
             assertFalse(league.isVirtual)
             assertTrue(league.code.isNotBlank())
-            if (league != League.LIGA_MX_FEMENIL) {
+            if (league != League.LIGA_MX_FEMENIL && league != League.LIGA_F) {
                 assertTrue(league.lightLogoUrl.isNotBlank())
                 assertTrue(league.darkLogoUrl.isNotBlank())
             }
@@ -165,6 +165,11 @@ class LeagueTest {
         assertEquals(LeagueRegion.OCEANIA, League.A_LEAGUE_MEN.region)
         assertEquals(6, League.A_LEAGUE_MEN.knockoutBracketTeams)
         assertEquals(listOf(2, 6), League.A_LEAGUE_MEN.tableCutoffs.map { it.rankAfter })
+
+        assertEquals("esp.w.1", League.LIGA_F.code)
+        assertEquals(LeagueRegion.EUROPE, League.LIGA_F.region)
+        assertEquals(listOf(1, 3, 14), League.LIGA_F.tableCutoffs.map { it.rankAfter })
+        assertEquals("", League.LIGA_F.lightLogoUrl)
     }
 
     @Test

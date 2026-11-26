@@ -288,6 +288,24 @@ enum class League(
             TableLegendEntry(rangeText = "3", labelRes = R.string.legend_sudamericana_playoffs)
         )
     ),
+    LIGA_F(
+        code = "esp.w.1",
+        nameRes = R.string.league_esp_w_1,
+        lightLogoUrl = "",
+        darkLogoUrl = "",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_spain,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 1, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 3, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 14, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.DASHED)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1", labelRes = R.string.legend_uwcl),
+            TableLegendEntry(rangeText = "2-3", labelRes = R.string.legend_uwcl_qualifying),
+            TableLegendEntry(rangeText = "15-16", labelRes = R.string.legend_relegation)
+        )
+    ),
     LIGA_MX(
         code = "mex.1",
         nameRes = R.string.league_mex_1,

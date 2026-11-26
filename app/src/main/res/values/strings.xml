@@ -17,6 +17,7 @@
     <string name="league_uefa_europa">Europa League</string>
     <string name="league_esp_1">LaLiga</string>
     <string name="league_conmebol_libertadores">Copa Libertadores</string>
+    <string name="league_esp_w_1">Liga F</string>
     <string name="league_mex_1">Liga MX</string>
     <string name="league_mex_w_1">Liga MX Femenil</string>
     <string name="league_fra_1">Ligue 1</string>
@@ -386,7 +387,7 @@
     <string name="settings_about_changelog_sheet_title">Novedades de la versión</string>
     <string name="settings_about_changelog_sheet_subtitle">Versión 2.2.1 · Novedades y mejoras</string>
     <string name="settings_about_changelog_leagues_title">Nuevas ligas y torneos</string>
-    <string name="settings_about_changelog_leagues_desc">13 competiciones nuevas en los cinco continentes incluyendo fútbol femenino, Brasileirão, MLS, Libertadores, Europa League, ligas de Asia, África y Oceanía.</string>
+    <string name="settings_about_changelog_leagues_desc">14 competiciones nuevas en los cinco continentes incluyendo fútbol femenino, Brasileirão, MLS, Libertadores, Europa League, Liga F, ligas de Asia, África y Oceanía.</string>
     <string name="settings_about_changelog_perf_title">Optimizaciones de rendimiento</string>
     <string name="settings_about_changelog_perf_desc">Mejoras en carga de escudos con respaldos expresivos, tablas unificadas y soporte optimizado para llaves y series eliminatorias.</string>
     <string name="dialog_update_confirm_manual_title">¿Buscar actualizaciones?</string>
