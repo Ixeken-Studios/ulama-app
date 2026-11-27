@@ -439,6 +439,28 @@ enum class League(
             TableLegendEntry(rangeText = "18-20", labelRes = R.string.legend_relegation)
         )
     ),
+    SUPER_LIG(
+        code = "tur.1",
+        nameRes = R.string.league_tur_1,
+        lightLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500/18.png",
+        darkLogoUrl = "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/18.png",
+        region = LeagueRegion.EUROPE,
+        subRegionRes = R.string.subregion_turkey,
+        tableCutoffs = listOf(
+            TableCutoff(rankAfter = 1, zoneType = TableZoneType.QUALIFICATION, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 2, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 3, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.SOLID),
+            TableCutoff(rankAfter = 4, zoneType = TableZoneType.PLAYOFF, lineStyle = CutoffLineStyle.DASHED),
+            TableCutoff(rankAfter = 15, zoneType = TableZoneType.RELEGATION, lineStyle = CutoffLineStyle.DASHED)
+        ),
+        tableLegend = listOf(
+            TableLegendEntry(rangeText = "1", labelRes = R.string.legend_champions_league),
+            TableLegendEntry(rangeText = "2", labelRes = R.string.legend_champions_qualifying),
+            TableLegendEntry(rangeText = "3", labelRes = R.string.legend_europa_qualifying),
+            TableLegendEntry(rangeText = "4", labelRes = R.string.legend_conference_qualifying),
+            TableLegendEntry(rangeText = "16-18", labelRes = R.string.legend_relegation)
+        )
+    ),
     WOMENS_CHAMPIONS_LEAGUE(
         code = "uefa.wchampions",
         nameRes = R.string.league_uefa_wchampions,

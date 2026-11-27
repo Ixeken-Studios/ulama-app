@@ -25,6 +25,7 @@
     <string name="league_eng_1">Premier League</string>
     <string name="league_por_1">Primeira Liga</string>
     <string name="league_ita_1">Serie A</string>
+    <string name="league_tur_1">Süper Lig</string>
     <string name="league_uefa_wchampions">Women\'s Champions League</string>
     <string name="league_eng_w_1">Women\'s Super League</string>
     <string name="league_fifa_world">FIFA World Cup</string>
@@ -521,6 +522,7 @@
     <string name="subregion_france">France</string>
     <string name="subregion_netherlands">Netherlands</string>
     <string name="subregion_portugal">Portugal</string>
+    <string name="subregion_turkey">Turkey</string>
     <string name="subregion_brazil">Brazil</string>
     <string name="subregion_south_america">South America</string>
     <string name="subregion_mexico">Mexico</string>

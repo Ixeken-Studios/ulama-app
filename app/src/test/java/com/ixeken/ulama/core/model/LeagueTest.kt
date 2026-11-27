@@ -15,9 +15,9 @@ class LeagueTest {
 
     @Test
     fun standardLeagues_containsAllClubAndInternationalLeagues() {
-        assertEquals(22, League.clubLeagues.size)
+        assertEquals(23, League.clubLeagues.size)
         assertEquals(8, League.internationalLeagues.size)
-        assertEquals(30, League.standardLeagues.size)
+        assertEquals(31, League.standardLeagues.size)
 
         League.clubLeagues.forEach { league ->
             assertFalse(league.isInternational)
@@ -170,6 +170,14 @@ class LeagueTest {
         assertEquals(LeagueRegion.EUROPE, League.LIGA_F.region)
         assertEquals(listOf(1, 3, 14), League.LIGA_F.tableCutoffs.map { it.rankAfter })
         assertEquals("", League.LIGA_F.lightLogoUrl)
+
+        assertEquals("tur.1", League.SUPER_LIG.code)
+        assertEquals(LeagueRegion.EUROPE, League.SUPER_LIG.region)
+        assertEquals(com.ixeken.ulama.R.string.subregion_turkey, League.SUPER_LIG.subRegionRes)
+        assertEquals(listOf(1, 2, 3, 4, 15), League.SUPER_LIG.tableCutoffs.map { it.rankAfter })
+        assertFalse(League.SUPER_LIG.isTournament)
+        assertTrue(League.SUPER_LIG.lightLogoUrl.isNotBlank())
+        assertTrue(League.SUPER_LIG.darkLogoUrl.isNotBlank())
     }
 
     @Test
